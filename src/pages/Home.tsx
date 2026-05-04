@@ -1,15 +1,19 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Calendar, Users, TrendingUp, AlertCircle, FileCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useYear } from '../contexts/YearContext';
 import { mockStudents, mockReports, mockClasses, mockEnrollments } from '../store/mockDb';
 import type { ClassGroup, ReportRecord, Enrollment } from '../store/mockDb';
 import { Management } from './Management';
+import { mockMessages, mockEvents, CATEGORY_LABELS, EVENT_TYPES } from '../store/agendaDb';
+import { MessageSquare, Bell, Heart, BookOpenCheck, Clock } from 'lucide-react';
 
 const BIMESTRES = ['1º Bimestre', '2º Bimestre', '3º Bimestre', '4º Bimestre'];
 
 export function Home() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { selectedYear, availableYears, setYear } = useYear();
   const [selectedBimestre, setSelectedBimestre] = useState('1º Bimestre');
   
@@ -185,6 +189,134 @@ export function Home() {
                 </div>
               ))}
               {myPending.length === 0 && <p className="text-success" style={{ fontWeight: 600 }}>🎉 Tudo em dia para este período!</p>}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Parent/Responsible View
+  if (user?.role === 'responsible') {
+    const student = mockStudents.find(s => s.id === user.studentId);
+    const studentClass = mockClasses.find(c => c.id === student?.classId);
+    
+    const myEvents = mockEvents
+      .filter(e => !e.classIds.length || (student?.classId && e.classIds.includes(student.classId)))
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(0, 3);
+      
+    const myMessages = mockMessages
+      .filter(m => m.targetType === 'all' || (m.targetType === 'class' && student?.classId && m.targetIds.includes(student.classId)) || (m.targetType === 'student' && m.targetIds.includes(user.studentId!)))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 3);
+
+    return (
+      <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'var(--color-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', fontWeight: 800 }}>
+            {student?.name.charAt(0)}
+          </div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.75rem' }}>Olá, {user.name}!</h2>
+            <p className="text-muted">Acompanhando o desenvolvimento de <strong>{student?.name}</strong> • {studentClass?.name}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 mb-8">
+          <div className="card" style={{ padding: '1.5rem', borderBottom: '4px solid #10b981' }}>
+            <div className="flex justify-between items-start mb-2">
+              <span className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Frequência</span>
+              <FileCheck size={20} color="#10b981" />
+            </div>
+            <h3 style={{ margin: 0, fontSize: '1.5rem' }}>98%</h3>
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#10b981', fontWeight: 600 }}>Excelente presença</p>
+          </div>
+
+          <div className="card" style={{ padding: '1.5rem', borderBottom: '4px solid var(--color-primary)' }}>
+            <div className="flex justify-between items-start mb-2">
+              <span className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Próximo Evento</span>
+              <Calendar size={20} color="var(--color-primary)" />
+            </div>
+            <h3 style={{ margin: 0, fontSize: '1.1rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {myEvents[0]?.title || 'Sem eventos'}
+            </h3>
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: 'var(--color-primary)', fontWeight: 600 }}>
+              {myEvents[0] ? new Date(myEvents[0].date).toLocaleDateString('pt-BR') : '-'}
+            </p>
+          </div>
+
+          <div className="card" style={{ padding: '1.5rem', borderBottom: '4px solid var(--color-secondary)' }}>
+            <div className="flex justify-between items-start mb-2">
+              <span className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Última Nota</span>
+              <BookOpenCheck size={20} color="var(--color-secondary)" />
+            </div>
+            <h3 style={{ margin: 0, fontSize: '1.5rem' }}>9.5</h3>
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: 'var(--color-secondary)', fontWeight: 600 }}>Português • 1º Bim</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2">
+          {/* Recent Messages */}
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><MessageSquare size={20} color="var(--color-primary)" /> Últimos Comunicados</h3>
+              <button className="text-primary" onClick={() => navigate('/agenda')} style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>Ver tudo</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {myMessages.map(msg => (
+                <div key={msg.id} className="card" style={{ padding: '1rem', cursor: 'pointer' }} onClick={() => navigate('/agenda')}>
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: CATEGORY_LABELS[msg.category].bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Bell size={18} color={CATEGORY_LABELS[msg.category].color} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div className="flex justify-between items-start">
+                        <h4 style={{ margin: 0, fontSize: '0.95rem' }}>{msg.subject}</h4>
+                        <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{new Date(msg.createdAt).toLocaleDateString('pt-BR')}</span>
+                      </div>
+                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#64748b', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{msg.content}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Upcoming Events */}
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Calendar size={20} color="var(--color-primary)" /> Calendário Escolar</h3>
+              <button className="text-primary" onClick={() => navigate('/agenda')} style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>Ver agenda</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {myEvents.map(ev => (
+                <div key={ev.id} className="card" style={{ padding: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ textAlign: 'center', paddingRight: '1rem', borderRight: '1px solid #e2e8f0', minWidth: '50px' }}>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-primary)' }}>{new Date(ev.date).getDate()}</div>
+                      <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8' }}>{new Date(ev.date).toLocaleString('pt-BR', { month: 'short' })}</div>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div className="flex items-center gap-2">
+                        <span style={{ fontSize: '1rem' }}>{EVENT_TYPES[ev.type].icon}</span>
+                        <h4 style={{ margin: 0, fontSize: '0.95rem' }}>{ev.title}</h4>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+                        <Clock size={12} color="#94a3b8" />
+                        <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{ev.time || 'Dia inteiro'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="card mt-6" style={{ backgroundColor: '#fff7ed', border: '1px dashed #fdba74', textAlign: 'center', padding: '1.5rem' }}>
+              <Heart size={32} color="#f97316" style={{ margin: '0 auto 0.5rem', opacity: 0.6 }} />
+              <h4 style={{ margin: '0 0 0.5rem', color: '#9a3412' }}>Espaço do Aluno</h4>
+              <p style={{ fontSize: '0.85rem', color: '#c2410c', margin: 0 }}>Acesse o boletim completo e relatórios pedagógicos para acompanhar o Lucas.</p>
+              <button className="btn btn-secondary mt-4" onClick={() => navigate('/bulletin')} style={{ width: '100%', fontSize: '0.9rem' }}>Acessar Boletim</button>
             </div>
           </div>
         </div>

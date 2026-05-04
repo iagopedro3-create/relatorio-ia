@@ -193,6 +193,7 @@ export function Login() {
               { label: 'Direção', user: 'diretora', pwd: 'direcao123' },
               { label: 'Coordenação', user: 'carla', pwd: 'coord123' },
               { label: 'Professor(a)', user: 'maria', pwd: 'prof123' },
+              { label: 'Responsável', user: 'pai', pwd: 'pai123' },
             ].map(c => (
               <button
                 key={c.label}

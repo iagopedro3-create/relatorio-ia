@@ -6,12 +6,6 @@ import { mockClasses, mockStudents } from '../store/mockDb';
 import type { ClassGroup, Student } from '../store/mockDb';
 import { useAuth } from '../contexts/AuthContext';
 
-const TABS = [
-  { id: 'feed', label: 'Feed', icon: <MessageSquare size={18} /> },
-  { id: 'calendar', label: 'Calendário', icon: <CalendarDays size={18} /> },
-  { id: 'compose', label: 'Nova Mensagem', icon: <Send size={18} /> },
-] as const;
-
 const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
 function timeAgo(dateStr: string) {
@@ -28,6 +22,21 @@ function timeAgo(dateStr: string) {
 
 export function Agenda() {
   const { user } = useAuth();
+  const isResponsible = user?.role === 'responsible';
+  
+  const TABS = useMemo(() => {
+    const base = [
+      { id: 'feed', label: 'Feed', icon: <MessageSquare size={18} /> },
+      { id: 'calendar', label: 'Calendário', icon: <CalendarDays size={18} /> },
+    ] as const;
+    
+    const result: { id: 'feed' | 'calendar' | 'compose', label: string, icon: any }[] = [...base];
+    if (!isResponsible) {
+      result.push({ id: 'compose', label: 'Nova Mensagem', icon: <Send size={18} /> });
+    }
+    return result;
+  }, [isResponsible]);
+
   const [activeTab, setActiveTab] = useState<'feed' | 'calendar' | 'compose'>('feed');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCat, setFilterCat] = useState('');
@@ -46,22 +55,43 @@ export function Agenda() {
 
   // Feed filters
   const filteredMessages = useMemo(() => {
-    let result = [...messages].sort((a, b) => {
+    if (!user) return [];
+    const student = isResponsible ? mockStudents.find(s => s.id === user.studentId) : null;
+
+    let result = messages.filter(m => {
+      if (!isResponsible) return true;
+      // Filter for parents:
+      return (
+        m.targetType === 'all' || 
+        (m.targetType === 'class' && student?.classId && m.targetIds.includes(student.classId)) ||
+        (m.targetType === 'student' && user.studentId && m.targetIds.includes(user.studentId))
+      );
+    });
+
+    result = [...result].sort((a, b) => {
       if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
+
     if (searchTerm) result = result.filter((m: AgendaMessage) => m.subject.toLowerCase().includes(searchTerm.toLowerCase()) || m.content.toLowerCase().includes(searchTerm.toLowerCase()));
     if (filterCat) result = result.filter((m: AgendaMessage) => m.category === filterCat);
     return result;
-  }, [messages, searchTerm, filterCat]);
+  }, [messages, searchTerm, filterCat, isResponsible, user]);
 
   // Calendar
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
   const firstDayOfWeek = new Date(calYear, calMonth, 1).getDay();
   const calendarDays = Array.from({ length: daysInMonth }, (_, i) => i + 1);
   const eventsInMonth = events.filter((e: CalendarEvent) => {
+    if (!user) return false;
     const d = new Date(e.date);
-    return d.getMonth() === calMonth && d.getFullYear() === calYear;
+    const isInMonth = d.getMonth() === calMonth && d.getFullYear() === calYear;
+    if (!isInMonth) return false;
+    
+    if (!isResponsible) return true;
+    
+    const student = mockStudents.find(s => s.id === user.studentId);
+    return !e.classIds.length || (student?.classId && e.classIds.includes(student.classId));
   });
 
   const handleSendMessage = () => {
@@ -95,17 +125,23 @@ export function Agenda() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <div>
+        <div className="mobile-hide">
           <h2 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 800 }}>Agenda Digital</h2>
           <p className="text-muted">Comunicação, eventos e acompanhamento escolar</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setActiveTab('compose')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Plus size={18} /> Nova Mensagem
-        </button>
+        {!isResponsible && (
+          <button className="btn btn-primary" onClick={() => setActiveTab('compose')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Plus size={18} /> <span className="mobile-hide">Nova Mensagem</span><span className="mobile-only">Nova</span>
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: '1.5rem', backgroundColor: 'white', borderRadius: '12px 12px 0 0', padding: '0 0.5rem' }}>
+      <div className="agenda-tabs" style={{ 
+        display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: '1.5rem', 
+        backgroundColor: 'white', borderRadius: '12px 12px 0 0', padding: '0 0.5rem',
+        overflowX: 'auto', whiteSpace: 'nowrap', msOverflowStyle: 'none', scrollbarWidth: 'none'
+      }}>
         {TABS.map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)} style={tabStyle(t.id)}>{t.icon} {t.label}</button>
         ))}
@@ -202,8 +238,9 @@ export function Agenda() {
           </div>
 
           {/* Calendar Grid */}
-          <div style={{ padding: '1rem 1.5rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', marginBottom: '0.5rem' }}>
+          <div style={{ padding: '1rem', overflowX: 'auto' }}>
+            <div style={{ minWidth: '320px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', marginBottom: '0.5rem' }}>
               {['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(d => (
                 <div key={d} style={{ textAlign: 'center', fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', padding: '0.5rem', textTransform: 'uppercase' }}>{d}</div>
               ))}
@@ -236,13 +273,20 @@ export function Agenda() {
                 );
               })}
             </div>
+            </div>
           </div>
 
           {/* Events List */}
           <div style={{ borderTop: '1px solid #e2e8f0', padding: '1.25rem 1.5rem' }}>
             <h4 style={{ margin: '0 0 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Bell size={16} color="#0a73ff" /> Próximos Eventos</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-              {events.filter((e: CalendarEvent) => new Date(e.date) >= new Date()).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).slice(0, 5).map((ev: CalendarEvent) => {
+              {events.filter((e: CalendarEvent) => {
+                const isFuture = new Date(e.date) >= new Date();
+                if (!isFuture) return false;
+                if (!isResponsible) return true;
+                const student = mockStudents.find(s => s.id === user.studentId);
+                return !e.classIds.length || (student?.classId && e.classIds.includes(student.classId));
+              }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).slice(0, 5).map((ev: CalendarEvent) => {
                 const evType = EVENT_TYPES[ev.type];
                 return (
                   <div key={ev.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', borderRadius: '10px', backgroundColor: '#f8fafc', border: '1px solid #f1f5f9' }}>
@@ -345,6 +389,15 @@ export function Agenda() {
           </div>
         </div>
       )}
+      <style>{`
+        .agenda-tabs::-webkit-scrollbar { display: none; }
+        @media (max-width: 768px) {
+          .mobile-hide { display: none !important; }
+          .mobile-only { display: block !important; }
+          .card { padding: 1rem !important; }
+          .grid-cols-2 { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </div>
   );
 }

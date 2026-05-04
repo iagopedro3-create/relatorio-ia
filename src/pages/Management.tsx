@@ -141,13 +141,13 @@ export function Management() {
   return (
     <div className="management-dashboard">
       <div className="flex justify-between items-center mb-8">
-        <div>
+        <div className="mobile-hide">
           <h2 style={{ margin: 0, fontSize: '2rem', fontWeight: 800, color: '#0f172a' }}>Painel Administrativo</h2>
           <p className="text-muted" style={{ fontSize: '1.05rem', marginTop: '0.25rem' }}>Visão geral da escola, engajamento e pendências</p>
         </div>
         <div className="flex gap-3">
           <Link to="/students" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Users size={18} /> Cadastrar Aluno
+            <Users size={18} /> <span className="mobile-hide">Cadastrar Aluno</span><span className="mobile-only">Novo Aluno</span>
           </Link>
         </div>
       </div>
@@ -194,7 +194,7 @@ export function Management() {
       </div>
 
       {/* Row 2: Two balanced columns */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+      <div className="management-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
 
         {/* LEFT: Desempenho da Equipe */}
         <div className="card" style={{ border: 'none', boxShadow: '0 4px 24px rgba(0,0,0,0.04)' }}>
@@ -364,6 +364,13 @@ export function Management() {
       <style>{`
         .management-dashboard .stat-card { transition: transform 0.2s, box-shadow 0.2s; }
         .management-dashboard .stat-card:hover { transform: translateY(-4px); }
+        @media (max-width: 1024px) {
+          .management-grid { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 768px) {
+          .mobile-hide { display: none !important; }
+          .mobile-only { display: block !important; }
+        }
       `}</style>
     </div>
   );

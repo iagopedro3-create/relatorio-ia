@@ -52,37 +52,44 @@ export function Layout() {
   const flatItems: NavItem[] = [];
   const groups: NavGroup[] = [];
 
+  const isResponsible = user.role === 'responsible';
+
   // INÍCIO — everyone
   flatItems.push({ name: 'Início', path: '/', icon: <LayoutDashboard size={18} /> });
   flatItems.push({ name: 'Agenda Digital', path: '/agenda', icon: <MessageSquareText size={18} /> });
 
-  // ACADÊMICO — everyone
-  const academicoItems: NavItem[] = [
-    { name: 'Frequência', path: '/attendance', icon: <CalendarCheck size={18} /> },
-    { name: 'Conteúdos', path: '/lessons', icon: <BookOpen size={18} /> },
-  ];
-
-  // Specialists/Admins see grades
-  if (user.role === 'admin' || user.role === 'coordinator' || user.specialty === 'english') {
-    academicoItems.push({ name: 'Lançar Notas', path: '/grades', icon: <ClipboardList size={18} /> });
-  }
+  // ACADÊMICO
+  const academicoItems: NavItem[] = [];
   
+  if (!isResponsible) {
+    academicoItems.push({ name: 'Frequência', path: '/attendance', icon: <CalendarCheck size={18} /> });
+    academicoItems.push({ name: 'Conteúdos', path: '/lessons', icon: <BookOpen size={18} /> });
+    
+    if (user.role === 'admin' || user.role === 'coordinator' || user.specialty === 'english') {
+      academicoItems.push({ name: 'Lançar Notas', path: '/grades', icon: <ClipboardList size={18} /> });
+    }
+  }
+
   academicoItems.push({ name: 'Boletim', path: '/bulletin', icon: <BookOpenCheck size={18} /> });
-  academicoItems.push({ name: 'Imprimir Diário', path: '/diary', icon: <Printer size={18} /> });
+  
+  if (!isResponsible) {
+    academicoItems.push({ name: 'Imprimir Diário', path: '/diary', icon: <Printer size={18} /> });
+  }
   
   groups.push({ label: 'acadêmico', icon: <GraduationCap size={16} />, items: academicoItems });
 
-  // RELATÓRIOS — everyone
-  const relatoriosItems: NavItem[] = [
-    { name: 'Relatório IA', path: '/reports', icon: <FileText size={18} /> },
-  ];
-  
-  // Class teachers see PEI
-  if (user.classId || user.role === 'admin' || user.role === 'coordinator') {
-    relatoriosItems.push({ name: 'Gerar PEI', path: '/pei', icon: <Brain size={18} /> });
+  // RELATÓRIOS
+  if (!isResponsible) {
+    const relatoriosItems: NavItem[] = [
+      { name: 'Relatório IA', path: '/reports', icon: <FileText size={18} /> },
+    ];
+    
+    if (user.classId || user.role === 'admin' || user.role === 'coordinator') {
+      relatoriosItems.push({ name: 'Gerar PEI', path: '/pei', icon: <Brain size={18} /> });
+    }
+    
+    groups.push({ label: 'relatórios', icon: <FileText size={16} />, items: relatoriosItems });
   }
-  
-  groups.push({ label: 'relatórios', icon: <FileText size={16} />, items: relatoriosItems });
 
   // ADMINISTRATIVO — admin + coordinator only
   if (user.role === 'admin' || user.role === 'coordinator') {

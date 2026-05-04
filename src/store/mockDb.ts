@@ -1,5 +1,5 @@
 // Roles and permissions structure
-export type Role = 'admin' | 'coordinator' | 'teacher';
+export type Role = 'admin' | 'coordinator' | 'teacher' | 'responsible';
 
 export interface User {
   id: string;
@@ -8,6 +8,7 @@ export interface User {
   password: string;
   role: Role;
   classId?: string;
+  studentId?: string; // For responsibles
   specialty?: 'english' | 'pe' | 'none';
   managedLevel?: 'infantil' | 'fundamental' | 'all';
 }
@@ -70,6 +71,7 @@ export const mockUsers: User[] = [
   { id: 'u4',  name: 'Prof. João',              username: 'joao',      password: 'prof123',    role: 'teacher' },
   { id: 'u5',  name: 'Prof. Marcos (Inglês)',   username: 'ingles',    password: 'prof123',    role: 'teacher',     specialty: 'english' },
   { id: 'u6',  name: 'Profa. Sandra (Ed. Física)', username: 'edfisica', password: 'prof123', role: 'teacher', specialty: 'pe' },
+  { id: 'u7',  name: 'Sr. Marcos (Pai do Lucas)', username: 'pai',       password: 'pai123',     role: 'responsible', studentId: 's1' },
 ];
 
 export const mockClasses: ClassGroup[] = [

@@ -24,7 +24,7 @@ export function Agenda() {
   const { user } = useAuth();
   const isResponsible = user?.role === 'responsible';
   
-  const TABS: { id: 'feed' | 'calendar' | 'compose', label: string, icon: JSX.Element }[] = useMemo(() => [
+  const TABS: { id: 'feed' | 'calendar' | 'compose', label: string, icon: React.ReactElement }[] = useMemo(() => [
     { id: 'feed', label: 'Feed', icon: <MessageSquare size={18} /> },
     { id: 'calendar', label: 'Calendário', icon: <CalendarDays size={18} /> },
     { id: 'compose', label: 'Nova Mensagem', icon: <Send size={18} /> },
@@ -49,6 +49,18 @@ export function Agenda() {
   const [compTarget, setCompTarget] = useState<'all' | 'class' | 'student' | 'staff'>(isResponsible ? 'staff' : 'all');
   const [compTargetIds, setCompTargetIds] = useState<string[]>([]);
   const [compPinned, setCompPinned] = useState(false);
+  const [isDailyReport, setIsDailyReport] = useState(false);
+  const [reportType, setReportType] = useState<'fundamental' | 'infantil'>('fundamental');
+
+  // Report fields - Fundamental
+  const [reportSubjects, setReportSubjects] = useState<string[]>([]);
+  const [reportParticipation, setReportParticipation] = useState<string>('');
+  const [reportHomework, setReportHomework] = useState<string>('');
+
+  // Report fields - Infantil
+  const [reportToilet, setReportToilet] = useState<string>('');
+  const [reportMeals, setReportMeals] = useState<string>('');
+  const [reportSleep, setReportSleep] = useState<string>('');
 
   // Feed filters
   const filteredMessages = useMemo(() => {
@@ -92,10 +104,46 @@ export function Agenda() {
   });
 
   const handleSendMessage = () => {
-    if (!compSubject.trim() || !compContent.trim()) { alert('Preencha assunto e mensagem.'); return; }
+    if (!compSubject.trim() || (!compContent.trim() && !isDailyReport)) return;
+
+    let finalContent = compContent;
+    if (isDailyReport) {
+      if (reportType === 'fundamental') {
+        finalContent = `
+📌 AULA DE HOJE:
+${reportSubjects.length > 0 ? reportSubjects.join(', ') : 'Não informado'}
+
+🎭 PARTICIPAÇÃO:
+${reportParticipation || 'Não informado'}
+
+📝 ATIVIDADE DE CASA:
+${reportHomework || 'Não informado'}
+
+📝 OBSERVAÇÕES:
+${compContent || 'Sem observações adicionais.'}
+        `.trim();
+      } else {
+        finalContent = `
+🚽 BANHEIRO:
+${reportToilet || 'Não informado'}
+
+🍴 ALIMENTAÇÃO:
+${reportMeals || 'Não informado'}
+
+💤 SONO:
+${reportSleep || 'Não informado'}
+
+📝 OBSERVAÇÕES:
+${compContent || 'Sem observações adicionais.'}
+        `.trim();
+      }
+    }
+
     const newMsg: AgendaMessage = {
-      id: `m${Date.now()}`, subject: compSubject, content: compContent,
-      category: compCategory as AgendaMessage['category'],
+      id: `m${Date.now()}`,
+      subject: isDailyReport ? `Relatório Diário - ${new Date().toLocaleDateString('pt-BR')}` : compSubject,
+      category: (isDailyReport ? 'pedagogico' : compCategory) as AgendaMessage['category'],
+      content: finalContent,
       senderName: user?.name || 'Usuário', senderRole: (user?.role || 'admin') as AgendaMessage['senderRole'],
       targetType: compTarget, targetIds: compTargetIds, pinned: compPinned,
       createdAt: new Date().toISOString(), attachments: [], readBy: [], deliveredTo: [],
@@ -104,6 +152,7 @@ export function Agenda() {
     setMessages((prev: AgendaMessage[]) => [newMsg, ...prev]);
     setCompSubject(''); setCompContent(''); setCompCategory('comunicado');
     setCompTarget('all'); setCompTargetIds([]); setCompPinned(false);
+    setIsDailyReport(false); setReportSubjects([]); setReportParticipation(''); setReportHomework('');
     setActiveTab('feed');
   };
 
@@ -431,32 +480,120 @@ export function Agenda() {
             </div>
           )}
 
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.4rem' }}>Assunto</label>
-            <input type="text" value={compSubject} onChange={e => setCompSubject(e.target.value)} placeholder="Título da mensagem..." style={{ width: '100%', boxSizing: 'border-box' }} />
-          </div>
+          {!isDailyReport && (
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.4rem' }}>Assunto</label>
+              <input type="text" value={compSubject} onChange={e => setCompSubject(e.target.value)} placeholder="Título da mensagem..." style={{ width: '100%', boxSizing: 'border-box' }} />
+            </div>
+          )}
+
+          {isDailyReport && (
+            <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
+                <button onClick={() => setReportType('fundamental')} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', backgroundColor: reportType === 'fundamental' ? '#0a73ff' : 'transparent', color: reportType === 'fundamental' ? 'white' : '#64748b', fontWeight: 700, cursor: 'pointer' }}>Ensino Fundamental</button>
+                <button onClick={() => setReportType('infantil')} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', backgroundColor: reportType === 'infantil' ? '#0a73ff' : 'transparent', color: reportType === 'infantil' ? 'white' : '#64748b', fontWeight: 700, cursor: 'pointer' }}>Educação Infantil</button>
+              </div>
+
+              {reportType === 'fundamental' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.75rem', color: '#1e293b' }}>📌 AULA DE HOJE (Múltiplas Seleções)</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.5rem' }}>
+                      {['Português', 'Matemática', 'História', 'Geografia', 'Ciências', 'Artes', 'Leitura', 'Ed. Física', 'Inglês', 'Ed. Tecnológica', 'Ed. Financeira'].map(sub => (
+                        <label key={sub} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', cursor: 'pointer', padding: '0.4rem', backgroundColor: 'white', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                          <input type="checkbox" checked={reportSubjects.includes(sub)} onChange={() => setReportSubjects(prev => prev.includes(sub) ? prev.filter(s => s !== sub) : [...prev, sub])} />
+                          {sub}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.75rem', color: '#1e293b' }}>🎭 PARTICIPAÇÃO/INTERAÇÃO</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.5rem' }}>
+                      {['Muito participativo(a) 🤩', 'Interessado(a) 🧐', 'Pouco participativo 🥱', 'Desinteressado 😴'].map(opt => (
+                        <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', cursor: 'pointer', padding: '0.4rem', backgroundColor: 'white', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                          <input type="radio" name="participation" checked={reportParticipation === opt} onChange={() => setReportParticipation(opt)} />
+                          {opt}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.75rem', color: '#1e293b' }}>📝 ATIVIDADE DE CASA 📒✏️</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      {['Hoje tem atividade no livro 📚', 'Hoje tem atividade em folha 📄', 'Hoje tem atividade no caderno 📒', 'Hoje não tem atividade ❌'].map(opt => (
+                        <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', padding: '0.5rem 0.75rem', backgroundColor: 'white', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                          <input type="radio" name="homework" checked={reportHomework === opt} onChange={() => setReportHomework(opt)} />
+                          {opt}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.75rem', color: '#1e293b' }}>🚽 BANHEIRO</label>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      {['Xixi ✅', 'Cocô 💩', 'Trocou fralda 👶'].map(opt => (
+                        <label key={opt} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', cursor: 'pointer', padding: '0.5rem', backgroundColor: 'white', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                          <input type="radio" name="toilet" checked={reportToilet === opt} onChange={() => setReportToilet(opt)} />
+                          {opt}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.75rem', color: '#1e293b' }}>🍴 ALIMENTAÇÃO</label>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      {['Comeu tudo 😋', 'Comeu pouco 🥣', 'Não comeu ❌'].map(opt => (
+                        <label key={opt} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', cursor: 'pointer', padding: '0.5rem', backgroundColor: 'white', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                          <input type="radio" name="meals" checked={reportMeals === opt} onChange={() => setReportMeals(opt)} />
+                          {opt}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.75rem', color: '#1e293b' }}>💤 SONO</label>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      {['Dormiu bem 😴', 'Dormiu pouco ⏰', 'Não dormiu 👀'].map(opt => (
+                        <label key={opt} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', cursor: 'pointer', padding: '0.5rem', backgroundColor: 'white', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                          <input type="radio" name="sleep" checked={reportSleep === opt} onChange={() => setReportSleep(opt)} />
+                          {opt}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.4rem' }}>Mensagem</label>
-            <textarea value={compContent} onChange={e => setCompContent(e.target.value)} placeholder="Escreva sua mensagem para os responsáveis..." rows={6}
+            <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.4rem' }}>{isDailyReport ? '📝 Observações Adicionais' : 'Mensagem'}</label>
+            <textarea value={compContent} onChange={e => setCompContent(e.target.value)} placeholder={isDailyReport ? "Algo importante sobre o dia de hoje..." : "Escreva sua mensagem para os responsáveis..."} rows={isDailyReport ? 3 : 6}
               style={{ width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', fontSize: '0.9rem', lineHeight: 1.6, resize: 'vertical', borderRadius: '8px', padding: '0.75rem', border: '1px solid #e2e8f0' }} />
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              {!isResponsible && (
+                <button type="button" onClick={() => setIsDailyReport(!isDailyReport)}
+                  style={{ background: isDailyReport ? '#0a73ff' : 'none', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.5rem 0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: isDailyReport ? 'white' : '#64748b', fontWeight: 600, fontFamily: 'inherit' }}>
+                  <FileText size={16} /> Relatório Diário
+                </button>
+              )}
               <button type="button" style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.5rem 0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: '#64748b', fontFamily: 'inherit' }}>
-                <Paperclip size={16} /> Anexar Arquivo
-              </button>
-              <button type="button" style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.5rem 0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: '#64748b', fontFamily: 'inherit' }}>
-                <FileText size={16} /> Anexar Relatório
+                <Paperclip size={16} /> <span className="mobile-hide">Anexar Arquivo</span><span className="mobile-only">Anexo</span>
               </button>
               <button type="button" onClick={() => setCompPinned(!compPinned)}
                 style={{ background: compPinned ? '#fffbeb' : 'none', border: compPinned ? '1px solid #fde68a' : '1px solid #e2e8f0', borderRadius: '8px', padding: '0.5rem 0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: compPinned ? '#d97706' : '#64748b', fontFamily: 'inherit' }}>
-                <Pin size={16} style={{ transform: 'rotate(45deg)' }} /> {compPinned ? 'Fixada' : 'Fixar'}
+                <Pin size={16} style={{ transform: 'rotate(45deg)' }} /> <span className="mobile-hide">{compPinned ? 'Fixada' : 'Fixar'}</span>
               </button>
             </div>
             <button className="btn btn-primary" onClick={handleSendMessage} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Send size={18} /> Enviar Mensagem
+              <Send size={18} /> Enviar {isDailyReport ? 'Relatório' : 'Mensagem'}
             </button>
           </div>
         </div>

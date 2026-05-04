@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { MessageSquare, CalendarDays, Send, Pin, Paperclip, Search, Filter, ChevronLeft, ChevronRight, X, CheckCircle2, Clock, Eye, Bell, FileText, Plus, Reply, CornerDownRight } from 'lucide-react';
 import { mockMessages, mockEvents, CATEGORY_LABELS, EVENT_TYPES } from '../store/agendaDb';
 import type { AgendaMessage, CalendarEvent } from '../store/agendaDb';
@@ -280,10 +280,12 @@ ${compContent || 'Sem observações adicionais.'}
                         </button>
                       )}
                     </div>
-                    <div style={{ display: 'flex', gap: '0.75rem', color: '#64748b', fontWeight: 600 }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Eye size={12} color="#10b981" /> {msg.readBy.length} lido(s)</span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><CheckCircle2 size={12} color="#3b82f6" /> {msg.deliveredTo.length} entregue(s)</span>
-                    </div>
+                    {(user?.role === 'admin' || user?.role === 'coordinator' || msg.senderName === user?.name) && (
+                      <div style={{ display: 'flex', gap: '0.75rem', color: '#64748b', fontWeight: 600 }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Eye size={12} color="#10b981" /> {msg.readBy.length} lido(s)</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><CheckCircle2 size={12} color="#3b82f6" /> {msg.deliveredTo.length} entregue(s)</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Replies Section */}

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { MessageSquare, CalendarDays, Send, Pin, Paperclip, Search, Filter, ChevronLeft, ChevronRight, X, CheckCircle2, Clock, Eye, Bell, FileText, Plus } from 'lucide-react';
+import { MessageSquare, CalendarDays, Send, Pin, Paperclip, Search, Filter, ChevronLeft, ChevronRight, X, CheckCircle2, Clock, Eye, Bell, FileText, Plus, Reply, CornerDownRight } from 'lucide-react';
 import { mockMessages, mockEvents, CATEGORY_LABELS, EVENT_TYPES } from '../store/agendaDb';
 import type { AgendaMessage, CalendarEvent } from '../store/agendaDb';
 import { mockClasses, mockStudents } from '../store/mockDb';
@@ -24,18 +24,11 @@ export function Agenda() {
   const { user } = useAuth();
   const isResponsible = user?.role === 'responsible';
   
-  const TABS = useMemo(() => {
-    const base = [
-      { id: 'feed', label: 'Feed', icon: <MessageSquare size={18} /> },
-      { id: 'calendar', label: 'Calendário', icon: <CalendarDays size={18} /> },
-    ] as const;
-    
-    const result: { id: 'feed' | 'calendar' | 'compose', label: string, icon: any }[] = [...base];
-    if (!isResponsible) {
-      result.push({ id: 'compose', label: 'Nova Mensagem', icon: <Send size={18} /> });
-    }
-    return result;
-  }, [isResponsible]);
+  const TABS = useMemo(() => [
+    { id: 'feed', label: 'Feed', icon: <MessageSquare size={18} /> },
+    { id: 'calendar', label: 'Calendário', icon: <CalendarDays size={18} /> },
+    { id: 'compose', label: 'Nova Mensagem', icon: <Send size={18} /> },
+  ], []);
 
   const [activeTab, setActiveTab] = useState<'feed' | 'calendar' | 'compose'>('feed');
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,11 +38,15 @@ export function Agenda() {
   const [calMonth, setCalMonth] = useState(new Date().getMonth());
   const [calYear, setCalYear] = useState(new Date().getFullYear());
 
+  // Reply state
+  const [replyText, setReplyText] = useState('');
+  const [replyingToId, setReplyingToId] = useState<string | null>(null);
+
   // Compose state
   const [compSubject, setCompSubject] = useState('');
   const [compContent, setCompContent] = useState('');
   const [compCategory, setCompCategory] = useState<string>('comunicado');
-  const [compTarget, setCompTarget] = useState<'all' | 'class' | 'student'>('all');
+  const [compTarget, setCompTarget] = useState<'all' | 'class' | 'student' | 'staff'>(isResponsible ? 'staff' : 'all');
   const [compTargetIds, setCompTargetIds] = useState<string[]>([]);
   const [compPinned, setCompPinned] = useState(false);
 
@@ -109,6 +106,28 @@ export function Agenda() {
     setActiveTab('feed');
   };
 
+  const handleReply = (msgId: string) => {
+    if (!replyText.trim()) return;
+    setMessages(prev => prev.map(m => {
+      if (m.id !== msgId) return m;
+      return {
+        ...m,
+        replies: [
+          ...m.replies,
+          {
+            id: `rep${Date.now()}`,
+            senderName: user?.name || 'Responsável',
+            senderRole: user?.role || 'responsible',
+            content: replyText,
+            createdAt: new Date().toISOString()
+          }
+        ]
+      };
+    }));
+    setReplyText('');
+    setReplyingToId(null);
+  };
+
   const getStatusIcon = (msg: AgendaMessage) => {
     if (msg.readBy.length > 0) return <Eye size={14} color="#10b981" />;
     if (msg.deliveredTo.length > 0) return <CheckCircle2 size={14} color="#3b82f6" />;
@@ -129,11 +148,9 @@ export function Agenda() {
           <h2 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 800 }}>Agenda Digital</h2>
           <p className="text-muted">Comunicação, eventos e acompanhamento escolar</p>
         </div>
-        {!isResponsible && (
-          <button className="btn btn-primary" onClick={() => setActiveTab('compose')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Plus size={18} /> <span className="mobile-hide">Nova Mensagem</span><span className="mobile-only">Nova</span>
-          </button>
-        )}
+        <button className="btn btn-primary" onClick={() => setActiveTab('compose')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Plus size={18} /> <span className="mobile-hide">Nova Mensagem</span><span className="mobile-only">Nova</span>
+        </button>
       </div>
 
       {/* Tabs */}
@@ -197,8 +214,7 @@ export function Agenda() {
                   <div style={{ padding: '0 1.25rem 1rem' }}>
                     <p style={{ margin: 0, fontSize: '0.9rem', color: '#475569', lineHeight: 1.6 }}>{msg.content}</p>
                   </div>
-                  {/* Footer */}
-                  <div style={{ padding: '0.6rem 1.25rem', backgroundColor: '#f8fafc', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
+                  {/* Fo                   <div style={{ padding: '0.6rem 1.25rem', backgroundColor: '#f8fafc', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
                     <div style={{ display: 'flex', gap: '1rem', color: '#94a3b8' }}>
                       {msg.attachments.length > 0 && (
                         <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -208,14 +224,58 @@ export function Agenda() {
                       <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                         {msg.targetType === 'all' ? '🏫 Toda a escola' : msg.targetType === 'class' ? `📚 ${msg.targetIds.length} turma(s)` : `👤 Aluno específico`}
                       </span>
+                      {isResponsible && (
+                        <button onClick={() => setReplyingToId(replyingToId === msg.id ? null : msg.id)} style={{ background: 'none', border: 'none', color: '#0a73ff', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Reply size={12} /> Responder
+                        </button>
+                      )}
                     </div>
                     <div style={{ display: 'flex', gap: '0.75rem', color: '#64748b', fontWeight: 600 }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Eye size={12} color="#10b981" /> {msg.readBy.length} lido(s)</span>
                       <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><CheckCircle2 size={12} color="#3b82f6" /> {msg.deliveredTo.length} entregue(s)</span>
                     </div>
                   </div>
+
+                  {/* Replies Section */}
+                  {(msg.replies.length > 0 || replyingToId === msg.id) && (
+                    <div style={{ backgroundColor: '#f1f5f9', padding: '1rem 1.25rem', borderTop: '1px solid #e2e8f0' }}>
+                      {msg.replies.map(rep => (
+                        <div key={rep.id} style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                          <CornerDownRight size={16} color="#94a3b8" style={{ marginTop: '0.25rem' }} />
+                          <div style={{ backgroundColor: 'white', padding: '0.6rem 0.85rem', borderRadius: '12px', flex: 1, boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1e293b' }}>{rep.senderName}</span>
+                              <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{timeAgo(rep.createdAt)}</span>
+                            </div>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: '#475569', lineHeight: 1.5 }}>{rep.content}</p>
+                          </div>
+                        </div>
+                      ))}
+
+                      {replyingToId === msg.id && (
+                        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}>
+                          <CornerDownRight size={16} color="#94a3b8" style={{ marginTop: '0.75rem' }} />
+                          <div style={{ flex: 1, display: 'flex', gap: '0.5rem' }}>
+                            <input 
+                              type="text" 
+                              placeholder="Escreva sua resposta..." 
+                              value={replyText}
+                              onChange={e => setReplyText(e.target.value)}
+                              onKeyPress={e => e.key === 'Enter' && handleReply(msg.id)}
+                              style={{ flex: 1, padding: '0.5rem 0.85rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', outline: 'none' }}
+                              autoFocus
+                            />
+                            <button onClick={() => handleReply(msg.id)} className="btn btn-primary" style={{ padding: '0.5rem' }}>
+                              <Send size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
+            })} );
             })}
           </div>
         </div>
@@ -314,30 +374,42 @@ export function Agenda() {
         <div className="card" style={{ borderTop: '4px solid #0a73ff' }}>
           <h3 style={{ margin: '0 0 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Send size={20} color="#0a73ff" /> Enviar Mensagem</h3>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
             <div>
-              <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.4rem' }}>Categoria</label>
-              <select value={compCategory} onChange={e => setCompCategory(e.target.value)} style={{ width: '100%' }}>
-                {Object.entries(CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-              </select>
+              <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.4rem' }}>Destinatário</label>
+              {isResponsible ? (
+                <select value={compTargetIds[0] || ''} onChange={e => setCompTargetIds([e.target.value])} style={{ width: '100%' }}>
+                  <option value="">Selecione o canal...</option>
+                  <option value="secretaria">Secretaria</option>
+                  <option value="direcao">Direção</option>
+                  <option value="coordenacao">Coordenação</option>
+                  <option value="professor">Professor(a) da Turma</option>
+                </select>
+              ) : (
+                <select value={compTarget} onChange={e => { setCompTarget(e.target.value as any); setCompTargetIds([]); }} style={{ width: '100%' }}>
+                  <option value="all">Toda a Escola</option>
+                  <option value="class">Turma(s) Específica(s)</option>
+                  <option value="student">Aluno(s) Específico(s)</option>
+                </select>
+              )}
             </div>
-            <div>
-              <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.4rem' }}>Destinatários</label>
-              <select value={compTarget} onChange={e => { setCompTarget(e.target.value as 'all' | 'class' | 'student'); setCompTargetIds([]); }} style={{ width: '100%' }}>
-                <option value="all">🏫 Toda a escola</option>
-                <option value="class">📚 Turmas específicas</option>
-                <option value="student">👤 Alunos específicos</option>
-              </select>
-            </div>
+            {!isResponsible && (
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.4rem' }}>Categoria</label>
+                <select value={compCategory} onChange={e => setCompCategory(e.target.value)} style={{ width: '100%' }}>
+                  {Object.entries(CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                </select>
+              </div>
+            )}
           </div>
 
-          {compTarget === 'class' && (
-            <div style={{ marginBottom: '1rem' }}>
+          {!isResponsible && compTarget === 'class' && (
+            <div style={{ marginBottom: '1.5rem' }}>
               <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.4rem' }}>Selecionar Turmas</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                {mockClasses.map((c: ClassGroup) => (
-                  <button key={c.id} type="button" onClick={() => setCompTargetIds((prev: string[]) => prev.includes(c.id) ? prev.filter((id: string) => id !== c.id) : [...prev, c.id])}
-                    style={{ padding: '0.4rem 0.8rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', border: compTargetIds.includes(c.id) ? '2px solid #0a73ff' : '2px solid #e2e8f0', backgroundColor: compTargetIds.includes(c.id) ? '#eff6ff' : 'white', color: compTargetIds.includes(c.id) ? '#0a73ff' : '#64748b', transition: 'all 0.15s', fontFamily: 'inherit' }}>
+                {mockClasses.map(c => (
+                  <button key={c.id} type="button" onClick={() => setCompTargetIds(prev => prev.includes(c.id) ? prev.filter(id => id !== c.id) : [...prev, c.id])}
+                    style={{ padding: '0.3rem 0.7rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', border: compTargetIds.includes(c.id) ? '2px solid #0a73ff' : '2px solid #e2e8f0', backgroundColor: compTargetIds.includes(c.id) ? '#eff6ff' : 'white', color: compTargetIds.includes(c.id) ? '#0a73ff' : '#64748b', transition: 'all 0.15s', fontFamily: 'inherit' }}>
                     {c.name}
                   </button>
                 ))}
@@ -345,8 +417,8 @@ export function Agenda() {
             </div>
           )}
 
-          {compTarget === 'student' && (
-            <div style={{ marginBottom: '1rem' }}>
+          {!isResponsible && compTarget === 'student' && (
+            <div style={{ marginBottom: '1.5rem' }}>
               <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.4rem' }}>Selecionar Alunos</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', maxHeight: '150px', overflowY: 'auto' }}>
                 {mockStudents.map((s: Student) => (

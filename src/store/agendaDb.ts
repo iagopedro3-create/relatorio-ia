@@ -4,14 +4,15 @@ export interface AgendaMessage {
   content: string;
   category: 'comunicado' | 'pedagogico' | 'financeiro' | 'evento';
   senderName: string;
-  senderRole: 'admin' | 'coordinator' | 'teacher';
-  targetType: 'all' | 'class' | 'student';
+  senderRole: 'admin' | 'coordinator' | 'teacher' | 'responsible';
+  targetType: 'all' | 'class' | 'student' | 'staff';
   targetIds: string[];
   pinned: boolean;
   createdAt: string;
   attachments: { name: string; type: string }[];
   readBy: string[];
   deliveredTo: string[];
+  replies: { id: string; senderName: string; senderRole: string; content: string; createdAt: string }[];
 }
 
 export interface CalendarEvent {
@@ -47,30 +48,37 @@ export const mockMessages: AgendaMessage[] = [
     content: 'Prezados responsáveis, informamos que a reunião de pais do 1º bimestre será realizada no dia 15/03/2026, às 18h30, no auditório da escola. Contamos com a presença de todos para discutirmos o desenvolvimento pedagógico dos alunos.',
     senderName: 'Direção Escolar', senderRole: 'admin', targetType: 'all', targetIds: [],
     pinned: true, createdAt: '2026-03-10T10:00:00', attachments: [], readBy: ['r1','r2','r3'], deliveredTo: ['r1','r2','r3','r4','r5'],
+    replies: [
+      { id: 'rep1', senderName: 'Pai do Lucas', senderRole: 'responsible', content: 'Estaremos presentes! Obrigado pelo aviso.', createdAt: '2026-03-11T09:00:00' }
+    ],
   },
   {
     id: 'm2', subject: 'Projeto Meio Ambiente — Grupo 5', category: 'pedagogico',
     content: 'Informamos que as crianças do Grupo 5 iniciarão o projeto "Guardiões da Natureza" nesta semana. Pedimos que enviem uma garrafa PET e materiais recicláveis para as atividades práticas.',
     senderName: 'Profa. Ana Clara', senderRole: 'teacher', targetType: 'class', targetIds: ['c5'],
     pinned: false, createdAt: '2026-03-12T08:30:00', attachments: [{ name: 'cronograma_projeto.pdf', type: 'pdf' }], readBy: ['r1'], deliveredTo: ['r1','r2'],
+    replies: [],
   },
   {
     id: 'm3', subject: 'Atualização de Mensalidades — Abril', category: 'financeiro',
     content: 'Senhores responsáveis, os boletos referentes ao mês de abril já estão disponíveis na plataforma. O vencimento é dia 10/04. Em caso de dúvidas, procurem a secretaria.',
     senderName: 'Secretaria', senderRole: 'admin', targetType: 'all', targetIds: [],
     pinned: false, createdAt: '2026-03-25T14:00:00', attachments: [], readBy: ['r1','r2','r3','r4'], deliveredTo: ['r1','r2','r3','r4','r5'],
+    replies: [],
   },
   {
     id: 'm4', subject: 'Dia do Livro — Atividade Especial', category: 'evento',
     content: 'No dia 18/04, celebraremos o Dia Nacional do Livro com uma manhã de contação de histórias. Os alunos podem vir fantasiados de seu personagem favorito!',
     senderName: 'Coord. Pedagógica', senderRole: 'coordinator', targetType: 'all', targetIds: [],
     pinned: false, createdAt: '2026-04-05T09:15:00', attachments: [{ name: 'cartaz_livro.png', type: 'image' }], readBy: [], deliveredTo: ['r1','r2','r3'],
+    replies: [],
   },
   {
     id: 'm5', subject: 'Relatório Individual — Lucas Silva', category: 'pedagogico',
     content: 'Segue em anexo o relatório descritivo do 1º bimestre do aluno Lucas. Destacamos sua excelente participação nas atividades de linguagem oral e sua evolução na socialização com os colegas.',
     senderName: 'Profa. Maria', senderRole: 'teacher', targetType: 'student', targetIds: ['s1'],
     pinned: false, createdAt: '2026-04-10T16:00:00', attachments: [{ name: 'relatorio_lucas_1bim.pdf', type: 'pdf' }], readBy: ['r1'], deliveredTo: ['r1'],
+    replies: [],
   },
 ];
 

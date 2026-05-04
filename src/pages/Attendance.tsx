@@ -230,21 +230,25 @@ export function Attendance() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
               <thead>
                 <tr>
-                  <th style={{ textAlign: 'left', padding: '1rem', borderBottom: '2px solid var(--color-border)', position: 'sticky', left: 0, backgroundColor: 'var(--color-surface)', zIndex: 10 }}>Aluno</th>
+                  <th style={{ 
+                    textAlign: 'left', padding: '0.75rem 1rem', borderBottom: '2px solid var(--color-border)', 
+                    position: 'sticky', left: 0, backgroundColor: 'var(--color-surface)', zIndex: 10,
+                    minWidth: '150px', whiteSpace: 'nowrap', boxShadow: '2px 0 5px rgba(0,0,0,0.05)'
+                  }}>Aluno</th>
                   {days.map(day => {
                     const holiday = getHoliday(day);
                     const weekend = isWeekend(day);
                     return (
                       <th key={day} title={holiday} style={{ 
-                        padding: '0.5rem', borderBottom: '2px solid var(--color-border)', minWidth: '35px',
+                        padding: '0.25rem', borderBottom: '2px solid var(--color-border)', minWidth: '30px',
                         backgroundColor: holiday ? '#fef3c7' : weekend ? '#f3f4f6' : 'transparent',
-                        color: holiday ? '#92400e' : 'inherit'
+                        color: holiday ? '#92400e' : 'inherit', fontSize: '0.75rem'
                       }}>{day}</th>
                     );
                   })}
-                  <th style={{ padding: '0.5rem', borderBottom: '2px solid var(--color-border)', backgroundColor: '#f0fdf4', color: '#166534', minWidth: '45px' }}>P</th>
-                  <th style={{ padding: '0.5rem', borderBottom: '2px solid var(--color-border)', backgroundColor: '#fef2f2', color: '#991b1b', minWidth: '45px' }}>F</th>
-                  <th style={{ padding: '0.5rem', borderBottom: '2px solid var(--color-border)', backgroundColor: '#eff6ff', color: '#1e40af', minWidth: '60px' }}>%</th>
+                  <th style={{ padding: '0.25rem', borderBottom: '2px solid var(--color-border)', backgroundColor: '#f0fdf4', color: '#166534', minWidth: '35px' }}>P</th>
+                  <th style={{ padding: '0.25rem', borderBottom: '2px solid var(--color-border)', backgroundColor: '#fef2f2', color: '#991b1b', minWidth: '35px' }}>F</th>
+                  <th style={{ padding: '0.25rem', borderBottom: '2px solid var(--color-border)', backgroundColor: '#eff6ff', color: '#1e40af', minWidth: '45px' }}>%</th>
                 </tr>
               </thead>
               <tbody>
@@ -259,7 +263,12 @@ export function Attendance() {
 
                   return (
                     <tr key={student.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                      <td style={{ padding: '0.75rem 1rem', fontWeight: 600, position: 'sticky', left: 0, backgroundColor: 'var(--color-surface)', zIndex: 9, borderRight: '1px solid var(--color-border)' }}>
+                      <td style={{ 
+                        padding: '0.5rem 1rem', fontWeight: 600, position: 'sticky', left: 0, 
+                        backgroundColor: 'var(--color-surface)', zIndex: 9, 
+                        borderRight: '1px solid var(--color-border)', boxShadow: '2px 0 5px rgba(0,0,0,0.05)',
+                        whiteSpace: 'nowrap'
+                      }}>
                         {student.name}
                       </td>
                       {days.map(day => {
@@ -278,14 +287,14 @@ export function Attendance() {
                             style={{ 
                               textAlign: 'center', cursor: (holiday || weekend) ? 'not-allowed' : 'pointer',
                               backgroundColor: holiday ? '#fef3c7' : weekend ? '#f9fafb' : status === 'P' ? '#C6EFCE' : status === 'F' ? '#FFC7CE' : 'transparent',
-                              opacity: (holiday || weekend) ? 0.6 : 1, fontSize: '0.7rem'
+                              opacity: (holiday || weekend) ? 0.6 : 1, fontSize: '0.65rem', borderLeft: '1px solid #f1f5f9'
                             }}
                           >{holiday ? 'FER' : weekend ? '-' : status}</td>
                         );
                       })}
-                      <td style={{ textAlign: 'center', fontWeight: 700, color: '#166534', backgroundColor: '#f0fdf4' }}>{totalPresencas > 0 ? totalPresencas : ''}</td>
-                      <td style={{ textAlign: 'center', fontWeight: 700, color: '#991b1b', backgroundColor: '#fef2f2' }}>{totalFaltas > 0 ? totalFaltas : ''}</td>
-                      <td style={{ textAlign: 'center', fontWeight: 800, color: '#1e40af', backgroundColor: '#eff6ff' }}>
+                      <td style={{ textAlign: 'center', fontWeight: 700, color: '#166534', backgroundColor: '#f0fdf4', borderLeft: '1px solid #C6EFCE' }}>{totalPresencas > 0 ? totalPresencas : ''}</td>
+                      <td style={{ textAlign: 'center', fontWeight: 700, color: '#991b1b', backgroundColor: '#fef2f2', borderLeft: '1px solid #FFC7CE' }}>{totalFaltas > 0 ? totalFaltas : ''}</td>
+                      <td style={{ textAlign: 'center', fontWeight: 800, color: '#1e40af', backgroundColor: '#eff6ff', borderLeft: '1px solid #bfdbfe' }}>
                         {totalDiasUteis > 0 ? `${Math.round(((totalDiasUteis - totalFaltas) / totalDiasUteis) * 100)}%` : '---'}
                       </td>
                     </tr>
@@ -296,6 +305,12 @@ export function Attendance() {
           )}
         </div>
       </div>
+      <style>{`
+        .desktop-grid::-webkit-scrollbar { height: 8px; }
+        .desktop-grid::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        .desktop-grid::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .desktop-grid::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+      `}</style>
     </div>
   );
 }

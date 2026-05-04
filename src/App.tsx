@@ -19,6 +19,7 @@ import { StudentManagement } from './pages/StudentManagement';
 import { StudentProfile } from './pages/StudentProfile';
 import { Settings } from './pages/Settings';
 import { ClassDiary } from './pages/ClassDiary';
+import { Agenda } from './pages/Agenda';
 
 export function App() {
   return (
@@ -44,6 +45,7 @@ export function App() {
                 <Route path="/students/:id" element={<StudentProfile />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/diary" element={<ClassDiary />} />
+                <Route path="/agenda" element={<Agenda />} />
               </Route>
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>

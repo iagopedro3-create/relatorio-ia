@@ -275,7 +275,6 @@ export function Agenda() {
                   )}
                 </div>
               );
-            })} );
             })}
           </div>
         </div>

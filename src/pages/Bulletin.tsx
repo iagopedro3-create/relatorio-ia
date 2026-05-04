@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Printer, Search, TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { mockStudents, mockClasses } from '../store/mockDb';
 import type { ClassGroup, Student } from '../store/mockDb';
+import { useAuth } from '../contexts/AuthContext';
 
 const SUBJECTS = [
   'Português',
@@ -50,13 +51,29 @@ function getMockGrades(studentId: string) {
 }
 
 export function Bulletin() {
+  const { user } = useAuth();
+  const isResponsible = user?.role === 'responsible';
+
   const numericClasses = useMemo(() => mockClasses.filter((c: ClassGroup) => c.evaluationType === 'numeric'), []);
+  
   const filteredStudents = useMemo(() => {
     const classIds = numericClasses.map((c: ClassGroup) => c.id);
-    return mockStudents.filter((s: Student) => classIds.includes(s.classId!));
-  }, [numericClasses]);
+    const allNumeric = mockStudents.filter((s: Student) => classIds.includes(s.classId!));
+    
+    if (isResponsible && user?.studentId) {
+      return allNumeric.filter(s => s.id === user.studentId);
+    }
+    return allNumeric;
+  }, [numericClasses, isResponsible, user]);
 
   const [selectedStudentId, setSelectedStudentId] = useState(filteredStudents[0]?.id || '');
+
+  // Update selected student if list changes (e.g. login)
+  useMemo(() => {
+    if (filteredStudents.length > 0 && !filteredStudents.find(s => s.id === selectedStudentId)) {
+      setSelectedStudentId(filteredStudents[0].id);
+    }
+  }, [filteredStudents, selectedStudentId]);
 
   const student = filteredStudents.find((s: Student) => s.id === selectedStudentId);
   const studentClass = mockClasses.find((c: ClassGroup) => c.id === student?.classId);
@@ -122,23 +139,25 @@ export function Bulletin() {
         </button>
       </div>
 
-      {/* Student Selector */}
-      <div className="card mb-6 no-print" style={{ padding: '1.5rem' }}>
-        <div className="flex items-center gap-4">
-          <Search size={20} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
-          <select
-            value={selectedStudentId}
-            onChange={e => setSelectedStudentId(e.target.value)}
-            style={{ width: '100%', maxWidth: '420px' }}
-          >
-            {filteredStudents.map((s: Student) => {
-              const cls = mockClasses.find((c: ClassGroup) => c.id === s.classId);
-              return <option key={s.id} value={s.id}>{s.name} — {cls?.name}</option>;
-            })}
-            {filteredStudents.length === 0 && <option value="">Nenhuma turma numérica disponível</option>}
-          </select>
+      {/* Student Selector - Hidden for parents */}
+      {!isResponsible && (
+        <div className="card mb-6 no-print" style={{ padding: '1.5rem' }}>
+          <div className="flex items-center gap-4">
+            <Search size={20} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+            <select
+              value={selectedStudentId}
+              onChange={e => setSelectedStudentId(e.target.value)}
+              style={{ width: '100%', maxWidth: '420px' }}
+            >
+              {filteredStudents.map((s: Student) => {
+                const cls = mockClasses.find((c: ClassGroup) => c.id === s.classId);
+                return <option key={s.id} value={s.id}>{s.name} — {cls?.name}</option>;
+              })}
+              {filteredStudents.length === 0 && <option value="">Nenhuma turma numérica disponível</option>}
+            </select>
+          </div>
         </div>
-      </div>
+      )}
 
       {filteredStudents.length === 0 && (
         <div className="card p-12 text-center">

@@ -3,7 +3,7 @@ import { MessageSquare, CalendarDays, Send, Pin, Paperclip, Search, Filter, Chev
 import { mockMessages, mockEvents, CATEGORY_LABELS, EVENT_TYPES } from '../store/agendaDb';
 import type { AgendaMessage, CalendarEvent } from '../store/agendaDb';
 import { mockClasses, mockStudents } from '../store/mockDb';
-import type { ClassGroup, Student } from '../store/mockDb';
+import type { Student } from '../store/mockDb';
 import { useAuth } from '../contexts/AuthContext';
 
 const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -24,7 +24,7 @@ export function Agenda() {
   const { user } = useAuth();
   const isResponsible = user?.role === 'responsible';
   
-  const TABS = useMemo(() => [
+  const TABS: { id: 'feed' | 'calendar' | 'compose', label: string, icon: JSX.Element }[] = useMemo(() => [
     { id: 'feed', label: 'Feed', icon: <MessageSquare size={18} /> },
     { id: 'calendar', label: 'Calendário', icon: <CalendarDays size={18} /> },
     { id: 'compose', label: 'Nova Mensagem', icon: <Send size={18} /> },
@@ -99,6 +99,7 @@ export function Agenda() {
       senderName: user?.name || 'Usuário', senderRole: (user?.role || 'admin') as AgendaMessage['senderRole'],
       targetType: compTarget, targetIds: compTargetIds, pinned: compPinned,
       createdAt: new Date().toISOString(), attachments: [], readBy: [], deliveredTo: [],
+      replies: [],
     };
     setMessages((prev: AgendaMessage[]) => [newMsg, ...prev]);
     setCompSubject(''); setCompContent(''); setCompCategory('comunicado');

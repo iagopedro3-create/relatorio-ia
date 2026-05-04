@@ -4,7 +4,8 @@ import {
   LogOut, Users, Settings, LayoutDashboard, FileText,
   ShieldCheck, Brain, CalendarCheck, BookOpen, ClipboardList,
   GraduationCap, ChevronDown, ChevronRight, BookOpenCheck,
-  Sliders, UserCog, Baby, FileArchive, Printer, MessageSquareText, Menu, X
+  Sliders, UserCog, Baby, FileArchive, Printer, MessageSquareText, Menu, X,
+  Clock
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -57,6 +58,7 @@ export function Layout() {
   // INÍCIO — everyone
   flatItems.push({ name: 'Início', path: '/', icon: <LayoutDashboard size={18} /> });
   flatItems.push({ name: 'Agenda Digital', path: '/agenda', icon: <MessageSquareText size={18} /> });
+  flatItems.push({ name: 'Controle de Ponto', path: '/time-clock', icon: <Clock size={18} /> });
 
   // ACADÊMICO
   const academicoItems: NavItem[] = [];

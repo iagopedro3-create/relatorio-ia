@@ -39,6 +39,9 @@ export type StudentData = {
 
   positivePoints: string;
   attentionPoints: string;
+  
+  photo1?: string; // Base64
+  photo2?: string; // Base64
 };
 
 interface ReportFormProps {
@@ -88,7 +91,9 @@ export function ReportForm({ onSubmit, isLoading }: ReportFormProps) {
     englishMap: {}, fieldEnglish: '',
     peMap: {}, fieldPe: '',
     positivePoints: '',
-    attentionPoints: ''
+    attentionPoints: '',
+    photo1: '',
+    photo2: ''
   });
 
   useEffect(() => {
@@ -135,6 +140,17 @@ export function ReportForm({ onSubmit, isLoading }: ReportFormProps) {
       currentMap[item] = nextStatus;
       return { ...prev, [mapField]: currentMap };
     });
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'photo1' | 'photo2') => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, [field]: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -320,6 +336,25 @@ export function ReportForm({ onSubmit, isLoading }: ReportFormProps) {
           <textarea name="attentionPoints" value={formData.attentionPoints} onChange={handleChange} placeholder="Quais estímulos serão priorizados no próximo período?"></textarea>
         </div>
       </div>
+
+      {activeGroupId !== 'fundamental_1' && (
+        <div className="grid grid-cols-2 mt-4" style={{ gap: '2rem' }}>
+          <div className="form-group">
+            <label>Foto do Aluno em Atividade 1</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'photo1')} style={{ fontSize: '0.8rem' }} />
+              {formData.photo1 && <img src={formData.photo1} alt="Preview 1" style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px', border: '2px solid var(--color-border)' }} />}
+            </div>
+          </div>
+          <div className="form-group">
+            <label>Foto do Aluno em Atividade 2</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'photo2')} style={{ fontSize: '0.8rem' }} />
+              {formData.photo2 && <img src={formData.photo2} alt="Preview 2" style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px', border: '2px solid var(--color-border)' }} />}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex justify-center mt-8">
         <button type="submit" className="btn btn-primary w-full" disabled={isLoading} style={{ height: '70px', fontSize: '1.25rem', borderRadius: 'var(--radius-xl)' }}>

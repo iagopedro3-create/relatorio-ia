@@ -1,4 +1,4 @@
-import { X, Printer } from 'lucide-react';
+import { X, Printer, Download } from 'lucide-react';
 
 interface PrintPreviewProps {
   isOpen: boolean;
@@ -17,18 +17,39 @@ export function PrintPreview({ isOpen, onClose, title, subtitle, studentData, co
     window.print();
   };
 
+  const handleDownloadPDF = () => {
+    const element = document.querySelector('.print-area');
+    if (!element) return;
+    
+    const opt = {
+      margin: [10, 10, 10, 10],
+      filename: `${type === 'pei' ? 'PEI' : 'Relatorio'}_${studentData.name}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+    
+    // @ts-ignore
+    html2pdf().set(opt).from(element).save();
+  };
+
   // Clean markdown artifacts from content for printing
   const cleanContent = content.replace(/(\*\*|###|##|#|\|---|\|)/g, '').trim();
 
   return (
     <div className="print-preview-overlay no-print">
       <div style={{ position: 'fixed', top: '1rem', right: '2rem', display: 'flex', gap: '1rem', zIndex: 1001 }}>
+      <div style={{ position: 'fixed', top: '1rem', right: '2rem', display: 'flex', gap: '1rem', zIndex: 1001 }}>
+        <button onClick={handleDownloadPDF} className="btn btn-primary" style={{ backgroundColor: '#10b981', boxShadow: 'none' }}>
+          <Download size={20} /> Baixar PDF direto
+        </button>
         <button onClick={handlePrint} className="btn btn-primary">
           <Printer size={20} /> Imprimir agora / Salvar PDF
         </button>
         <button onClick={onClose} className="btn btn-secondary" style={{ backgroundColor: '#ef4444', boxShadow: 'none' }}>
           <X size={20} /> Fechar
         </button>
+      </div>
       </div>
 
       <div className="print-page print-area">

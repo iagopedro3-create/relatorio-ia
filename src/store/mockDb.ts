@@ -65,10 +65,10 @@ export interface ReportRecord {
 
 export const mockUsers: User[] = [
   { id: 'u1',  name: 'Diretora Ana',           username: 'diretora',  password: 'direcao123', role: 'admin',       managedLevel: 'all' },
-  { id: 'u2',  name: 'Coord. Carla (Infantil)', username: 'carla',     password: 'coord123',   role: 'coordinator', managedLevel: 'infantil' },
-  { id: 'u2b', name: 'Coord. Pedro (Fund. I)',  username: 'pedro',     password: 'coord123',   role: 'coordinator', managedLevel: 'fundamental' },
-  { id: 'u3',  name: 'Profa. Maria',            username: 'maria',     password: 'prof123',    role: 'teacher' },
-  { id: 'u4',  name: 'Prof. João',              username: 'joao',      password: 'prof123',    role: 'teacher' },
+  { id: 'u2',  name: 'Coord. Carla (Infantil)', username: 'coordinfantil',     password: 'coord123',   role: 'coordinator', managedLevel: 'infantil' },
+  { id: 'u2b', name: 'Coord. Pedro (Fund. I)',  username: 'coordfundamental',     password: 'coord123',   role: 'coordinator', managedLevel: 'fundamental' },
+  { id: 'u3',  name: 'Profa. Maria (Infantil)',  username: 'profinfantil',     password: 'prof123',    role: 'teacher' },
+  { id: 'u4',  name: 'Prof. João (Fundamental)', username: 'proffundamental',      password: 'prof123',    role: 'teacher' },
   { id: 'u5',  name: 'Prof. Marcos (Inglês)',   username: 'ingles',    password: 'prof123',    role: 'teacher',     specialty: 'english' },
   { id: 'u6',  name: 'Profa. Sandra (Ed. Física)', username: 'edfisica', password: 'prof123', role: 'teacher', specialty: 'pe' },
   { id: 'u7',  name: 'Sr. Marcos (Pai do Lucas)', username: 'pai',       password: 'pai123',     role: 'responsible', studentId: 's1' },

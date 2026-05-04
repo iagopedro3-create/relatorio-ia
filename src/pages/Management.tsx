@@ -193,98 +193,100 @@ export function Management() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-        {/* Charts Section */}
-        <div className="lg:col-span-1 flex flex-col gap-8">
-          
-          <div className="card" style={{ border: 'none', boxShadow: '0 4px 24px rgba(0,0,0,0.04)' }}>
-            <div className="flex items-center gap-2 mb-6">
-              <PieChart size={20} color="var(--color-primary)" />
-              <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Desempenho da Equipe</h3>
-            </div>
-            
-            <div className="flex justify-around items-center mb-8">
-              <DonutChart percent={stats.completionRate} color="#0a73ff" label="Lançamentos Hoje" />
-              <div style={{ width: '1px', height: '60px', backgroundColor: '#e2e8f0' }}></div>
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <div style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: '#0a73ff' }}></div>
-                  <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Completos ({stats.completedAttendance})</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: '#e2e8f0' }}></div>
-                  <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Pendentes ({stats.pendingAttendance})</span>
-                </div>
+      {/* Row 2: Two balanced columns */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+
+        {/* LEFT: Desempenho da Equipe */}
+        <div className="card" style={{ border: 'none', boxShadow: '0 4px 24px rgba(0,0,0,0.04)' }}>
+          <div className="flex items-center gap-2 mb-6">
+            <PieChart size={20} color="var(--color-primary)" />
+            <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Desempenho da Equipe</h3>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', marginBottom: '2rem' }}>
+            <DonutChart percent={stats.completionRate} color="#0a73ff" label="Lançamentos Hoje" />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div className="flex items-center gap-2">
+                <div style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: '#0a73ff' }}></div>
+                <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Completos ({stats.completedAttendance})</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div style={{ width: '12px', height: '12px', borderRadius: '3px', backgroundColor: '#e2e8f0' }}></div>
+                <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Pendentes ({stats.pendingAttendance})</span>
               </div>
             </div>
-
-            <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
-              <h4 style={{ fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.5px' }}>Engajamento por Segmento</h4>
-              {(user?.role === 'admin' || user?.managedLevel === 'infantil' || user?.managedLevel === 'all') && (
-                <ProgressBar label="Educação Infantil" percent={stats.infantilRate} color="#8b5cf6" value={`${stats.infantilRate}%`} />
-              )}
-              {(user?.role === 'admin' || user?.managedLevel === 'fundamental' || user?.managedLevel === 'all') && (
-                <ProgressBar label="Ensino Fundamental" percent={stats.fundamentalRate} color="#10b981" value={`${stats.fundamentalRate}%`} />
-              )}
-            </div>
           </div>
+          <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
+            <h4 style={{ fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.5px' }}>Engajamento por Segmento</h4>
+            {(user?.role === 'admin' || user?.managedLevel === 'infantil' || user?.managedLevel === 'all') && (
+              <ProgressBar label="Educação Infantil" percent={stats.infantilRate} color="#8b5cf6" value={`${stats.infantilRate}%`} />
+            )}
+            {(user?.role === 'admin' || user?.managedLevel === 'fundamental' || user?.managedLevel === 'all') && (
+              <ProgressBar label="Ensino Fundamental" percent={stats.fundamentalRate} color="#10b981" value={`${stats.fundamentalRate}%`} />
+            )}
+          </div>
+        </div>
 
-          <div className="card" style={{ border: 'none', boxShadow: '0 4px 24px rgba(0,0,0,0.04)', backgroundColor: '#fffbeb', borderLeft: '4px solid #f59e0b' }}>
-            <h4 className="mb-3 flex items-center gap-2" style={{ color: '#b45309' }}><AlertCircle size={18} /> Alertas Pedagógicos</h4>
-            
-            <div className="flex flex-col gap-3 mt-4">
+        {/* RIGHT: Alertas + Ranking stacked */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Alertas */}
+          <div className="card" style={{ border: 'none', boxShadow: '0 4px 24px rgba(0,0,0,0.04)', background: 'linear-gradient(135deg, #fffbeb 0%, #ffffff 100%)', borderLeft: '4px solid #f59e0b' }}>
+            <h4 className="flex items-center gap-2" style={{ color: '#b45309', margin: '0 0 1rem 0' }}><AlertCircle size={18} /> Alertas Pedagógicos</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
               {((user?.role === 'admin' || user?.managedLevel === 'infantil' || user?.managedLevel === 'all') && 
                 filteredStatus.some(c => c.level === 'infantil' && c.status === 'PENDENTE')) && (
-                <div style={{ fontSize: '0.85rem', backgroundColor: 'white', padding: '0.75rem', borderRadius: '8px', border: '1px solid #fde68a', color: '#92400e', fontWeight: 600 }}>
+                <div style={{ fontSize: '0.85rem', backgroundColor: 'white', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #fde68a', color: '#92400e', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#f59e0b', flexShrink: 0 }}></span>
                   Atraso de relatórios no Infantil
                 </div>
               )}
-
               {(user?.role === 'admin' || user?.managedLevel === 'fundamental' || user?.managedLevel === 'all') && (
                 <>
                   {filteredStatus.some(c => c.id === 'c6' && c.status === 'PENDENTE') && (
-                    <div style={{ fontSize: '0.85rem', backgroundColor: 'white', padding: '0.75rem', borderRadius: '8px', border: '1px solid #fde68a', color: '#92400e', fontWeight: 600 }}>
+                    <div style={{ fontSize: '0.85rem', backgroundColor: 'white', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #fde68a', color: '#92400e', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#f59e0b', flexShrink: 0 }}></span>
                       Relatórios atrasados no 1º Ano
                     </div>
                   )}
                   {filteredStatus.some(c => c.level === 'fundamental' && c.evaluationType === 'numeric' && c.status === 'PENDENTE') && (
-                    <div style={{ fontSize: '0.85rem', backgroundColor: 'white', padding: '0.75rem', borderRadius: '8px', border: '1px solid #fde68a', color: '#92400e', fontWeight: 600 }}>
+                    <div style={{ fontSize: '0.85rem', backgroundColor: 'white', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #fde68a', color: '#92400e', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#f59e0b', flexShrink: 0 }}></span>
                       Notas pendentes (2º ao 5º Ano)
                     </div>
                   )}
                 </>
               )}
               {stats.pendingAttendance === 0 && (
-                <div style={{ fontSize: '0.85rem', color: '#15803d', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}>
+                <div style={{ fontSize: '0.85rem', color: '#15803d', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, padding: '0.5rem 0' }}>
                   <CheckCircle2 size={16} /> Sem pendências no momento!
                 </div>
               )}
             </div>
           </div>
 
-          {/* Ranking Section */}
-          <div className="card" style={{ border: 'none', boxShadow: '0 4px 24px rgba(0,0,0,0.04)', padding: 0 }}>
-            <div className="p-5 border-b border-border flex items-center gap-3" style={{ backgroundColor: '#fffbeb', borderTopLeftRadius: '12px', borderTopRightRadius: '12px' }}>
-              <TrendingUp size={20} color="#d97706" />
-              <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#b45309' }}>Ranking de Alunos (Top 5)</h3>
+          {/* Ranking */}
+          <div className="card" style={{ border: 'none', boxShadow: '0 4px 24px rgba(0,0,0,0.04)', padding: 0, flex: 1 }}>
+            <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'linear-gradient(135deg, #fffbeb 0%, #fff 100%)', borderTopLeftRadius: '12px', borderTopRightRadius: '12px' }}>
+              <TrendingUp size={18} color="#d97706" />
+              <h3 style={{ margin: 0, fontSize: '1rem', color: '#b45309' }}>Ranking de Alunos (Top 5)</h3>
             </div>
-            <div className="p-5 flex flex-col gap-4">
+            <div style={{ padding: '1rem 1.25rem' }}>
               {ranking.map((s, idx) => (
-                <div key={s.id} className="flex items-center justify-between" style={{ paddingBottom: '0.75rem', borderBottom: idx < ranking.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
-                  <div className="flex items-center gap-3">
+                <div key={s.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.6rem 0', borderBottom: idx < ranking.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <div style={{
-                      width: '28px', height: '28px', borderRadius: '50%', backgroundColor: idx === 0 ? '#fef3c7' : (idx === 1 ? '#f1f5f9' : (idx === 2 ? '#ffedd5' : '#f8fafc')),
+                      width: '26px', height: '26px', borderRadius: '50%',
+                      backgroundColor: idx === 0 ? '#fef3c7' : (idx === 1 ? '#f1f5f9' : (idx === 2 ? '#ffedd5' : '#f8fafc')),
                       color: idx === 0 ? '#d97706' : (idx === 1 ? '#64748b' : (idx === 2 ? '#c2410c' : '#94a3b8')),
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.8rem'
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.75rem'
                     }}>
                       {idx + 1}
                     </div>
                     <div>
-                      <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.9rem' }}>{s.name}</div>
-                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{s.className}</div>
+                      <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.85rem' }}>{s.name}</div>
+                      <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{s.className}</div>
                     </div>
                   </div>
-                  <div style={{ fontWeight: 900, color: '#166534', fontSize: '1.1rem' }}>
+                  <div style={{ fontWeight: 900, color: '#166534', fontSize: '1rem' }}>
                     {s.average.toFixed(1)}
                   </div>
                 </div>
@@ -292,75 +294,71 @@ export function Management() {
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Detailed Table Section */}
-        <div className="lg:col-span-2 card" style={{ border: 'none', boxShadow: '0 4px 24px rgba(0,0,0,0.04)', padding: 0, display: 'flex', flexDirection: 'column' }}>
-          <div className="p-6 border-b border-border flex justify-between items-center" style={{ backgroundColor: '#f8fafc', borderTopLeftRadius: '12px', borderTopRightRadius: '12px' }}>
-            <div className="flex items-center gap-3">
-              <BarChart3 size={20} color="var(--color-primary)" />
-              <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Detalhamento de Frequência Diária</h3>
-            </div>
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, backgroundColor: 'white', padding: '0.3rem 0.8rem', borderRadius: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-              Hoje, {new Date().toLocaleDateString('pt-BR')}
-            </span>
+      {/* Row 3: Full-width attendance table */}
+      <div className="card" style={{ border: 'none', boxShadow: '0 4px 24px rgba(0,0,0,0.04)', padding: 0 }}>
+        <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', borderTopLeftRadius: '12px', borderTopRightRadius: '12px' }}>
+          <div className="flex items-center gap-3">
+            <BarChart3 size={20} color="var(--color-primary)" />
+            <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Detalhamento de Frequência Diária</h3>
           </div>
-          
-          <div style={{ overflowX: 'auto', flex: 1 }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>
-                  <th style={{ padding: '1rem 1.5rem', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase' }}>Turma / Nível</th>
-                  <th style={{ padding: '1rem', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase' }}>Professor(a)</th>
-                  <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase' }}>Status</th>
-                  <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase' }}>Atualizado</th>
-                  <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase' }}>Ação</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredStatus.map(c => (
-                  <tr key={c.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.2s' }} className="hover:bg-slate-50">
-                    <td style={{ padding: '1rem 1.5rem' }}>
-                      <div style={{ fontWeight: 700, color: '#1e293b' }}>{c.name}</div>
-                      <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>{c.level === 'infantil' ? 'Educação Infantil' : 'Ens. Fundamental'}</div>
-                    </td>
-                    <td style={{ padding: '1rem', fontWeight: 500, color: '#475569' }}>{c.teacherName}</td>
-                    <td style={{ padding: '1rem', textAlign: 'center' }}>
-                      <span style={{ 
-                        padding: '0.35rem 0.75rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800,
-                        backgroundColor: c.status === 'COMPLETO' ? '#dcfce7' : '#fee2e2',
-                        color: c.status === 'COMPLETO' ? '#166534' : '#991b1b',
-                        display: 'inline-flex', alignItems: 'center', gap: '6px'
-                      }}>
-                        {c.status === 'COMPLETO' ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
-                        {c.status}
-                      </span>
-                    </td>
-                    <td style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.9rem', fontWeight: 500 }}>
-                      {c.lastUpdate}
-                    </td>
-                    <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
-                      {c.status === 'PENDENTE' && (
-                        <button style={{ 
-                          padding: '0.4rem 1rem', fontSize: '0.75rem', fontWeight: 700, borderRadius: '6px',
-                          backgroundColor: 'white', border: '1px solid #cbd5e1', color: '#475569', cursor: 'pointer',
-                          transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                        }}
-                        onMouseOver={(e) => { e.currentTarget.style.borderColor = '#0a73ff'; e.currentTarget.style.color = '#0a73ff'; }}
-                        onMouseOut={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.color = '#475569'; }}
-                        >
-                          Lembrar
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <span style={{ fontSize: '0.85rem', fontWeight: 700, backgroundColor: 'white', padding: '0.3rem 0.8rem', borderRadius: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+            Hoje, {new Date().toLocaleDateString('pt-BR')}
+          </span>
         </div>
-
-
-
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>
+                <th style={{ padding: '1rem 1.5rem', fontSize: '0.8rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Turma / Nível</th>
+                <th style={{ padding: '1rem', fontSize: '0.8rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Professor(a)</th>
+                <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.8rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Status</th>
+                <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.8rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Atualizado</th>
+                <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.8rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Ação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredStatus.map(c => (
+                <tr key={c.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.2s' }} className="hover:bg-slate-50">
+                  <td style={{ padding: '0.85rem 1.5rem' }}>
+                    <div style={{ fontWeight: 700, color: '#1e293b' }}>{c.name}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>{c.level === 'infantil' ? 'Educação Infantil' : 'Ens. Fundamental'}</div>
+                  </td>
+                  <td style={{ padding: '0.85rem 1rem', fontWeight: 500, color: '#475569' }}>{c.teacherName}</td>
+                  <td style={{ padding: '0.85rem 1rem', textAlign: 'center' }}>
+                    <span style={{ 
+                      padding: '0.3rem 0.75rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800,
+                      backgroundColor: c.status === 'COMPLETO' ? '#dcfce7' : '#fee2e2',
+                      color: c.status === 'COMPLETO' ? '#166534' : '#991b1b',
+                      display: 'inline-flex', alignItems: 'center', gap: '6px'
+                    }}>
+                      {c.status === 'COMPLETO' ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
+                      {c.status}
+                    </span>
+                  </td>
+                  <td style={{ padding: '0.85rem 1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.9rem', fontWeight: 500 }}>
+                    {c.lastUpdate}
+                  </td>
+                  <td style={{ padding: '0.85rem 1.5rem', textAlign: 'right' }}>
+                    {c.status === 'PENDENTE' && (
+                      <button style={{ 
+                        padding: '0.4rem 1rem', fontSize: '0.75rem', fontWeight: 700, borderRadius: '6px',
+                        backgroundColor: 'white', border: '1px solid #cbd5e1', color: '#475569', cursor: 'pointer',
+                        transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                      }}
+                      onMouseOver={(e) => { e.currentTarget.style.borderColor = '#0a73ff'; e.currentTarget.style.color = '#0a73ff'; }}
+                      onMouseOut={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.color = '#475569'; }}
+                      >
+                        Lembrar
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <style>{`

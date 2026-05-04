@@ -20,7 +20,6 @@ import { StudentProfile } from './pages/StudentProfile';
 import { Settings } from './pages/Settings';
 import { ClassDiary } from './pages/ClassDiary';
 import { Agenda } from './pages/Agenda';
-import { TimeClock } from './pages/TimeClock';
 
 export function App() {
   return (
@@ -47,7 +46,6 @@ export function App() {
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/diary" element={<ClassDiary />} />
                 <Route path="/agenda" element={<Agenda />} />
-                <Route path="/time-clock" element={<TimeClock />} />
               </Route>
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>

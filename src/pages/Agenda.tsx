@@ -264,7 +264,8 @@ ${compContent || 'Sem observações adicionais.'}
                   <div style={{ padding: '0 1.25rem 1rem' }}>
                     <p style={{ margin: 0, fontSize: '0.9rem', color: '#475569', lineHeight: 1.6 }}>{msg.content}</p>
                   </div>
-                  {/* Fo                   <div style={{ padding: '0.6rem 1.25rem', backgroundColor: '#f8fafc', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
+                  {/* Footer */}
+                  <div style={{ padding: '0.6rem 1.25rem', backgroundColor: '#f8fafc', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
                     <div style={{ display: 'flex', gap: '1rem', color: '#94a3b8' }}>
                       {msg.attachments.length > 0 && (
                         <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>

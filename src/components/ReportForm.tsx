@@ -104,10 +104,14 @@ export function ReportForm({ onSubmit, isLoading }: ReportFormProps) {
     if (name === 'name' && value) {
       const student = mockStudents.find(s => s.name === value);
       if (student) {
+        const birthYear = new Date(student.birthDate).getUTCFullYear();
+        const currentYear = new Date().getFullYear();
+        const calculatedAge = (currentYear - birthYear).toString();
+
         setFormData(prev => ({
           ...prev,
           name: value,
-          age: student.age || prev.age,
+          age: calculatedAge,
           group: student.classId ? (AGE_GROUPS.find(g => g.label.includes(student.classId || ''))?.label || prev.group) : prev.group,
           parentsName: `${student.parent1}${student.parent2 ? ' e ' + student.parent2 : ''}`
         }));

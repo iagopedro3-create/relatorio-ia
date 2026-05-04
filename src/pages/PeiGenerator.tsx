@@ -3,7 +3,7 @@ import { Sparkles, Copy, CheckCircle, FileText, Brain, Printer } from 'lucide-re
 import { PeiForm, type PeiData } from '../components/PeiForm';
 import { PrintPreview } from '../components/PrintPreview';
 import { generatePei } from '../lib/aiService';
-import { exportToDocx, exportPeiToDocx } from '../lib/exportDocx';
+import { exportPeiToDocx } from '../lib/exportDocx';
 import { useSettings } from '../contexts/SettingsContext';
 
 export function PeiGenerator() {

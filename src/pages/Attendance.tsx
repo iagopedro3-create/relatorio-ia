@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Save, ChevronLeft, ChevronRight } from 'lucide-react';
 import { mockStudents, mockClasses } from '../store/mockDb';
+import type { ClassGroup, Student } from '../store/mockDb';
 import { useAuth } from '../contexts/AuthContext';
 
 const MONTHS = [
@@ -36,9 +37,9 @@ export function Attendance() {
   const [attendanceData, setAttendanceData] = useState<Record<string, Record<string, 'P' | 'F' | ''>>>({});
 
   const managedClasses = useMemo(() => {
-    if (user?.role === 'teacher') return mockClasses.filter(c => c.id === user.classId);
+    if (user?.role === 'teacher') return mockClasses.filter((c: ClassGroup) => c.id === user.classId);
     if (user?.role === 'coordinator' && user.managedLevel !== 'all') {
-      return mockClasses.filter(c => c.level === user.managedLevel);
+      return mockClasses.filter((c: ClassGroup) => c.level === user.managedLevel);
     }
     return mockClasses;
   }, [user]);
@@ -51,7 +52,7 @@ export function Attendance() {
   }, [managedClasses, selectedClassId]);
 
   const currentClass = useMemo(() => 
-    mockClasses.find(c => c.id === selectedClassId), 
+    mockClasses.find((c: ClassGroup) => c.id === selectedClassId), 
     [selectedClassId]
   );
 
@@ -68,7 +69,7 @@ export function Attendance() {
 
   // Filter students by selected class
   const students = useMemo(() => 
-    mockStudents.filter(s => s.classId === selectedClassId),
+    mockStudents.filter((s: Student) => s.classId === selectedClassId),
     [selectedClassId]
   );
 

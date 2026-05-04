@@ -42,6 +42,7 @@ export interface Student {
   birthDate: string; // ISO date YYYY-MM-DD
   parent1: string;
   parent2?: string;
+  classId?: string; // Added to simplify mock DB usage
 }
 
 // Map students to classes per year
@@ -89,23 +90,23 @@ export const mockClasses: ClassGroup[] = [
 ];
 
 export const mockStudents: Student[] = [
-  { id: 's1',  name: 'Lucas Silva',       birthDate: '2025-02-10', parent1: 'Sr. Marcos' },
-  { id: 's2',  name: 'Marina Souza',      birthDate: '2024-08-22', parent1: 'Sra. Alice' },
-  { id: 's3',  name: 'Pedro Alves',       birthDate: '2023-05-14', parent1: 'Sra. Julia' },
-  { id: 's4',  name: 'Beatriz Lima',      birthDate: '2022-11-03', parent1: 'Sr. Roberto' },
-  { id: 's5',  name: 'Sofia Ramos',       birthDate: '2018-07-08', parent1: 'Sra. Fernanda' },
-  { id: 's6',  name: 'Ana Carvalho',      birthDate: '2019-01-15', parent1: 'Sra. Renata' },
-  { id: 's7',  name: 'Gabriel Nunes',     birthDate: '2019-03-20', parent1: 'Sr. Paulo' },
-  { id: 's8',  name: 'Mateus Costa',      birthDate: '2018-02-17', parent1: 'Sr. André' },
-  { id: 's9',  name: 'Isabela Ferreira',  birthDate: '2018-10-30', parent1: 'Sra. Camila' },
-  { id: 's10', name: 'Rafael Oliveira',   birthDate: '2017-04-12', parent1: 'Sr. Bruno' },
-  { id: 's11', name: 'Laura Santos',      birthDate: '2017-09-05', parent1: 'Sra. Marcia' },
-  { id: 's12', name: 'Thiago Pereira',    birthDate: '2017-01-28', parent1: 'Sr. Carlos' },
-  { id: 's13', name: 'Valentina Gomes',   birthDate: '2016-06-19', parent1: 'Sra. Lucia' },
-  { id: 's14', name: 'Leonardo Rocha',    birthDate: '2016-11-25', parent1: 'Sr. Eduardo' },
-  { id: 's15', name: 'Júlia Mendes',      birthDate: '2015-03-07', parent1: 'Sra. Patricia' },
-  { id: 's16', name: 'Arthur Lima',       birthDate: '2015-08-14', parent1: 'Sr. Fábio' },
-  { id: 's17', name: 'Manuela Dias',      birthDate: '2015-12-01', parent1: 'Sr. Gustavo' },
+  { id: 's1',  name: 'Lucas Silva',       birthDate: '2025-02-10', parent1: 'Sr. Marcos', classId: 'c1' },
+  { id: 's2',  name: 'Marina Souza',      birthDate: '2024-08-22', parent1: 'Sra. Alice', classId: 'c1' },
+  { id: 's3',  name: 'Pedro Alves',       birthDate: '2023-05-14', parent1: 'Sra. Julia', classId: 'c2' },
+  { id: 's4',  name: 'Beatriz Lima',      birthDate: '2022-11-03', parent1: 'Sr. Roberto', classId: 'c3' },
+  { id: 's5',  name: 'Sofia Ramos',       birthDate: '2018-07-08', parent1: 'Sra. Fernanda', classId: 'c7' },
+  { id: 's6',  name: 'Ana Carvalho',      birthDate: '2019-01-15', parent1: 'Sra. Renata', classId: 'c6' },
+  { id: 's7',  name: 'Gabriel Nunes',     birthDate: '2019-03-20', parent1: 'Sr. Paulo', classId: 'c6' },
+  { id: 's8',  name: 'Mateus Costa',      birthDate: '2018-02-17', parent1: 'Sr. André', classId: 'c7' },
+  { id: 's9',  name: 'Isabela Ferreira',  birthDate: '2018-10-30', parent1: 'Sra. Camila', classId: 'c7' },
+  { id: 's10', name: 'Rafael Oliveira',   birthDate: '2017-04-12', parent1: 'Sr. Bruno', classId: 'c8' },
+  { id: 's11', name: 'Laura Santos',      birthDate: '2017-09-05', parent1: 'Sra. Marcia', classId: 'c8' },
+  { id: 's12', name: 'Thiago Pereira',    birthDate: '2017-01-28', parent1: 'Sr. Carlos', classId: 'c8' },
+  { id: 's13', name: 'Valentina Gomes',   birthDate: '2016-06-19', parent1: 'Sra. Lucia', classId: 'c9' },
+  { id: 's14', name: 'Leonardo Rocha',    birthDate: '2016-11-25', parent1: 'Sr. Eduardo', classId: 'c9' },
+  { id: 's15', name: 'Júlia Mendes',      birthDate: '2015-03-07', parent1: 'Sra. Patricia', classId: 'c10' },
+  { id: 's16', name: 'Arthur Lima',       birthDate: '2015-08-14', parent1: 'Sr. Fábio', classId: 'c10' },
+  { id: 's17', name: 'Manuela Dias',      birthDate: '2015-12-01', parent1: 'Sr. Gustavo', classId: 'c10' },
 ];
 
 export const mockEnrollments: Enrollment[] = [

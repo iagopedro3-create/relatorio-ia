@@ -6,7 +6,8 @@ import {
 import { generatePedagogicalIntelligence } from '../lib/aiService';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { mockAssessments, mockStudents, mockClasses } from '../store/mockDb';
+import { mockAssessments, mockStudents, mockClasses, mockEnrollments } from '../store/mockDb';
+import type { ClassGroup, Student, Enrollment } from '../store/mockDb';
 
 type Step = 'select' | 'input' | 'dashboard';
 
@@ -21,16 +22,19 @@ export function PedagogicalIntelligence() {
   const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'bncc'>('overview');
 
   const managedClasses = useMemo(() => {
-    if (user?.role === 'teacher') return mockClasses.filter(c => c.id === user.classId);
+    if (user?.role === 'teacher') return mockClasses.filter((c: ClassGroup) => c.id === user.classId);
     if (user?.role === 'coordinator' && user.managedLevel !== 'all') {
-      return mockClasses.filter(c => c.level === user.managedLevel);
+      return mockClasses.filter((c: ClassGroup) => c.level === user.managedLevel);
     }
     return mockClasses;
   }, [user]);
 
   const students = useMemo(() => {
-    const classIds = managedClasses.map(c => c.id);
-    return mockStudents.filter(s => classIds.includes(s.classId));
+    const classIds = managedClasses.map((c: ClassGroup) => c.id);
+    const enrolledIds = mockEnrollments
+      .filter((e: Enrollment) => classIds.includes(e.classId))
+      .map((e: Enrollment) => e.studentId);
+    return mockStudents.filter((s: Student) => enrolledIds.includes(s.id));
   }, [managedClasses]);
 
   const availableAssessments = useMemo(() => {

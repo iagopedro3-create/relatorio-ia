@@ -3,6 +3,7 @@ import { Plus, Edit2, Trash2, GraduationCap, Check, X, Layers, BarChart, User } 
 import { mockClasses, mockUsers } from '../store/mockDb';
 import type { ClassGroup } from '../store/mockDb';
 import { useAuth } from '../contexts/AuthContext';
+import { useYear } from '../contexts/YearContext';
 
 const SERIES_OPTIONS = {
   infantil: ['Ninho', 'Grupo 2', 'Grupo 3', 'Grupo 4', 'Grupo 5'],
@@ -13,6 +14,7 @@ const LETTERS = ['A', 'B', 'C', 'D', 'E'];
 
 export function ClassManagement() {
   const { user } = useAuth();
+  const { selectedYear } = useYear();
   const [classes, setClasses] = useState<ClassGroup[]>(mockClasses);
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -78,9 +80,10 @@ export function ClassManagement() {
     } else {
       const newClass: ClassGroup = {
         id: `c${Date.now()}`,
+        yearId: selectedYear.id,
         name: className,
-        series: formData.series,
-        letter: formData.letter,
+        series: formData.series!,
+        letter: formData.letter!,
         level: formData.level as 'infantil' | 'fundamental',
         evaluationType: formData.evaluationType as 'report' | 'numeric',
         teacherId: formData.teacherId

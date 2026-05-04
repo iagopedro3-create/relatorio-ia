@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
-import { mockStudents, mockClasses } from '../store/mockDb';
+import { mockStudents, mockClasses, mockEnrollments } from '../store/mockDb';
+import type { ClassGroup, Student, Enrollment } from '../store/mockDb';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { FileText, Save, BookOpen } from 'lucide-react';
@@ -21,13 +22,13 @@ export function Grades() {
       return mockClasses;
     }
     // Regular teachers see only their class
-    if (user?.role === 'teacher') return mockClasses.filter(c => c.id === user.classId);
+    if (user?.role === 'teacher') return mockClasses.filter((c: ClassGroup) => c.id === user.classId);
     return mockClasses;
   }, [user]);
 
   // Separate numeric (can enter grades) vs report (redirect)
-  const numericClasses = useMemo(() => managedClasses.filter(c => c.evaluationType === 'numeric'), [managedClasses]);
-  const reportClasses  = useMemo(() => managedClasses.filter(c => c.evaluationType === 'report'),  [managedClasses]);
+  const numericClasses = useMemo(() => managedClasses.filter((c: ClassGroup) => c.evaluationType === 'numeric'), [managedClasses]);
+  const reportClasses  = useMemo(() => managedClasses.filter((c: ClassGroup) => c.evaluationType === 'report'),  [managedClasses]);
 
   // Default selected class = first numeric class
   const [selectedClassId, setSelectedClassId] = useState<string>(() => numericClasses[0]?.id || '');
@@ -39,11 +40,16 @@ export function Grades() {
     }
   }, [numericClasses, selectedClassId]);
 
-  const currentClass = useMemo(() => mockClasses.find(c => c.id === selectedClassId), [selectedClassId]);
+  const currentClass = useMemo(() => mockClasses.find((c: ClassGroup) => c.id === selectedClassId), [selectedClassId]);
   const isReport = currentClass?.evaluationType === 'report';
 
-  // Students in the selected class
-  const students = useMemo(() => mockStudents.filter(s => s.classId === selectedClassId), [selectedClassId]);
+  // Students in the selected class (via enrollments)
+  const students = useMemo(() => {
+    const enrolledIds = mockEnrollments
+      .filter((e: Enrollment) => e.classId === selectedClassId)
+      .map((e: Enrollment) => e.studentId);
+    return mockStudents.filter((s: Student) => enrolledIds.includes(s.id));
+  }, [selectedClassId]);
 
   const handleGradeChange = (studentId: string, field: string, value: string) => {
     const max = MAX[field as keyof typeof MAX] ?? 100;

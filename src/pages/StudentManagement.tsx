@@ -1,5 +1,10 @@
+import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { UserPlus, X, CheckCircle2, AlertCircle, Plus, Search, Baby, User, Edit2, Trash2 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import { useYear } from '../contexts/YearContext';
 import { mockStudents, mockClasses, mockEnrollments } from '../store/mockDb';
+import type { Student, ClassGroup, Enrollment } from '../store/mockDb';
 
 function ageAtCutoff(birthDate: string, year: number): number {
   if (!birthDate) return -1;
@@ -61,21 +66,21 @@ export function StudentManagement() {
 
   // Classes for this year
   const managedClasses = useMemo(() => {
-    let classes = mockClasses.filter(c => c.yearId === selectedYear.id);
+    let classes = mockClasses.filter((c: ClassGroup) => c.yearId === selectedYear.id);
     if (user?.role === 'coordinator' && user.managedLevel !== 'all') {
-      return classes.filter(c => c.level === user.managedLevel);
+      return classes.filter((c: ClassGroup) => c.level === user.managedLevel);
     }
     return classes;
   }, [user, selectedYear]);
 
   // Filtered student list for the selected year
   const displayed = useMemo(() => {
-    const classIds = managedClasses.map(c => c.id);
+    const classIds = managedClasses.map((c: ClassGroup) => c.id);
     const enrolledIds = mockEnrollments
-      .filter(e => e.yearId === selectedYear.id && (filterClass ? e.classId === filterClass : classIds.includes(e.classId)))
-      .map(e => e.studentId);
+      .filter((e: Enrollment) => e.yearId === selectedYear.id && (filterClass ? e.classId === filterClass : classIds.includes(e.classId)))
+      .map((e: Enrollment) => e.studentId);
 
-    return students.filter(s => {
+    return students.filter((s: Student) => {
       const matchEnrolled = enrolledIds.includes(s.id);
       const matchSearch = s.name.toLowerCase().includes(search.toLowerCase());
       return matchEnrolled && matchSearch;
@@ -88,7 +93,7 @@ export function StudentManagement() {
     const series = suggestSeries(val, parseInt(selectedYear.id));
     setSuggestion(series);
     if (series) {
-      const match = managedClasses.find(c => c.series === series);
+      const match = managedClasses.find((c: ClassGroup) => c.series === series);
       if (match) setForm(f => ({ ...f, birthDate: val, classId: match.id }));
     }
   };
@@ -136,14 +141,14 @@ export function StudentManagement() {
   const handleEdit = (s: Student) => {
     setForm(s);
     setDateInputText(formatDate(s.birthDate));
-    setSuggestion(suggestSeries(s.birthDate));
+    setSuggestion(suggestSeries(s.birthDate, parseInt(selectedYear.id)));
     setEditingId(s.id);
     setIsAdding(true);
   };
 
   const handleDelete = (id: string) => {
     if (window.confirm('Excluir este aluno?')) {
-      setStudents(prev => prev.filter(s => s.id !== id));
+      setStudents((prev: Student[]) => prev.filter((s: Student) => s.id !== id));
     }
   };
 
@@ -155,7 +160,7 @@ export function StudentManagement() {
     setIsAdding(true);
   };
 
-  const suggestedClass = managedClasses.find(c => c.series === suggestion);
+  const suggestedClass = managedClasses.find((c: ClassGroup) => c.series === suggestion);
 
   return (
     <div>
@@ -275,7 +280,7 @@ export function StudentManagement() {
               style={{ width: '100%' }}
             >
               <option value="">Selecione uma turma</option>
-              {managedClasses.map(c => (
+              {managedClasses.map((c: ClassGroup) => (
                 <option key={c.id} value={c.id}>{c.name} ({c.level === 'infantil' ? 'Infantil' : 'Fundamental'})</option>
               ))}
             </select>
@@ -308,7 +313,7 @@ export function StudentManagement() {
           style={{ width: '200px', fontSize: '0.85rem' }}
         >
           <option value="">Todas as turmas</option>
-          {managedClasses.map(c => (
+          {managedClasses.map((c: ClassGroup) => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>

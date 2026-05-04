@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Printer, BookOpen, Users, FileText } from 'lucide-react';
 import { mockStudents, mockClasses, mockAttendance, mockLessons, mockUsers } from '../store/mockDb';
+import type { ClassGroup, Student, User } from '../store/mockDb';
 import { useAuth } from '../contexts/AuthContext';
 
 const BIMESTRES = ['1º Bimestre', '2º Bimestre', '3º Bimestre', '4º Bimestre'];
@@ -39,17 +40,17 @@ export function ClassDiary() {
   const [selectedBimestre, setSelectedBimestre] = useState('1º Bimestre');
 
   const currentClass = useMemo(() => 
-    mockClasses.find(c => c.id === selectedClassId),
+    mockClasses.find((c: ClassGroup) => c.id === selectedClassId),
     [selectedClassId]
   );
 
   const teacher = useMemo(() => 
-    mockUsers.find(u => u.id === currentClass?.teacherId) || { name: 'Não atribuído' },
+    mockUsers.find((u: User) => u.id === currentClass?.teacherId) || { name: 'Não atribuído' },
     [currentClass]
   );
 
   const students = useMemo(() => 
-    mockStudents.filter(s => s.classId === selectedClassId),
+    mockStudents.filter((s: Student) => s.classId === selectedClassId),
     [selectedClassId]
   );
 
@@ -72,7 +73,7 @@ export function ClassDiary() {
 
   // Mock some lessons for the bimester if none exist
   const relevantLessons = useMemo(() => {
-    const filtered = mockLessons.filter(l => l.classId === selectedClassId);
+    const filtered = mockLessons.filter((l: any) => l.classId === selectedClassId);
     if (filtered.length > 0) return filtered;
 
     // Generate dummy lessons for preview
@@ -145,7 +146,7 @@ export function ClassDiary() {
           <div className="form-group">
             <label>Selecione a Turma</label>
             <select value={selectedClassId} onChange={e => setSelectedClassId(e.target.value)}>
-              {mockClasses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {mockClasses.map((c: ClassGroup) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div className="form-group">
@@ -215,7 +216,7 @@ export function ClassDiary() {
                       </tr>
                     </thead>
                     <tbody>
-                      {students.map(student => (
+                      {students.map((student: Student) => (
                         <tr key={student.id}>
                           <td style={{ fontWeight: 600, fontSize: '11px' }}>{student.name}</td>
                           {days.map(d => {

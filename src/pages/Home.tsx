@@ -1,5 +1,10 @@
+import { useState, useMemo } from 'react';
+import { Calendar, Users, TrendingUp, AlertCircle, FileCheck } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import { useYear } from '../contexts/YearContext';
 import { mockStudents, mockReports, mockClasses, mockEnrollments } from '../store/mockDb';
+import type { ClassGroup, ReportRecord, Enrollment } from '../store/mockDb';
+import { Management } from './Management';
 
 const BIMESTRES = ['1º Bimestre', '2º Bimestre', '3º Bimestre', '4º Bimestre'];
 
@@ -26,20 +31,11 @@ export function Home() {
     return classes;
   }, [user, selectedYear]);
 
-  // Find students enrolled in the managed classes for this year
-  const studentsInManagedClasses = useMemo(() => {
-    const classIds = managedClasses.map(c => c.id);
-    const enrolledIds = mockEnrollments
-      .filter(e => e.yearId === selectedYear.id && classIds.includes(e.classId))
-      .map(e => e.studentId);
-    
-    return mockStudents.filter(s => enrolledIds.includes(s.id));
-  }, [managedClasses, selectedYear]);
 
   // Filter reports based on selected year, bimestre and managed classes
   const filteredReports = useMemo(() => {
-    const classIds = managedClasses.map(c => c.id);
-    return mockReports.filter(r => 
+    const classIds = managedClasses.map((c: ClassGroup) => c.id);
+    return mockReports.filter((r: ReportRecord) => 
       r.yearId === selectedYear.id && 
       r.context === selectedBimestre &&
       classIds.includes(r.classId)
@@ -48,14 +44,14 @@ export function Home() {
 
   const getProgressByClass = () => {
     return managedClasses
-      .filter(c => c.evaluationType === 'report')
-      .map(c => {
+      .filter((c: ClassGroup) => c.evaluationType === 'report')
+      .map((c: ClassGroup) => {
         const studentIdsInClass = mockEnrollments
-          .filter(e => e.classId === c.id && e.yearId === selectedYear.id)
-          .map(e => e.studentId);
+          .filter((e: Enrollment) => e.classId === c.id && e.yearId === selectedYear.id)
+          .map((e: Enrollment) => e.studentId);
         
         const studentsCount = studentIdsInClass.length;
-        const reportsCount = filteredReports.filter(r => r.classId === c.id).length;
+        const reportsCount = filteredReports.filter((r: ReportRecord) => r.classId === c.id).length;
         const percent = studentsCount > 0 ? Math.round((reportsCount / studentsCount) * 100) : 0;
         return { ...c, percent, total: studentsCount, done: reportsCount };
       });
@@ -65,16 +61,16 @@ export function Home() {
 
   // Find pending students
   const getPendingStudents = () => {
-    const reportClasses = managedClasses.filter(c => c.evaluationType === 'report');
+    const reportClasses = managedClasses.filter((c: ClassGroup) => c.evaluationType === 'report');
     const grouped: Record<string, typeof mockStudents> = {};
     
-    reportClasses.forEach(c => {
+    reportClasses.forEach((c: ClassGroup) => {
       const studentIdsInClass = mockEnrollments
-        .filter(e => e.classId === c.id && e.yearId === selectedYear.id)
-        .map(e => e.studentId);
+        .filter((e: Enrollment) => e.classId === c.id && e.yearId === selectedYear.id)
+        .map((e: Enrollment) => e.studentId);
       
       const students = mockStudents.filter(s => studentIdsInClass.includes(s.id));
-      const pending = students.filter(s => !filteredReports.some(r => r.studentId === s.id));
+      const pending = students.filter(s => !filteredReports.some((r: ReportRecord) => r.studentId === s.id));
       
       if (pending.length > 0) {
         grouped[c.name] = pending;
@@ -122,14 +118,14 @@ export function Home() {
   if (user?.role === 'teacher') {
     const myClass = managedClasses[0]; // For this year
     const studentIds = mockEnrollments
-      .filter(e => e.classId === myClass?.id && e.yearId === selectedYear.id)
-      .map(e => e.studentId);
+      .filter((e: Enrollment) => e.classId === myClass?.id && e.yearId === selectedYear.id)
+      .map((e: Enrollment) => e.studentId);
     
     const myStudents = mockStudents.filter(s => studentIds.includes(s.id));
-    const myReports = filteredReports.filter(r => r.classId === myClass?.id);
+    const myReports = filteredReports.filter((r: ReportRecord) => r.classId === myClass?.id);
     const myPercent = myStudents.length > 0 ? Math.round((myReports.length / myStudents.length) * 100) : 0;
     
-    const myPending = myStudents.filter(s => !myReports.some(r => r.studentId === s.id));
+    const myPending = myStudents.filter(s => !myReports.some((r: ReportRecord) => r.studentId === s.id));
 
     return (
       <div>
@@ -215,7 +211,7 @@ export function Home() {
         <div className="card">
           <h3 className="mb-6">Relatórios por Turma — {selectedBimestre}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {classProgress.map(c => (
+            {classProgress.map((c: any) => (
               <div key={c.id}>
                 <div className="flex justify-between mb-2" style={{ fontSize: '0.9rem' }}>
                   <span style={{ fontWeight: 600 }}>{c.name}</span>

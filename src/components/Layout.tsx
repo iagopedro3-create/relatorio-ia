@@ -4,7 +4,7 @@ import {
   LogOut, Users, Settings, LayoutDashboard, FileText,
   ShieldCheck, Brain, CalendarCheck, BookOpen, ClipboardList,
   GraduationCap, ChevronDown, ChevronRight, BookOpenCheck,
-  Layers, Sliders, UserCog, Baby, FileArchive, Printer
+  Sliders, UserCog, Baby, FileArchive, Printer
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 

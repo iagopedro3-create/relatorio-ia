@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Printer, Search, TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { mockStudents, mockClasses } from '../store/mockDb';
+import type { ClassGroup, Student } from '../store/mockDb';
 
 const SUBJECTS = [
   'Português',
@@ -49,16 +50,16 @@ function getMockGrades(studentId: string) {
 }
 
 export function Bulletin() {
-  const numericClasses = useMemo(() => mockClasses.filter(c => c.evaluationType === 'numeric'), []);
+  const numericClasses = useMemo(() => mockClasses.filter((c: ClassGroup) => c.evaluationType === 'numeric'), []);
   const filteredStudents = useMemo(() => {
-    const classIds = numericClasses.map(c => c.id);
-    return mockStudents.filter(s => classIds.includes(s.classId));
+    const classIds = numericClasses.map((c: ClassGroup) => c.id);
+    return mockStudents.filter((s: Student) => classIds.includes(s.classId!));
   }, [numericClasses]);
 
   const [selectedStudentId, setSelectedStudentId] = useState(filteredStudents[0]?.id || '');
 
-  const student = filteredStudents.find(s => s.id === selectedStudentId);
-  const studentClass = mockClasses.find(c => c.id === student?.classId);
+  const student = filteredStudents.find((s: Student) => s.id === selectedStudentId);
+  const studentClass = mockClasses.find((c: ClassGroup) => c.id === student?.classId);
 
   const grades = useMemo(() => student ? getMockGrades(student.id) : [], [student]);
   const validGrades = grades.filter(g => g.mediaFinal > 0);
@@ -130,8 +131,8 @@ export function Bulletin() {
             onChange={e => setSelectedStudentId(e.target.value)}
             style={{ width: '100%', maxWidth: '420px' }}
           >
-            {filteredStudents.map(s => {
-              const cls = mockClasses.find(c => c.id === s.classId);
+            {filteredStudents.map((s: Student) => {
+              const cls = mockClasses.find((c: ClassGroup) => c.id === s.classId);
               return <option key={s.id} value={s.id}>{s.name} — {cls?.name}</option>;
             })}
             {filteredStudents.length === 0 && <option value="">Nenhuma turma numérica disponível</option>}

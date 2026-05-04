@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { SchoolYear, mockYears } from '../store/mockDb';
+import React, { createContext, useContext, useState } from 'react';
+import { mockYears } from '../store/mockDb';
+import type { SchoolYear } from '../store/mockDb';
 
 interface YearContextType {
   selectedYear: SchoolYear;

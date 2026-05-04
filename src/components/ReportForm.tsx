@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Send, Info, CheckSquare, MessageSquare, GraduationCap } from 'lucide-react';
+import { Send, CheckSquare, MessageSquare, GraduationCap } from 'lucide-react';
 import { BNCC_CHECKLISTS } from '../store/bnccData';
 
 export type ItemStatus = 'none' | 'developing' | 'consolidated';
@@ -67,7 +67,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 export function ReportForm({ onSubmit, isLoading }: ReportFormProps) {
   const { user } = useAuth();
-  const [activeGroupId, setActiveGroupId] = useState<'bebes' | 'pequenas_bem' | 'pequenas'>('bebes');
+  const [activeGroupId, setActiveGroupId] = useState<'bebes' | 'pequenas_bem' | 'pequenas' | 'fundamental_1'>('bebes');
   const [reportContext, setReportContext] = useState(REPORT_CONTEXTS[0].label);
   
   const [formData, setFormData] = useState<StudentData>({

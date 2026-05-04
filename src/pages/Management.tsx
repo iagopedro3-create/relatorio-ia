@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Users, BookOpen, AlertCircle, CheckCircle2, Clock, GraduationCap, TrendingUp, BarChart3, PieChart } from 'lucide-react';
-import { mockClasses, mockStudents, mockUsers } from '../store/mockDb';
+import { mockClasses, mockStudents, mockUsers, mockEnrollments } from '../store/mockDb';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 

@@ -58,7 +58,7 @@ INSTRUÇÕES DE REDAÇÃO:
 - Não use listas. O relatório deve ser um texto corrido fluido.
 `;
 
-  if (provider === 'google') {
+  if (provider === 'gemini') {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: modelId, systemInstruction: REPORT_SYSTEM_PROMPT });
     const result = await model.generateContent(prompt);
@@ -109,7 +109,7 @@ METAS:
 - LONGO PRAZO: Final do Ano Letivo.
 `;
 
-  if (provider === 'google') {
+  if (provider === 'gemini') {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: modelId, systemInstruction: PEI_SYSTEM_INSTRUCTION });
     const result = await model.generateContent(prompt);
@@ -159,7 +159,7 @@ ${assessmentData.results}
 Analise esses dados e gere o painel completo de Inteligência Pedagógica.
 `;
 
-  if (provider === 'google') {
+  if (provider === 'gemini') {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: modelId, systemInstruction: PEDAGOGICAL_SYSTEM_PROMPT });
     const result = await model.generateContent(prompt);

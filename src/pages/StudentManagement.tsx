@@ -1,10 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserPlus, X, CheckCircle2, AlertCircle, Plus, Search, Baby, User, Edit2, Trash2 } from 'lucide-react';
+import { UserPlus, X, CheckCircle2, AlertCircle, Plus, Search, Baby, User, Edit2, Trash2, Upload, Download, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useYear } from '../contexts/YearContext';
 import { mockStudents, mockClasses, mockEnrollments } from '../store/mockDb';
 import type { Student, ClassGroup, Enrollment } from '../store/mockDb';
+import * as XLSX from 'xlsx';
 
 function ageAtCutoff(birthDate: string, year: number): number {
   if (!birthDate) return -1;
@@ -63,6 +64,13 @@ export function StudentManagement() {
   const [form, setForm] = useState<Partial<Student>>(emptyForm);
   const [dateInputText, setDateInputText] = useState('');
   const [suggestion, setSuggestion] = useState<string | null>(null);
+
+  // Import states
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importPreview, setImportPreview] = useState<Partial<Student>[]>([]);
+  const [importErrors, setImportErrors] = useState<string[]>([]);
+  const [importClassId, setImportClassId] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Classes for this year
   const managedClasses = useMemo(() => {
@@ -162,17 +170,143 @@ export function StudentManagement() {
 
   const suggestedClass = managedClasses.find((c: ClassGroup) => c.series === suggestion);
 
+  // ---- IMPORT LOGIC ----
+  const handleDownloadTemplate = () => {
+    const wsData = [
+      ['Nome Completo', 'Data de Nascimento (DD/MM/AAAA)', 'Responsável 1', 'Responsável 2'],
+      ['João da Silva', '15/03/2018', 'Sra. Maria da Silva', 'Sr. João da Silva'],
+      ['Ana Santos', '22/07/2019', 'Sra. Paula Santos', ''],
+    ];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws['!cols'] = [{ wch: 30 }, { wch: 28 }, { wch: 30 }, { wch: 30 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'Alunos');
+    XLSX.writeFile(wb, 'modelo_importacao_alunos.xlsx');
+  };
+
+  const parseDateBR = (val: string): string | null => {
+    if (!val) return null;
+    const str = String(val).trim();
+    // Handle DD/MM/YYYY
+    const match = str.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+    if (match) {
+      const [, d, m, y] = match;
+      return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    }
+    // Handle Excel serial number
+    const num = Number(val);
+    if (!isNaN(num) && num > 30000 && num < 60000) {
+      const date = new Date((num - 25569) * 86400000);
+      return date.toISOString().split('T')[0];
+    }
+    return null;
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = evt.target?.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json<string[]>(worksheet, { header: 1 });
+
+        // Skip header row
+        const rows = jsonData.slice(1).filter((row: string[]) => row.length > 0 && row[0]);
+        const errors: string[] = [];
+        const parsed: Partial<Student>[] = [];
+
+        rows.forEach((row: string[], idx: number) => {
+          const name = String(row[0] || '').trim();
+          const birthRaw = String(row[1] || '').trim();
+          const parent1 = String(row[2] || '').trim();
+          const parent2 = String(row[3] || '').trim();
+
+          if (!name) {
+            errors.push(`Linha ${idx + 2}: Nome em branco`);
+            return;
+          }
+          const birthDate = parseDateBR(birthRaw);
+          if (!birthDate) {
+            errors.push(`Linha ${idx + 2}: Data inválida "${birthRaw}" para ${name}`);
+            return;
+          }
+          if (!parent1) {
+            errors.push(`Linha ${idx + 2}: Responsável 1 em branco para ${name}`);
+            return;
+          }
+
+          parsed.push({ name, birthDate, parent1, parent2: parent2 || undefined });
+        });
+
+        setImportPreview(parsed);
+        setImportErrors(errors);
+        setShowImportModal(true);
+      } catch {
+        alert('Erro ao ler o arquivo. Verifique se é um arquivo Excel (.xlsx) ou CSV válido.');
+      }
+    };
+    reader.readAsBinaryString(file);
+    // Reset input so the same file can be re-selected
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleConfirmImport = () => {
+    if (!importClassId) {
+      alert('Selecione uma turma para os alunos importados.');
+      return;
+    }
+
+    const newStudents: Student[] = importPreview.map((s, i) => ({
+      id: `s${Date.now()}_${i}`,
+      name: s.name!,
+      birthDate: s.birthDate!,
+      classId: importClassId,
+      parent1: s.parent1!,
+      parent2: s.parent2,
+    }));
+
+    setStudents(prev => [...prev, ...newStudents]);
+    setShowImportModal(false);
+    setImportPreview([]);
+    setImportErrors([]);
+    setImportClassId('');
+    alert(`${newStudents.length} aluno(s) importado(s) com sucesso!`);
+  };
+
   return (
     <div>
+      {/* Hidden file input for import */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".xlsx,.xls,.csv"
+        onChange={handleFileUpload}
+        style={{ display: 'none' }}
+      />
+
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 style={{ margin: 0 }}>Cadastro de Alunos</h2>
           <p className="text-muted">{displayed.length} aluno{displayed.length !== 1 ? 's' : ''} encontrado{displayed.length !== 1 ? 's' : ''}</p>
         </div>
-        <button className="btn btn-primary" onClick={openNew}>
-          <UserPlus size={18} /> Novo Aluno
-        </button>
+        <div className="flex gap-3">
+          <button
+            className="btn btn-secondary"
+            onClick={() => fileInputRef.current?.click()}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            <Upload size={18} /> Importar Planilha
+          </button>
+          <button className="btn btn-primary" onClick={openNew}>
+            <UserPlus size={18} /> Novo Aluno
+          </button>
+        </div>
       </div>
 
       {/* Registration Form */}
@@ -399,6 +533,190 @@ export function StudentManagement() {
           </tbody>
         </table>
       </div>
+
+      {/* ===== IMPORT MODAL ===== */}
+      {showImportModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '2rem',
+        }}>
+          <div style={{
+            backgroundColor: 'white', borderRadius: '16px', width: '100%', maxWidth: '850px',
+            maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+            boxShadow: '0 25px 60px rgba(0,0,0,0.3)',
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '1.5rem 2rem', borderBottom: '1px solid #e2e8f0',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ backgroundColor: 'rgba(10,115,255,0.1)', padding: '0.6rem', borderRadius: '10px' }}>
+                  <FileSpreadsheet size={22} color="var(--color-primary)" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.15rem' }}>Importar Alunos via Planilha</h3>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>
+                    {importPreview.length} aluno(s) encontrado(s) no arquivo
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => { setShowImportModal(false); setImportPreview([]); setImportErrors([]); }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '0.5rem' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem' }}>
+
+              {/* Download template */}
+              <div style={{
+                padding: '1rem 1.25rem', borderRadius: '10px', marginBottom: '1.25rem',
+                backgroundColor: '#f0f9ff', border: '1px solid #bae6fd',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <Download size={18} color="#0284c7" />
+                  <span style={{ fontSize: '0.85rem', color: '#0c4a6e' }}>
+                    Precisa do modelo? Baixe a planilha de exemplo.
+                  </span>
+                </div>
+                <button
+                  onClick={handleDownloadTemplate}
+                  style={{
+                    padding: '0.4rem 1rem', fontSize: '0.8rem', fontWeight: 600,
+                    backgroundColor: '#0284c7', color: 'white', border: 'none',
+                    borderRadius: '6px', cursor: 'pointer',
+                  }}
+                >
+                  Baixar Modelo
+                </button>
+              </div>
+
+              {/* Errors */}
+              {importErrors.length > 0 && (
+                <div style={{
+                  padding: '1rem 1.25rem', borderRadius: '10px', marginBottom: '1.25rem',
+                  backgroundColor: '#fef2f2', border: '1px solid #fecaca',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <AlertTriangle size={16} color="#dc2626" />
+                    <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#991b1b' }}>
+                      {importErrors.length} aviso(s) encontrado(s):
+                    </span>
+                  </div>
+                  <ul style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.8rem', color: '#b91c1c' }}>
+                    {importErrors.map((err, i) => <li key={i}>{err}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              {/* Class selector for import */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.4rem' }}>
+                  Turma de destino <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <select
+                  value={importClassId}
+                  onChange={(e) => setImportClassId(e.target.value)}
+                  style={{ width: '100%', maxWidth: '350px' }}
+                >
+                  <option value="">Selecione a turma para os alunos</option>
+                  {managedClasses.map((c: ClassGroup) => (
+                    <option key={c.id} value={c.id}>{c.name} ({c.level === 'infantil' ? 'Infantil' : 'Fundamental'})</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Preview Table */}
+              {importPreview.length > 0 && (
+                <div style={{ borderRadius: '10px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#f8fafc' }}>
+                        <th style={{ padding: '0.75rem 1rem', textAlign: 'left', borderBottom: '2px solid #e2e8f0', width: '40px' }}>#</th>
+                        <th style={{ padding: '0.75rem 1rem', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Nome</th>
+                        <th style={{ padding: '0.75rem 1rem', textAlign: 'center', borderBottom: '2px solid #e2e8f0' }}>Nascimento</th>
+                        <th style={{ padding: '0.75rem 1rem', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Responsável 1</th>
+                        <th style={{ padding: '0.75rem 1rem', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>Responsável 2</th>
+                        <th style={{ padding: '0.75rem 1rem', textAlign: 'center', borderBottom: '2px solid #e2e8f0' }}>Série Sugerida</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {importPreview.map((s, i) => {
+                        const sug = s.birthDate ? suggestSeries(s.birthDate, parseInt(selectedYear.id)) : null;
+                        return (
+                          <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '0.6rem 1rem', color: '#94a3b8', fontWeight: 600 }}>{i + 1}</td>
+                            <td style={{ padding: '0.6rem 1rem', fontWeight: 600 }}>{s.name}</td>
+                            <td style={{ padding: '0.6rem 1rem', textAlign: 'center', color: '#64748b' }}>
+                              {s.birthDate ? formatDate(s.birthDate) : '—'}
+                            </td>
+                            <td style={{ padding: '0.6rem 1rem', color: '#64748b' }}>{s.parent1}</td>
+                            <td style={{ padding: '0.6rem 1rem', color: '#94a3b8' }}>{s.parent2 || '—'}</td>
+                            <td style={{ padding: '0.6rem 1rem', textAlign: 'center' }}>
+                              {sug ? (
+                                <span style={{
+                                  fontSize: '0.75rem', padding: '0.2rem 0.6rem', borderRadius: '20px',
+                                  backgroundColor: '#eff6ff', color: '#1d4ed8', fontWeight: 600,
+                                }}>{sug}</span>
+                              ) : '—'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {importPreview.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
+                  <FileSpreadsheet size={40} style={{ margin: '0 auto 0.75rem', opacity: 0.3 }} />
+                  <p>Nenhum aluno válido encontrado no arquivo.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '1.25rem 2rem', borderTop: '1px solid #e2e8f0',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => fileInputRef.current?.click()}
+                style={{ fontSize: '0.85rem' }}
+              >
+                <Upload size={16} /> Escolher Outro Arquivo
+              </button>
+              <div className="flex gap-3">
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => { setShowImportModal(false); setImportPreview([]); setImportErrors([]); }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleConfirmImport}
+                  disabled={importPreview.length === 0 || !importClassId}
+                  style={{
+                    opacity: (importPreview.length === 0 || !importClassId) ? 0.5 : 1,
+                  }}
+                >
+                  <CheckCircle2 size={18} /> Importar {importPreview.length} Aluno(s)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

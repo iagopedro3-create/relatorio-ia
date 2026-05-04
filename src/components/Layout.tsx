@@ -4,7 +4,7 @@ import {
   LogOut, Users, Settings, LayoutDashboard, FileText,
   ShieldCheck, Brain, CalendarCheck, BookOpen, ClipboardList,
   GraduationCap, ChevronDown, ChevronRight, BookOpenCheck,
-  Sliders, UserCog, Baby, FileArchive, Printer, MessageSquareText
+  Sliders, UserCog, Baby, FileArchive, Printer, MessageSquareText, Menu, X
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -30,6 +30,7 @@ export function Layout() {
     relatórios: true,
     configurações: false,
   });
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   if (loading) {
     return (
@@ -170,8 +171,28 @@ export function Layout() {
 
   return (
     <div className="flex" style={{ minHeight: '100vh' }}>
+      {/* Mobile Top Bar */}
+      <div className="mobile-topbar" style={{
+        display: 'none', position: 'fixed', top: 0, left: 0, right: 0, height: '56px',
+        backgroundColor: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)',
+        zIndex: 1001, padding: '0 1rem', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <button onClick={() => setMobileMenuOpen(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem' }}>
+          <Menu size={24} color="var(--color-text)" />
+        </button>
+        <img src="/logo.png" alt="Vida de Aprendiz" style={{ height: '32px' }} />
+        <div style={{ width: '40px' }} />
+      </div>
+
+      {/* Mobile Overlay */}
+      {mobileMenuOpen && (
+        <div onClick={() => setMobileMenuOpen(false)} style={{
+          position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1002,
+        }} />
+      )}
+
       {/* Sidebar */}
-      <aside style={{
+      <aside className="app-sidebar" style={{
         width: '240px',
         backgroundColor: 'var(--color-surface)',
         borderRight: '1px solid var(--color-border)',
@@ -181,10 +202,15 @@ export function Layout() {
         position: 'fixed',
         height: '100vh',
         overflowY: 'auto',
+        zIndex: 1003,
+        transition: 'transform 0.3s ease',
       }}>
-        {/* Logo */}
-        <div style={{ padding: '0 1.25rem', marginBottom: '1.5rem' }}>
+        {/* Logo + Close on mobile */}
+        <div style={{ padding: '0 1.25rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <img src="/logo.png" alt="Vida de Aprendiz" style={{ maxWidth: '160px' }} />
+          <button className="mobile-close-btn" onClick={() => setMobileMenuOpen(false)} style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem' }}>
+            <X size={20} color="#94a3b8" />
+          </button>
         </div>
 
         {/* User Badge */}
@@ -212,7 +238,7 @@ export function Layout() {
         <nav style={{ flex: 1 }}>
           {/* Flat top item: Início */}
           {flatItems.map(item => (
-            <button key={item.path} onClick={() => navigate(item.path)} style={navBtnStyle(isActive(item.path))}>
+            <button key={item.path} onClick={() => { navigate(item.path); setMobileMenuOpen(false); }} style={navBtnStyle(isActive(item.path))}>
               {item.icon}
               {item.name}
             </button>
@@ -245,7 +271,7 @@ export function Layout() {
                     {group.items.map(item => (
                       <button
                         key={item.path}
-                        onClick={() => navigate(item.path)}
+                        onClick={() => { navigate(item.path); setMobileMenuOpen(false); }}
                         style={navBtnStyle(isActive(item.path))}
                       >
                         {item.icon}
@@ -277,9 +303,18 @@ export function Layout() {
       </aside>
 
       {/* Main Content */}
-      <main style={{ flex: 1, padding: '2rem', marginLeft: '240px', minHeight: '100vh', backgroundColor: 'var(--color-bg)' }}>
+      <main className="app-main" style={{ flex: 1, padding: '2rem', marginLeft: '240px', minHeight: '100vh', backgroundColor: 'var(--color-bg)' }}>
         <Outlet />
       </main>
+
+      <style>{`
+        @media (max-width: 768px) {
+          .mobile-topbar { display: flex !important; }
+          .app-sidebar { transform: ${mobileMenuOpen ? 'translateX(0)' : 'translateX(-100%)'}; }
+          .app-main { margin-left: 0 !important; padding: 1rem 0.75rem !important; padding-top: 72px !important; }
+          .mobile-close-btn { display: block !important; }
+        }
+      `}</style>
     </div>
   );
 }

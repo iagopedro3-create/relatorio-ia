@@ -443,3 +443,90 @@ header {
   font-weight: 600;
 }
 
+/* ===== MOBILE RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .card {
+    padding: 1.25rem;
+    border-radius: var(--radius-md);
+  }
+
+  .card:hover {
+    transform: none;
+  }
+
+  .card::before {
+    height: 4px;
+  }
+
+  h1 { font-size: 1.75rem; }
+  h2 { font-size: 1.25rem; }
+  h3 { font-size: 1.05rem; }
+
+  .btn {
+    padding: 0.7rem 1.25rem;
+    font-size: 0.9rem;
+    border-radius: var(--radius-md);
+  }
+
+  input[type="text"],
+  input[type="number"],
+  select,
+  textarea {
+    padding: 0.7rem 0.85rem;
+    font-size: 0.9rem;
+  }
+
+  .grid {
+    gap: 1rem;
+  }
+
+  .grid-cols-2,
+  .grid-cols-3 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .flex-wrap-mobile {
+    flex-wrap: wrap;
+  }
+
+  /* Stat cards grid override */
+
+  .stat-card h3 {
+    font-size: 1.75rem !important;
+  }
+
+  .container {
+    padding: 1rem 0.75rem;
+  }
+
+  /* Table responsive */
+  table {
+    font-size: 0.8rem;
+  }
+
+  table th, table td {
+    padding: 0.6rem 0.5rem !important;
+  }
+
+  /* Main content when sidebar is hidden */
+  main {
+    margin-left: 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .grid.grid-cols-1.md\\:grid-cols-4 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .card {
+    padding: 1rem;
+  }
+
+  h2 { font-size: 1.1rem; }
+
+  .btn {
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+  }
+}

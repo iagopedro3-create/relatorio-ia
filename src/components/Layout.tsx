@@ -96,7 +96,7 @@ export function Layout() {
     const adminItems: NavItem[] = [
       { name: 'Turmas',             path: '/classes',    icon: <GraduationCap size={18} /> },
       { name: 'Alunos',            path: '/students',   icon: <Baby size={18} /> },
-      { name: 'Histórico Escolar', path: '/transcript', icon: <FileArchive size={18} /> },
+      { name: 'Gerador de Histórico', path: '/transcript', icon: <FileArchive size={18} /> },
       { name: 'Usuários',          path: '/users',      icon: <Users size={18} /> },
     ];
     groups.push({ label: 'administrativo', icon: <UserCog size={16} />, items: adminItems });

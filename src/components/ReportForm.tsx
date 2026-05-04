@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Send, CheckSquare, MessageSquare, GraduationCap } from 'lucide-react';
 import { BNCC_CHECKLISTS } from '../store/bnccData';
+import { mockStudents } from '../store/mockDb';
 
 export type ItemStatus = 'none' | 'developing' | 'consolidated';
 
@@ -99,6 +100,21 @@ export function ReportForm({ onSubmit, isLoading }: ReportFormProps) {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    
+    if (name === 'name' && value) {
+      const student = mockStudents.find(s => s.name === value);
+      if (student) {
+        setFormData(prev => ({
+          ...prev,
+          name: value,
+          age: student.age || prev.age,
+          group: student.classId ? (AGE_GROUPS.find(g => g.label.includes(student.classId || ''))?.label || prev.group) : prev.group,
+          parentsName: `${student.parent1}${student.parent2 ? ' e ' + student.parent2 : ''}`
+        }));
+        return;
+      }
+    }
+    
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -198,7 +214,12 @@ export function ReportForm({ onSubmit, isLoading }: ReportFormProps) {
       <div className="grid grid-cols-2">
         <div className="form-group">
           <label htmlFor="name">Nome do Aluno *</label>
-          <input required type="text" id="name" name="name" value={formData.name} onChange={handleChange} placeholder="Nome completo" />
+          <select required id="name" name="name" value={formData.name} onChange={handleChange}>
+            <option value="">Selecione um aluno...</option>
+            {mockStudents.map(s => (
+              <option key={s.id} value={s.name}>{s.name}</option>
+            ))}
+          </select>
         </div>
         
         <div className="form-group">

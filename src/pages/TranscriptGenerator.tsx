@@ -258,44 +258,44 @@ export function TranscriptGenerator() {
       {student && (
         <div className="print-only" style={{ color: '#000', fontFamily: 'Arial, sans-serif', padding: '0', maxWidth: '210mm', margin: '0 auto' }}>
           {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', gap: '20px' }}>
-            <img src="/logo.png" alt="Logo" style={{ height: '70px', filter: 'grayscale(100%) brightness(0)' }} />
-            <div style={{ color: '#f97316' }}>
-              <h1 style={{ fontSize: '14px', margin: '0', fontWeight: 'bold' }}>Escola Vida de Aprendiz | Ensino Fundamental I</h1>
-              <p style={{ margin: 0, fontSize: '10px' }}>CNPJ: 43.642.767/0001-27 | SEI-030030/005656/2023</p>
-              <p style={{ margin: 0, fontSize: '10px' }}>(22) 2040-8464 | Rua Teresina, 333, Palmeiras, Cabo Frio - RJ</p>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', gap: '15px' }}>
+            <img src="/logo.png" alt="Logo" style={{ height: '55px', filter: 'grayscale(100%) brightness(0)' }} />
+            <div style={{ color: '#000' }}>
+              <h1 style={{ fontSize: '13px', margin: '0', fontWeight: 'bold' }}>Escola Vida de Aprendiz | Ensino Fundamental I</h1>
+              <p style={{ margin: 0, fontSize: '9px' }}>CNPJ: 43.642.767/0001-27 | SEI-030030/005656/2023</p>
+              <p style={{ margin: 0, fontSize: '9px' }}>(22) 2040-8464 | Rua Teresina, 333, Palmeiras, Cabo Frio - RJ</p>
             </div>
           </div>
 
           <div style={{ border: '2px solid #000' }}>
-            <div style={{ backgroundColor: '#e2e8f0', textAlign: 'center', padding: '4px', borderBottom: '1px solid #000', fontWeight: 'bold', fontSize: '14px' }}>
+            <div style={{ backgroundColor: '#f1f5f9', textAlign: 'center', padding: '3px', borderBottom: '1px solid #000', fontWeight: 'bold', fontSize: '12px' }}>
               HISTÓRICO ESCOLAR – ENSINO FUNDAMENTAL {status}
             </div>
 
             {/* Student Info Box */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', borderBottom: '2px solid #000' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px', borderBottom: '2px solid #000' }}>
               <tbody>
                 <tr>
-                  <td colSpan={2} style={{ padding: '2px 4px', borderBottom: '1px solid #000', borderRight: '1px solid #000' }}>
+                  <td colSpan={2} style={{ padding: '1px 4px', borderBottom: '1px solid #000', borderRight: '1px solid #000' }}>
                     <strong>Nome do Aluno:</strong> {student.name.toUpperCase()}
                   </td>
-                  <td colSpan={2} style={{ padding: '2px 4px', borderBottom: '1px solid #000' }}>
-                    <strong>CPF:</strong> {cpf}
+                  <td colSpan={2} style={{ padding: '1px 4px', borderBottom: '1px solid #000' }}>
+                    <strong>CPF:</strong> {cpf || '_________________'}
                   </td>
                 </tr>
                 <tr>
-                  <td rowSpan={2} style={{ width: '12%', textAlign: 'center', borderRight: '1px solid #000', fontWeight: 'bold' }}>
+                  <td rowSpan={2} style={{ width: '12%', textAlign: 'center', borderRight: '1px solid #000', fontWeight: 'bold', fontSize: '9px' }}>
                     Nascimento
                   </td>
-                  <td colSpan={2} style={{ padding: '2px 4px', borderRight: '1px solid #000', borderBottom: '1px solid #000' }}>
+                  <td colSpan={2} style={{ padding: '1px 4px', borderRight: '1px solid #000', borderBottom: '1px solid #000' }}>
                     Município: {naturalidade.toUpperCase()}
                   </td>
-                  <td style={{ padding: '2px 4px', borderBottom: '1px solid #000' }}>
-                    Estado: {estado.toUpperCase()} <span style={{ marginLeft: '20px' }}>País: {pais}</span>
+                  <td style={{ padding: '1px 4px', borderBottom: '1px solid #000' }}>
+                    Estado: {estado.toUpperCase()} <span style={{ marginLeft: '15px' }}>País: {pais}</span>
                   </td>
                 </tr>
                 <tr>
-                  <td colSpan={3} style={{ padding: '2px 4px' }}>
+                  <td colSpan={3} style={{ padding: '1px 4px' }}>
                     Data: {student.birthDate ? new Date(student.birthDate).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) : '—'}
                   </td>
                 </tr>
@@ -436,9 +436,14 @@ export function TranscriptGenerator() {
         .print-only { display: none; }
         
         @media print {
-          @page { size: A4; margin: 1cm 1.5cm; }
+          @page { size: A4; margin: 0.5cm 1cm; }
           .screen-only, aside { display: none !important; }
-          .print-only { display: block !important; }
+          .print-only { 
+            display: block !important; 
+            width: 100% !important;
+            page-break-inside: avoid;
+            overflow: hidden;
+          }
           
           body, main { 
             background: white !important; 
@@ -449,6 +454,7 @@ export function TranscriptGenerator() {
           * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
+            box-sizing: border-box;
           }
         }
       `}</style>

@@ -6,14 +6,14 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { mockClasses } from '../store/mockDb';
-import { mockLessonPlans, type LessonPlan, type AISuggestion } from '../store/planningDb';
+import { getStoredPlans, saveStoredPlans, type LessonPlan, type AISuggestion } from '../store/planningDb';
 
 export function LessonPlanning() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin' || user?.role === 'coordinator';
   
   const [activeTab, setActiveTab] = useState<'list' | 'editor' | 'ideas'>('list');
-  const [plans, setPlans] = useState<LessonPlan[]>(mockLessonPlans);
+  const [plans, setPlans] = useState<LessonPlan[]>(getStoredPlans());
   const [selectedPlan, setSelectedPlan] = useState<LessonPlan | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
 
@@ -37,9 +37,19 @@ export function LessonPlanning() {
   const [formData, setFormData] = useState<Partial<LessonPlan>>(initialPlan);
 
   const filteredPlans = useMemo(() => {
-    if (isAdmin) return plans;
+    if (user?.role === 'admin') return plans;
+    
+    if (user?.role === 'coordinator') {
+      // Coordinators see all plans for their managed level
+      if (user.managedLevel === 'all') return plans;
+      
+      const levelClasses = mockClasses.filter(c => c.level === user.managedLevel).map(c => c.id);
+      return plans.filter(p => levelClasses.includes(p.classId));
+    }
+
+    // Teachers see only their own
     return plans.filter(p => p.teacherId === user?.id);
-  }, [plans, user, isAdmin]);
+  }, [plans, user]);
 
   const handleCreate = () => {
     setFormData(initialPlan);
@@ -158,10 +168,14 @@ export function LessonPlanning() {
 
     setPlans(prevPlans => {
       const exists = prevPlans.find(p => p.id === plan.id);
+      let next;
       if (exists) {
-        return prevPlans.map(p => p.id === plan.id ? plan : p);
+        next = prevPlans.map(p => p.id === plan.id ? plan : p);
+      } else {
+        next = [plan, ...prevPlans];
       }
-      return [plan, ...prevPlans];
+      saveStoredPlans(next);
+      return next;
     });
 
     setActiveTab('list');

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Users, TrendingUp, AlertCircle, FileCheck, CheckCircle2, BookOpenCheck } from 'lucide-react';
+import { Calendar, Users, TrendingUp, AlertCircle, FileCheck, BookOpenCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useYear } from '../contexts/YearContext';
 import { mockStudents, mockReports, mockClasses, mockEnrollments, mockUsers } from '../store/mockDb';

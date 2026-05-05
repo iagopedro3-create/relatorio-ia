@@ -5,7 +5,8 @@ export interface LessonPlan {
   classId: string;
   className: string;
   subject: string;
-  date: string;
+  startDate: string;
+  endDate: string;
   theme: string;
   objectives: string;
   content: string;
@@ -35,9 +36,10 @@ export const mockLessonPlans: LessonPlan[] = [
     classId: 'c1',
     className: 'NINHO',
     subject: 'Experiências Sensoriais',
-    date: '2026-05-10',
-    theme: 'Exploração de Texturas Naturais',
-    objectives: 'Explorar diferentes texturas (folhas, gravetos, areia) e desenvolver a percepção tátil.',
+    startDate: '2026-05-11',
+    endDate: '2026-05-15',
+    theme: 'Semana da Exploração Tátil',
+    objectives: 'Explorar diferentes texturas (folhas, gravetos, areia) e desenvolver a percepção tátil ao longo da semana.',
     content: 'Elementos da natureza coletados no pátio.',
     methodology: 'Roda de conversa seguida de exploração livre em cestos de tesouros.',
     resources: 'Cestas, elementos naturais, lupas de plástico.',
@@ -48,7 +50,7 @@ export const mockLessonPlans: LessonPlan[] = [
       {
         id: 's1',
         type: 'ideas',
-        content: 'Sugestão de Atividade: Criar um "caminho sensorial" no chão com diferentes folhas e galhos para as crianças caminharem descalças.',
+        content: 'Sugestão: Criar um "caminho sensorial" que evolua ao longo da semana, adicionando novos elementos a cada dia.',
         isFavorite: true,
         createdAt: '2026-05-04T10:00:00Z'
       }

@@ -23,7 +23,8 @@ export function LessonPlanning() {
     classId: '',
     className: '',
     subject: '',
-    date: new Date().toISOString().split('T')[0],
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     theme: '',
     objectives: '',
     content: '',
@@ -141,7 +142,7 @@ export function LessonPlanning() {
                 <div>
                   <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{plan.theme}</h3>
                   <p style={{ margin: '0.2rem 0', fontSize: '0.85rem', color: '#64748b' }}>
-                    {plan.className} • {plan.subject} • {new Date(plan.date).toLocaleDateString('pt-BR')}
+                    {plan.className} • {plan.subject} • {new Date(plan.startDate).toLocaleDateString('pt-BR')} a {new Date(plan.endDate).toLocaleDateString('pt-BR')}
                   </p>
                 </div>
               </div>
@@ -181,8 +182,12 @@ export function LessonPlanning() {
                 </select>
               </div>
               <div className="form-group">
-                <label>Data da Aula</label>
-                <input type="date" name="date" value={formData.date} onChange={handleInputChange} disabled={isAdmin} />
+                <label>Início da Semana</label>
+                <input type="date" name="startDate" value={formData.startDate} onChange={handleInputChange} disabled={isAdmin} />
+              </div>
+              <div className="form-group">
+                <label>Fim da Semana</label>
+                <input type="date" name="endDate" value={formData.endDate} onChange={handleInputChange} disabled={isAdmin} />
               </div>
             </div>
             <div className="form-group mb-4">
@@ -251,22 +256,28 @@ export function LessonPlanning() {
                   className="btn btn-secondary ai-btn" 
                   disabled={isAiLoading}
                   onClick={() => simulateAiSuggestion('ideas')}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#1e293b', fontWeight: 600 }}
                 >
-                  <Wand2 size={16} color="var(--color-primary)" /> Gerar ideias de aula
+                  <Wand2 size={18} color="var(--color-primary)" /> 
+                  <span>Gerar ideias de aula</span>
                 </button>
                 <button 
                   className="btn btn-secondary ai-btn" 
                   disabled={isAiLoading}
                   onClick={() => simulateAiSuggestion('improvement')}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#1e293b', fontWeight: 600 }}
                 >
-                  <TrendingUp size={16} color="var(--color-primary)" /> Melhorar metodologia
+                  <TrendingUp size={18} color="var(--color-primary)" /> 
+                  <span>Melhorar metodologia</span>
                 </button>
                 <button 
                   className="btn btn-secondary ai-btn" 
                   disabled={isAiLoading}
                   onClick={() => simulateAiSuggestion('adaptation')}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#1e293b', fontWeight: 600 }}
                 >
-                  <Users2 size={16} color="var(--color-primary)" /> Sugerir adaptação (Inclusão)
+                  <Users2 size={18} color="var(--color-primary)" /> 
+                  <span>Sugerir adaptação (Inclusão)</span>
                 </button>
               </div>
 

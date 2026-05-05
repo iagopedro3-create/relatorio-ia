@@ -1,12 +1,14 @@
 import { useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, FileText, Award, User, CalendarDays } from 'lucide-react';
-import { mockStudents, mockClasses, mockReports, mockUsers } from '../store/mockDb';
+import { mockStudents, mockClasses, mockReports } from '../store/mockDb';
+import { useUsers } from '../contexts/UserContext';
 import type { ClassGroup, Student, User as UserType, ReportRecord } from '../store/mockDb';
 
 export function StudentProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { users } = useUsers();
 
   const student = mockStudents.find((s: Student) => s.id === id);
   const studentClass = mockClasses.find((c: ClassGroup) => c.id === student?.classId);
@@ -115,7 +117,7 @@ export function StudentProfile() {
                   <div style={{ position: 'absolute', top: 0, bottom: 0, left: '23px', width: '2px', backgroundColor: '#e2e8f0' }} />
                   
                   {studentReports.map((report: ReportRecord, idx: number) => {
-                    const teacher = mockUsers.find((u: UserType) => u.id === report.teacherId);
+                    const teacher = users.find((u: UserType) => u.id === report.teacherId);
                     return (
                       <div key={report.id} style={{ position: 'relative', marginBottom: idx === studentReports.length - 1 ? 0 : '2.5rem', paddingLeft: '2.5rem' }}>
                         {/* Ponto da timeline */}

@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Calendar, Users, TrendingUp, AlertCircle, FileCheck, BookOpenCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useYear } from '../contexts/YearContext';
-import { mockStudents, mockReports, mockClasses, mockEnrollments, mockUsers } from '../store/mockDb';
+import { mockStudents, mockReports, mockClasses, mockEnrollments } from '../store/mockDb';
+import { useUsers } from '../contexts/UserContext';
 import type { ClassGroup, ReportRecord, Enrollment } from '../store/mockDb';
 import { Management } from './Management';
 import { mockMessages, mockEvents, CATEGORY_LABELS, EVENT_TYPES } from '../store/agendaDb';
@@ -14,6 +15,7 @@ const BIMESTRES = ['1º Bimestre', '2º Bimestre', '3º Bimestre', '4º Bimestre
 export function Home() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { users } = useUsers();
   const { selectedYear, availableYears, setYear } = useYear();
   const [selectedBimestre, setSelectedBimestre] = useState('1º Bimestre');
   
@@ -364,7 +366,7 @@ export function Home() {
                         <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{r.studentName}</div>
                         <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{mockClasses.find(c => c.id === r.classId)?.name}</div>
                       </td>
-                      <td style={{ padding: '0.75rem 1rem', fontSize: '0.85rem' }}>{mockUsers.find(u => u.id === r.teacherId)?.name}</td>
+                      <td style={{ padding: '0.75rem 1rem', fontSize: '0.85rem' }}>{users.find(u => u.id === r.teacherId)?.name}</td>
                       <td style={{ padding: '0.75rem 1rem' }}>
                         <span style={{ 
                           padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700,

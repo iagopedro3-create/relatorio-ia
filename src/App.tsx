@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { UserProvider } from './contexts/UserContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { YearProvider } from './contexts/YearContext';
 import { Layout } from './components/Layout';
@@ -25,35 +26,37 @@ import { Agenda } from './pages/Agenda';
 export function App() {
   return (
     <AuthProvider>
-      <SettingsProvider>
-        <YearProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route element={<Layout />}>
-                <Route path="/" element={<Home />} />
-                <Route path="/reports" element={<ReportGenerator />} />
-                <Route path="/pei" element={<PeiGenerator />} />
-                <Route path="/attendance" element={<Attendance />} />
-                <Route path="/lessons" element={<Lessons />} />
-                <Route path="/grades" element={<Grades />} />
-                <Route path="/bulletin" element={<Bulletin />} />
-                <Route path="/transcript" element={<TranscriptGenerator />} />
+      <UserProvider>
+        <SettingsProvider>
+          <YearProvider>
+            <BrowserRouter>
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route element={<Layout />}>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/reports" element={<ReportGenerator />} />
+                  <Route path="/pei" element={<PeiGenerator />} />
+                  <Route path="/attendance" element={<Attendance />} />
+                  <Route path="/lessons" element={<Lessons />} />
+                  <Route path="/grades" element={<Grades />} />
+                  <Route path="/bulletin" element={<Bulletin />} />
+                  <Route path="/transcript" element={<TranscriptGenerator />} />
 
-                <Route path="/classes" element={<ClassManagement />} />
-                <Route path="/users" element={<UserManagement />} />
-                <Route path="/students" element={<StudentManagement />} />
-                <Route path="/students/:id" element={<StudentProfile />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/diary" element={<ClassDiary />} />
-                <Route path="/agenda" element={<Agenda />} />
-                <Route path="/planning" element={<LessonPlanning />} />
-              </Route>
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
-          </BrowserRouter>
-        </YearProvider>
-      </SettingsProvider>
+                  <Route path="/classes" element={<ClassManagement />} />
+                  <Route path="/users" element={<UserManagement />} />
+                  <Route path="/students" element={<StudentManagement />} />
+                  <Route path="/students/:id" element={<StudentProfile />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/diary" element={<ClassDiary />} />
+                  <Route path="/agenda" element={<Agenda />} />
+                  <Route path="/planning" element={<LessonPlanning />} />
+                </Route>
+                <Route path="*" element={<Navigate to="/" />} />
+              </Routes>
+            </BrowserRouter>
+          </YearProvider>
+        </SettingsProvider>
+      </UserProvider>
     </AuthProvider>
   );
 }

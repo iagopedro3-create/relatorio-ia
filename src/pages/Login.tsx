@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
-import { mockUsers } from '../store/mockDb';
+import { useUsers } from '../contexts/UserContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
 
 export function Login() {
   const navigate = useNavigate();
   const { login, user, loading: authLoading } = useAuth();
+  const { users } = useUsers();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd]   = useState(false);
@@ -22,7 +23,7 @@ export function Login() {
     setLoading(true);
 
     setTimeout(() => {
-      const user = mockUsers.find(
+      const user = users.find(
         u => u.username.toLowerCase() === username.toLowerCase().trim() && u.password === password
       );
 

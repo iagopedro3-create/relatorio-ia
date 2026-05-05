@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Plus, Edit2, Trash2, GraduationCap, Check, X, Layers, BarChart, User } from 'lucide-react';
-import { mockClasses, mockUsers } from '../store/mockDb';
+import { mockClasses } from '../store/mockDb';
+import { useUsers } from '../contexts/UserContext';
 import type { ClassGroup } from '../store/mockDb';
 import { useAuth } from '../contexts/AuthContext';
 import { useYear } from '../contexts/YearContext';
@@ -14,6 +15,7 @@ const LETTERS = ['A', 'B', 'C', 'D', 'E'];
 
 export function ClassManagement() {
   const { user } = useAuth();
+  const { users } = useUsers();
   const { selectedYear } = useYear();
   const [classes, setClasses] = useState<ClassGroup[]>(mockClasses);
   const [isAdding, setIsAdding] = useState(false);
@@ -55,8 +57,8 @@ export function ClassManagement() {
   }, [isAdding, editingId, allowedLevels]);
 
   const teachers = useMemo(() => 
-    mockUsers.filter(u => u.role === 'teacher'), 
-    []
+    users.filter(u => u.role === 'teacher'), 
+    [users]
   );
 
   if (!canManage) {

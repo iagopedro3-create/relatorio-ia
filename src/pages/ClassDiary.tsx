@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Printer, BookOpen, Users, FileText } from 'lucide-react';
-import { mockStudents, mockClasses, mockAttendance, mockLessons, mockUsers } from '../store/mockDb';
+import { mockStudents, mockClasses, mockAttendance, mockLessons } from '../store/mockDb';
+import { useUsers } from '../contexts/UserContext';
 import type { ClassGroup, Student, User } from '../store/mockDb';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -36,6 +37,7 @@ const HOLIDAYS_2026: Record<string, string> = {
 
 export function ClassDiary() {
   const { user } = useAuth();
+  const { users } = useUsers();
   const [selectedClassId, setSelectedClassId] = useState(user?.classId || 'c1');
   const [selectedBimestre, setSelectedBimestre] = useState('1º Bimestre');
 
@@ -45,8 +47,8 @@ export function ClassDiary() {
   );
 
   const teacher = useMemo(() => 
-    mockUsers.find((u: User) => u.id === currentClass?.teacherId) || { name: 'Não atribuído' },
-    [currentClass]
+    users.find((u: User) => u.id === currentClass?.teacherId) || { name: 'Não atribuído' },
+    [currentClass, users]
   );
 
   const students = useMemo(() => 

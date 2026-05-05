@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Plus, Edit2, Trash2, User as UserIcon, Check, X } from 'lucide-react';
-import { mockUsers, mockClasses } from '../store/mockDb';
+import { mockClasses } from '../store/mockDb';
 import type { User } from '../store/mockDb';
+import { useUsers } from '../contexts/UserContext';
 
 import { useAuth } from '../contexts/AuthContext';
 
 export function UserManagement() {
   const { user: currentUser } = useAuth();
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const { users, addUser, updateUser, deleteUser } = useUsers();
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<User>>({
@@ -38,7 +39,7 @@ export function UserManagement() {
     }
 
     if (editingId) {
-      setUsers(prev => prev.map(u => u.id === editingId ? { ...u, ...formData } as User : u));
+      updateUser(editingId, formData);
       setEditingId(null);
     } else {
       const newUser: User = {
@@ -50,7 +51,7 @@ export function UserManagement() {
         managedLevel: formData.role === 'coordinator' ? (formData.managedLevel as any) : undefined,
         classId: formData.role === 'teacher' ? formData.classId : undefined
       };
-      setUsers(prev => [...prev, newUser]);
+      addUser(newUser);
     }
 
     setFormData({ name: '', username: '', password: '', role: 'teacher', managedLevel: 'fundamental', classId: '' });
@@ -69,7 +70,7 @@ export function UserManagement() {
       return;
     }
     if (window.confirm('Tem certeza que deseja excluir este usuário?')) {
-      setUsers(prev => prev.filter(u => u.id !== id));
+      deleteUser(id);
     }
   };
 

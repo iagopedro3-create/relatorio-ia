@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Users, BookOpen, AlertCircle, CheckCircle2, Clock, GraduationCap, TrendingUp, BarChart3, PieChart } from 'lucide-react';
-import { mockClasses, mockStudents, mockUsers, mockEnrollments, mockReports } from '../store/mockDb';
+import { mockClasses, mockStudents, mockEnrollments, mockReports } from '../store/mockDb';
+import { useUsers } from '../contexts/UserContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 
@@ -65,6 +66,7 @@ import { useYear } from '../contexts/YearContext';
 
 export function Management() {
   const { user } = useAuth();
+  const { users } = useUsers();
   const { selectedYear } = useYear();
 
   // Mock attendance status for today — filtered by year
@@ -72,7 +74,7 @@ export function Management() {
     return mockClasses
       .filter(c => c.yearId === selectedYear.id)
       .map(c => {
-        const teacher = mockUsers.find(u => u.id === c.teacherId);
+        const teacher = users.find(u => u.id === c.teacherId);
         // Mocking some as done, some as pending based on ID to create variance
         const isDone = ['c1', 'c2', 'c3', 'c6', 'c7', 'c8'].includes(c.id); 
         return {
@@ -122,7 +124,7 @@ export function Management() {
     
     // Teachers assigned to any class this year
     const yearClassTeacherIds = mockClasses.filter(c => c.yearId === selectedYear.id).map(c => c.teacherId);
-    const activeTeachers = mockUsers.filter(u => u.role === 'teacher' && yearClassTeacherIds.includes(u.id)).length;
+    const activeTeachers = users.filter(u => u.role === 'teacher' && yearClassTeacherIds.includes(u.id)).length;
     
     const totalClasses = filteredStatus.length;
     

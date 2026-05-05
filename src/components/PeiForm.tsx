@@ -35,39 +35,39 @@ export type PeiData = {
 
 const PEI_OPTIONS = {
   communication: [
-    'Comunicação verbal funcional', 'Usa gestos/apontamento', 'Ecolalia presente', 
-    'Dificuldade em iniciar diálogo', 'Comunicação não-verbal', 'Compreende ordens simples',
-    'Vocabulário restrito', 'Usa pranchas de comunicação (PECS/outros)'
+    'Comunicação verbal funcional', 'Usa gestos/apontamento', 'Repete falas de outros', 
+    'Dificuldade em iniciar conversa', 'Comunicação não-verbal', 'Compreende ordens simples',
+    'Vocabulário restrito', 'Usa pranchas/cartões (PECS)'
   ],
   social: [
-    'Interage com pares', 'Brinca sozinho', 'Evita contato visual', 
-    'Dificuldade em turnos/espera', 'Busca o adulto para ajuda', 'Demonstra empatia',
-    'Dificuldade em situações em grupo', 'Interesse por temas específicos'
+    'Interage com colegas', 'Brinca sozinho', 'Evita contato visual', 
+    'Dificuldade em esperar a vez', 'Busca o adulto para ajuda', 'Demonstra empatia',
+    'Dificuldade em grupo', 'Interesse por temas específicos'
   ],
   behavior: [
-    'Segue rotina com facilidade', 'Resistência a mudanças', 'Autoagressão', 
-    'Heteroagressão', 'Estereotipias motoras', 'Fácil distração',
-    'Foco excessivo em objetos', 'Responde bem a reforçadores'
+    'Segue rotina com facilidade', 'Resistência a mudanças', 'Agressividade consigo mesmo', 
+    'Agressividade com os outros', 'Movimentos repetitivos', 'Fácil distração',
+    'Foco excessivo em objetos', 'Responde bem a prêmios/reforços'
   ],
   emotional: [
-    'Demonstra segurança', 'Choro excessivo na separação', 'Baixa tolerância à frustração',
-    'Apego excessivo a um objeto/pessoa', 'Oscilação de humor', 'Autoestima preservada'
+    'Demonstra segurança', 'Choro excessivo na despedida', 'Não lida bem com frustração',
+    'Apego excessivo a pessoa/objeto', 'Mudança rápida de humor', 'Autoestima preservada'
   ],
   learning: [
-    'Aprende por via visual', 'Necessita de repetição', 'Interesse em letras/números',
-    'Dificuldade em abstração', 'Lento processamento', 'Memória de longo prazo boa'
+    'Aprende melhor pelo visual', 'Necessita de repetição', 'Interesse em letras/números',
+    'Dificuldade em entender conceitos abstratos', 'Lento processamento', 'Boa memória de longo prazo'
   ],
   motor: [
-    'Preensão correta do lápis', 'Dificuldade em recorte', 'Equilíbrio preservado',
-    'Hipotonia', 'Dificuldade em pular/correr', 'Coordenação óculo-manual'
+    'Pega corretamente no lápis', 'Dificuldade em recorte', 'Bom equilíbrio',
+    'Corpo mais "molinho"', 'Dificuldade em pular/correr', 'Coordenação olho-mão'
   ],
   autonomy: [
-    'Usa o banheiro sozinho', 'Necessita auxílio na alimentação', 'Organiza seus pertences',
-    'Veste-se com auxílio', 'Identifica perigos', 'Pede ajuda quando necessário'
+    'Usa o banheiro sozinho', 'Precisa de ajuda para comer', 'Organiza seus materiais',
+    'Veste-se com ajuda', 'Identifica perigos', 'Pede ajuda quando precisa'
   ],
   sensory: [
-    'Hipersensibilidade auditiva', 'Busca sensorial (tátil)', 'Seletividade alimentar',
-    'Incomodo com luzes forte', 'Não gosta de se sujar', 'Gosta de pressão profunda'
+    'Incomodo com barulho', 'Busca muito o toque (tátil)', 'Seletividade alimentar',
+    'Incomodo com luz forte', 'Não gosta de se sujar', 'Gosta de ser abraçado apertado'
   ]
 };
 

@@ -76,37 +76,77 @@ INSTRUÇÕES DE REDAÇÃO:
   }
 }
 
-const PEI_SYSTEM_INSTRUCTION = `Você é um especialista em educação inclusiva, psicopedagogia e desenvolvimento infantil. Sua missão é gerar um Plano Educacional Individualizado (PEI) extremamente estruturado.
+const PEI_SYSTEM_INSTRUCTION = `Você é um especialista em educação inclusiva, psicopedagogia e desenvolvimento infantil. Sua missão é gerar um Plano Educacional Individualizado (PEI) técnico, humanizado e extremamente estruturado.
+
+DIRETRIZES DE REDAÇÃO:
+- Use os indicadores selecionados como base direta das metas. Se indicadores como "heteroagressão" foram marcados, a meta deve endereçar isso especificamente.
+- Se um eixo não possui indicadores marcados, não gere metas para ele.
+- Use negrito APENAS em títulos de seções e termos-chave essenciais. Evite negrito excessivo no corpo do texto.
+- Estruture o documento com hierarquia visual clara.
+
+METAS SMART (OBRIGATÓRIO):
+Cada meta deve conter:
+1. Comportamento observável e específico.
+2. Contexto de observação (ex: "em momentos de transição", "durante a alimentação").
+3. Critério de sucesso mensurável (ex: "em 8 de 10 oportunidades", "por pelo menos 15 minutos").
+4. Prazo (Curto, Médio ou Longo Prazo).
+5. Nota de rodapé na meta orientando a professora a registrar a linha de base na primeira semana.
 
 ESTRUTURA OBRIGATÓRIA:
-1. PERFIL DO ESTUDANTE
-2. DIRETRIZES GERAIS
-3. ESTRATÉGIAS DE SALA DE AULA
-4. ADAPTAÇÕES CURRICULARES
-5. QUADRO DE METAS POR EIXO (Curto, Médio e Longo Prazo)
-6. AVALIAÇÃO
-7. ORIENTAÇÕES À FAMÍLIA.`;
+1. PERFIL DO ESTUDANTE (Resumo técnico baseado no diagnóstico e idade)
+2. DIRETRIZES GERAIS (Abordagem pedagógica recomendada)
+3. ESTRATÉGIAS DE SALA DE AULA (Acomodações e manejo)
+4. QUADRO DE METAS SMART (Apresentado obrigatoriamente em formato de TABELA Markdown com colunas: Eixo | Meta | Prazo | Como medir)
+5. AVALIAÇÃO E MONITORAMENTO
+6. ORIENTAÇÕES À FAMÍLIA`;
 
 export async function generatePei(peiData: any, aiConfig: AIConfig) {
   const { provider, modelId, apiKey } = aiConfig;
   if (!apiKey) throw new Error('API Key não configurada');
 
   const prompt = `
-ALUNO: ${peiData.name} | TURMA: ${peiData.group}
-DIAGNÓSTICO: ${peiData.diagnosis || 'Nao informado'}
+Gere um PEI detalhado para o aluno:
+- Nome: ${peiData.name}
+- Idade: ${peiData.age}
+- Turma: ${peiData.group}
+- Diagnóstico: ${peiData.diagnosis || 'Não informado'}
 
-DADOS OBSERVADOS:
-Comunicação: ${peiData.communication}
-Socialização: ${peiData.social}
-Comportamento: ${peiData.behavior}
-Aprendizagem: ${peiData.learning}
-Motor: ${peiData.motor}
-Autonomia: ${peiData.autonomy}
+DADOS COLETADOS POR EIXO (INDICADORES + OBSERVAÇÕES):
 
-METAS:
-- CURTO PRAZO: Final do Trimestre.
-- MÉDIO PRAZO: Final do Semestre.
-- LONGO PRAZO: Final do Ano Letivo.
+1. Comunicação e Linguagem:
+   - Indicadores: ${peiData.selectedComm?.join(', ') || 'Nenhum'}
+   - Observações: ${peiData.communication || 'Nenhuma'}
+
+2. Interação Social:
+   - Indicadores: ${peiData.selectedSocial?.join(', ') || 'Nenhum'}
+   - Observações: ${peiData.social || 'Nenhuma'}
+
+3. Comportamento e Flexibilidade:
+   - Indicadores: ${peiData.selectedBehavior?.join(', ') || 'Nenhum'}
+   - Observações: ${peiData.behavior || 'Nenhuma'}
+
+4. Aspectos Emocionais:
+   - Indicadores: ${peiData.selectedEmotional?.join(', ') || 'Nenhum'}
+   - Observações: ${peiData.emotional || 'Nenhuma'}
+
+5. Processos de Aprendizagem:
+   - Indicadores: ${peiData.selectedLearning?.join(', ') || 'Nenhum'}
+   - Observações: ${peiData.learning || 'Nenhuma'}
+
+6. Desenvolvimento Motor:
+   - Indicadores: ${peiData.selectedMotor?.join(', ') || 'Nenhum'}
+   - Observações: ${peiData.motor || 'Nenhuma'}
+
+7. Autonomia e Vida Diária:
+   - Indicadores: ${peiData.selectedAutonomy?.join(', ') || 'Nenhum'}
+   - Observações: ${peiData.autonomy || 'Nenhuma'}
+
+8. Perfil Sensorial:
+   - Indicadores: ${peiData.selectedSensory?.join(', ') || 'Nenhum'}
+   - Observações: ${peiData.sensory || 'Nenhuma'}
+
+INSTRUÇÃO ADICIONAL:
+As metas devem ser correlacionadas aos indicadores marcados. Exemplo: se "Autoagressão" foi marcado em Comportamento, a meta deve focar na redução/substituição desse comportamento com critérios SMART.
 `;
 
   if (provider === 'gemini') {

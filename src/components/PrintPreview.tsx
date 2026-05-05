@@ -33,47 +33,120 @@ export function PrintPreview({ isOpen, onClose, title, subtitle, studentData, co
     html2pdf().set(opt).from(element).save();
   };
 
-  // Clean markdown artifacts from content for printing
-  const cleanContent = content.replace(/(\*\*|###|##|#|\|---|\|)/g, '').trim();
+  // Helper to render markdown-like content to JSX
+  const renderContent = (text: string) => {
+    const lines = text.split('\n');
+    const result: JSX.Element[] = [];
+    let i = 0;
+
+    while (i < lines.length) {
+      const line = lines[i].trim();
+      if (!line) {
+        i++;
+        continue;
+      }
+
+      // Table detection
+      if (line.startsWith('|')) {
+        const rows: string[][] = [];
+        while (i < lines.length && lines[i].trim().startsWith('|')) {
+          const tableLine = lines[i].trim();
+          if (!tableLine.match(/^\|[:\s-]*\|/)) {
+            const cells = tableLine.split('|').filter((_, idx, arr) => idx > 0 && idx < arr.length - 1).map(c => c.trim());
+            rows.push(cells);
+          }
+          i++;
+        }
+        if (rows.length > 0) {
+          result.push(
+            <table key={`table-${i}`} style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1.5rem', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f3f4f6' }}>
+                  {rows[0].map((cell, idx) => (
+                    <th key={idx} style={{ border: '1px solid #333', padding: '8px', fontWeight: 800 }}>{cell.replace(/\*\*/g, '')}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.slice(1).map((row, rIdx) => (
+                  <tr key={rIdx}>
+                    {row.map((cell, cIdx) => (
+                      <td key={cIdx} style={{ border: '1px solid #333', padding: '8px' }}>{cell.replace(/\*\*/g, '')}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          );
+        }
+        continue;
+      }
+
+      // Headers
+      if (line.startsWith('#')) {
+        const level = line.match(/^#+/)?.[0].length || 1;
+        const text = line.replace(/^#+\s*/, '').replace(/\*\*/g, '');
+        const fontSize = level === 1 ? '1.4rem' : level === 2 ? '1.2rem' : '1.1rem';
+        result.push(
+          <h3 key={i} style={{ 
+            fontSize, 
+            marginTop: '1.5rem', 
+            marginBottom: '0.5rem', 
+            color: 'var(--color-primary)',
+            fontWeight: 800,
+            borderBottom: level <= 2 ? '1px solid #eee' : 'none',
+            paddingBottom: '0.25rem'
+          }}>
+            {text}
+          </h3>
+        );
+        i++;
+        continue;
+      }
+
+      // Normal paragraph with bold support
+      const parts = line.split(/(\*\*.*?\*\*)/g);
+      result.push(
+        <p key={i} style={{ marginBottom: '1rem', lineHeight: '1.6', textAlign: 'justify' }}>
+          {parts.map((part, pIdx) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+              return <strong key={pIdx}>{part.slice(2, -2)}</strong>;
+            }
+            return part;
+          })}
+        </p>
+      );
+      i++;
+    }
+    return result;
+  };
 
   return (
     <div className="print-preview-overlay no-print">
       <style>{`
         @media print {
           .page-break { page-break-before: always; }
+          .print-preview-overlay { position: static; background: white; padding: 0; }
+          .btn-group { display: none !important; }
         }
-        .cover-page {
-          height: 297mm;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          position: relative;
-          background: white;
-          overflow: hidden;
-        }
-        .rocket-svg { position: absolute; top: 10%; left: 10%; width: 150px; opacity: 0.8; }
-        .clouds-svg { position: absolute; bottom: 0; left: 0; width: 100%; height: 200px; opacity: 0.6; }
-        .stars-svg { position: absolute; top: 5%; right: 5%; width: 100px; }
       `}</style>
-      <div style={{ position: 'fixed', top: '1rem', right: '2rem', display: 'flex', gap: '1rem', zIndex: 1001 }}>
-      <div style={{ position: 'fixed', top: '1rem', right: '2rem', display: 'flex', gap: '1rem', zIndex: 1001 }}>
+      
+      <div className="btn-group" style={{ position: 'fixed', top: '1rem', right: '2rem', display: 'flex', gap: '1rem', zIndex: 1001 }}>
         <button onClick={handleDownloadPDF} className="btn btn-primary" style={{ backgroundColor: '#10b981', boxShadow: 'none' }}>
-          <Download size={20} /> Baixar PDF direto
+          <Download size={20} /> Baixar PDF
         </button>
         <button onClick={handlePrint} className="btn btn-primary">
-          <Printer size={20} /> Imprimir agora / Salvar PDF
+          <Printer size={20} /> Imprimir / Salvar PDF
         </button>
         <button onClick={onClose} className="btn btn-secondary" style={{ backgroundColor: '#ef4444', boxShadow: 'none' }}>
           <X size={20} /> Fechar
         </button>
       </div>
-      </div>
 
       <div className="print-page print-area">
         {/* Infantil Cover Page */}
         {(studentData.group && !studentData.group.includes('1º ANO') && type === 'report') && (
-          <div className="cover-page no-print-break" style={{ marginBottom: '50px' }}>
+          <div className="cover-page" style={{ marginBottom: '50px' }}>
             <div style={{ 
               backgroundColor: 'var(--color-secondary)', color: 'white', 
               padding: '2rem 5rem', borderRadius: '1rem', transform: 'rotate(-2deg)',
@@ -124,78 +197,38 @@ export function PrintPreview({ isOpen, onClose, title, subtitle, studentData, co
           </tbody>
         </table>
 
-        <div className="print-content" style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
-          <div style={{ flex: 1 }}>
-            {cleanContent.split('\n\n').slice(0, Math.ceil(cleanContent.split('\n\n').length / 3)).map((p, i) => (
-              <p key={i} style={{ marginBottom: '1rem' }}>{p}</p>
-            ))}
+        <div className="print-content">
+          <div style={{ width: '100%' }}>
+            {renderContent(content)}
           </div>
-          {studentData.photo1 && (
-            <div style={{ width: '250px', position: 'relative', marginTop: '1rem' }}>
-              <div style={{ 
-                position: 'absolute', top: '-15px', right: '20px', width: '80px', height: '30px', 
-                backgroundColor: 'rgba(255, 203, 100, 0.8)', transform: 'rotate(15deg)', zIndex: 1,
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-              }} />
-              <img src={studentData.photo1} alt="Atividade 1" style={{ width: '100%', borderRadius: '4px', boxShadow: '0 4px 10px rgba(0,0,0,0.15)', border: '8px solid white' }} />
-            </div>
-          )}
-        </div>
-
-        {/* 2nd Part and 2nd photo */}
-        {type === 'report' && studentData.photo2 && (
-          <div style={{ marginTop: '2rem', display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
-            <div style={{ flex: 1 }}>
-              {cleanContent.split('\n\n').slice(Math.ceil(cleanContent.split('\n\n').length / 3), Math.ceil(cleanContent.split('\n\n').length * 2 / 3)).map((p, i) => (
-                <p key={i} style={{ marginBottom: '1rem' }}>{p}</p>
-              ))}
-            </div>
-            <div style={{ width: '250px', position: 'relative', marginTop: '1rem' }}>
-              <div style={{ 
-                position: 'absolute', top: '-15px', left: '20px', width: '80px', height: '30px', 
-                backgroundColor: 'rgba(10, 115, 255, 0.6)', transform: 'rotate(-10deg)', zIndex: 1,
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-              }} />
-              <img src={studentData.photo2} alt="Atividade 2" style={{ width: '100%', borderRadius: '4px', boxShadow: '0 4px 10px rgba(0,0,0,0.15)', border: '8px solid white' }} />
-            </div>
-          </div>
-        )}
-
-        {/* 3rd Part and 3rd photo */}
-        {type === 'report' && (
-          <div style={{ marginTop: '2rem', display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
-            <div style={{ flex: 1 }}>
-              {cleanContent.split('\n\n').slice(Math.ceil(cleanContent.split('\n\n').length * 2 / 3)).map((p, i) => (
-                <p key={i} style={{ marginBottom: '1rem' }}>{p}</p>
-              ))}
-              
-              {(studentData.positivePoints || studentData.attentionPoints) && (
-                <div style={{ marginTop: '2rem', padding: '1rem', backgroundColor: '#fdfbf0', borderRadius: '8px', border: '1px solid #faefcc' }}>
-                  {studentData.positivePoints && <p><strong>Destaques:</strong> {studentData.positivePoints}</p>}
-                  {studentData.attentionPoints && <p><strong>Próximos Passos:</strong> {studentData.attentionPoints}</p>}
+          
+          {(studentData.photo1 || studentData.photo2 || studentData.photo3) && type === 'report' && (
+            <div className="photo-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem', marginTop: '2rem' }}>
+               {studentData.photo1 && (
+                <div style={{ position: 'relative' }}>
+                  <img src={studentData.photo1} alt="Atividade 1" style={{ width: '100%', borderRadius: '4px', boxShadow: '0 4px 10px rgba(0,0,0,0.15)', border: '8px solid white' }} />
+                </div>
+              )}
+              {studentData.photo2 && (
+                <div style={{ position: 'relative' }}>
+                  <img src={studentData.photo2} alt="Atividade 2" style={{ width: '100%', borderRadius: '4px', boxShadow: '0 4px 10px rgba(0,0,0,0.15)', border: '8px solid white' }} />
+                </div>
+              )}
+               {studentData.photo3 && (
+                <div style={{ position: 'relative' }}>
+                  <img src={studentData.photo3} alt="Atividade 3" style={{ width: '100%', borderRadius: '4px', boxShadow: '0 4px 10px rgba(0,0,0,0.15)', border: '8px solid white' }} />
                 </div>
               )}
             </div>
-            {studentData.photo3 && (
-              <div style={{ width: '250px', position: 'relative', marginTop: '1rem' }}>
-                <div style={{ 
-                  position: 'absolute', top: '-15px', right: '40px', width: '80px', height: '30px', 
-                  backgroundColor: 'rgba(239, 68, 68, 0.6)', transform: 'rotate(5deg)', zIndex: 1,
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                }} />
-                <img src={studentData.photo3} alt="Atividade 3" style={{ width: '100%', borderRadius: '4px', boxShadow: '0 4px 10px rgba(0,0,0,0.15)', border: '8px solid white' }} />
-              </div>
-            )}
-          </div>
-        )}
+          )}
 
-        {type === 'pei' && (
-           <div className="print-content" style={{ marginTop: '2rem' }}>
-            {cleanContent.split('\n\n').slice(Math.ceil(cleanContent.split('\n\n').length / 2)).map((p, i) => (
-              <p key={i} style={{ marginBottom: '1rem' }}>{p}</p>
-            ))}
-          </div>
-        )}
+          {type === 'report' && (studentData.positivePoints || studentData.attentionPoints) && (
+            <div style={{ marginTop: '2rem', padding: '1rem', backgroundColor: '#fdfbf0', borderRadius: '8px', border: '1px solid #faefcc' }}>
+              {studentData.positivePoints && <p><strong>Destaques:</strong> {studentData.positivePoints}</p>}
+              {studentData.attentionPoints && <p><strong>Próximos Passos:</strong> {studentData.attentionPoints}</p>}
+            </div>
+          )}
+        </div>
 
         <div className="print-signatures">
           <div>

@@ -402,9 +402,10 @@ export function Management() {
         @media (max-width: 1024px) {
           .management-grid { grid-template-columns: 1fr !important; }
         }
+        .mobile-only { display: none; }
         @media (max-width: 768px) {
           .mobile-hide { display: none !important; }
-          .mobile-only { display: block !important; }
+          .mobile-only { display: inline !important; }
         }
       `}</style>
     </div>

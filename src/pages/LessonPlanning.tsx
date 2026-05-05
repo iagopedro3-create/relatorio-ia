@@ -1,9 +1,8 @@
 import { useState, useMemo } from 'react';
 import { 
-  Save, Send, Clock, CheckCircle2, AlertCircle, Plus, 
-  Search, BookOpen, MessageSquare, Sparkles, Brain, 
-  Trash2, ChevronDown, ChevronRight, LayoutGrid, List,
-  Calendar, FileText, Target, Beaker, Wrench, ClipboardCheck
+  Save, Send, Plus, 
+  BookOpen, MessageSquare, Sparkles, Brain, 
+  Calendar, FileText, Target
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { mockClasses } from '../store/mockDb';
@@ -490,9 +489,13 @@ export function LessonPlanning() {
                 <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => {
                    // Simple mock implementation of "Apply"
                    const cleanContent = s.content.replace(/^(Sugestão|A IA sugere|Recomendação): /i, '');
-                   if (s.type === 'ideas') setFormData(f => ({ ...f, activities: (f.activities ? f.activities + '\n\n' : '') + cleanContent }));
-                   else if (s.type === 'improvement') setFormData(f => ({ ...f, methodology: (f.methodology ? f.methodology + '\n\n' : '') + cleanContent }));
-                   alert('Sugestão copiada para o plano!');
+                   if (s.type === 'ideas' || s.type === 'adaptation') {
+                     // Apply to methodology as a general fallback for now
+                     setFormData(f => ({ ...f, methodology: (f.methodology ? f.methodology + '\n\n' : '') + cleanContent }));
+                   } else if (s.type === 'improvement') {
+                     setFormData(f => ({ ...f, methodology: (f.methodology ? f.methodology + '\n\n' : '') + cleanContent }));
+                   }
+                   alert('Sugestão aplicada à metodologia do plano!');
                 }}>
                   Aplicar ao meu plano
                 </button>

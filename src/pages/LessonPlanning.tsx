@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
 import { 
-  BookOpen, Plus, Sparkles, Wand2, Users2, Save, 
-  MessageSquare, History, Star, 
-  ChevronRight, Filter, Send, TrendingUp, Calendar
+  Save, Send, Clock, CheckCircle2, AlertCircle, Plus, 
+  Search, BookOpen, MessageSquare, Sparkles, Brain, 
+  Trash2, ChevronDown, ChevronRight, LayoutGrid, List,
+  Calendar, FileText, Target, Beaker, Wrench, ClipboardCheck
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { mockClasses } from '../store/mockDb';
@@ -10,67 +11,20 @@ import { getStoredPlans, saveStoredPlans, type LessonPlan, type AISuggestion } f
 
 export function LessonPlanning() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin' || user?.role === 'coordinator';
   
   const [activeTab, setActiveTab] = useState<'list' | 'editor' | 'ideas'>('list');
   const [plans, setPlans] = useState<LessonPlan[]>(getStoredPlans());
   const [selectedPlan, setSelectedPlan] = useState<LessonPlan | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
 
-  const initialPlan: Partial<LessonPlan> = {
-    teacherId: user?.id || '',
-    teacherName: user?.name || '',
-    classId: '',
-    className: '',
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    weeklyTheme: '',
-    dailyPlans: [],
-    methodology: '',
-    resources: '',
-    evaluation: '',
-    status: 'draft',
-    coordinatorFeedback: '',
-    aiSuggestions: [],
-    teacherId: user?.id || '',
-    teacherName: user?.name || ''
-  };
-
-  const [formData, setFormData] = useState<Partial<LessonPlan>>(initialPlan);
-
-  const filteredPlans = useMemo(() => {
-    if (user?.role === 'admin') return plans;
-    
-    if (user?.role === 'coordinator') {
-      // Coordinators see all plans for their managed level
-      if (user.managedLevel === 'all') return plans;
-      
-      const levelClasses = mockClasses.filter(c => c.level === user.managedLevel).map(c => c.id);
-      return plans.filter(p => levelClasses.includes(p.classId));
-    }
-
-    // Teachers see only their own
-    return plans.filter(p => p.teacherId === user?.id);
-  }, [plans, user]);
-
-  const handleCreate = () => {
-    setFormData(initialPlan);
-    setSelectedPlan(null);
-    setActiveTab('editor');
-  };
-
-  const handleEdit = (plan: LessonPlan) => {
-    setFormData(plan);
-    setSelectedPlan(plan);
-    setActiveTab('editor');
-  };
+  const isAdmin = user?.role === 'admin' || user?.role === 'coordinator';
 
   const getDayOfWeek = (dateStr: string) => {
     const date = new Date(dateStr + 'T00:00:00');
     return new Intl.DateTimeFormat('pt-BR', { weekday: 'long' }).format(date);
   };
 
-  const generateDailyPlans = (start: string, end: string) => {
+  const generateEmptyDailyPlans = (start: string, end: string) => {
     const days = [];
     let current = new Date(start + 'T00:00:00');
     const last = new Date(end + 'T00:00:00');
@@ -91,44 +45,71 @@ export function LessonPlanning() {
     return days;
   };
 
+  const initialPlan: Partial<LessonPlan> = {
+    weeklyTheme: '',
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    dailyPlans: generateEmptyDailyPlans(new Date().toISOString().split('T')[0], new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]),
+    methodology: '',
+    resources: '',
+    evaluation: '',
+    status: 'draft',
+    coordinatorFeedback: '',
+    aiSuggestions: [],
+    teacherId: user?.id || '',
+    teacherName: user?.name || ''
+  };
+
+  const [formData, setFormData] = useState<Partial<LessonPlan>>(initialPlan);
+
+  const filteredPlans = useMemo(() => {
+    if (user?.role === 'admin') return plans;
+    
+    if (user?.role === 'coordinator') {
+      if (user.managedLevel === 'all') return plans;
+      const levelClasses = mockClasses.filter(c => c.level === user.managedLevel).map(c => c.id);
+      return plans.filter(p => levelClasses.includes(p.classId));
+    }
+
+    return plans.filter(p => p.teacherId === user?.id);
+  }, [plans, user]);
+
+  const handleCreate = () => {
+    setFormData(initialPlan);
+    setSelectedPlan(null);
+    setActiveTab('editor');
+  };
+
+  const handleEdit = (plan: LessonPlan) => {
+    setFormData(plan);
+    setSelectedPlan(plan);
+    setActiveTab('editor');
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     
-    setFormData(prev => {
-      const next = { ...prev, [name]: value };
-      
-      if (name === 'classId') {
-        const cls = mockClasses.find(c => c.id === value);
-        next.className = cls?.name || '';
+    if (name === 'startDate' || name === 'endDate') {
+      const newFormData = { ...formData, [name]: value };
+      if (newFormData.startDate && newFormData.endDate) {
+        newFormData.dailyPlans = generateEmptyDailyPlans(newFormData.startDate, newFormData.endDate);
       }
-
-      // Re-generate daily plans if dates change
-      if (name === 'startDate' || name === 'endDate') {
-        if (next.startDate && next.endDate) {
-          next.dailyPlans = generateDailyPlans(next.startDate, next.endDate);
-        }
-      }
-      
-      return next;
-    });
+      setFormData(newFormData);
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
   };
 
   const handleDailyPlanChange = (index: number, field: string, value: string) => {
-    const updatedDailyPlans = [...(formData.dailyPlans || [])];
-    updatedDailyPlans[index] = { ...updatedDailyPlans[index], [field]: value };
-    setFormData(prev => ({ ...prev, dailyPlans: updatedDailyPlans }));
+    const newDailyPlans = [...(formData.dailyPlans || [])];
+    newDailyPlans[index] = { ...newDailyPlans[index], [field]: value };
+    setFormData({ ...formData, dailyPlans: newDailyPlans });
   };
 
   const simulateAiSuggestion = (type: AISuggestion['type'], profile?: string) => {
     setIsAiLoading(true);
     
-    // Extract deep context from form
     const weeklyTheme = formData.weeklyTheme || "tema atual";
-    const dailyData = (formData.dailyPlans || []).map(d => {
-      if (!d.subject && !d.theme && !d.content) return null;
-      return `${d.dayOfWeek}: ${d.subject || ''} - ${d.theme || ''} (${d.content || ''})`;
-    }).filter(Boolean).join('; ');
-
     const firstActiveDay = (formData.dailyPlans || []).find(d => d.subject || d.theme || d.content);
     const dayContext = firstActiveDay ? `${firstActiveDay.dayOfWeek} (${firstActiveDay.subject})` : "suas aulas";
 
@@ -137,29 +118,29 @@ export function LessonPlanning() {
       if (type === 'ideas') {
         content = `Analisando seu detalhamento para "${weeklyTheme}" e as atividades planejadas, sugerimos que em ${dayContext} você inclua uma 'Gincana de Conceitos'. Como você descreveu "${firstActiveDay?.content || 'os tópicos'} ", essa dinâmica ajudará a fixar o conteúdo de forma lúdica.`;
       } else if (type === 'improvement') {
-        content = `Para otimizar o fluxo de "${weeklyTheme}", notamos que seu cronograma diário (${dailyData.substring(0, 50)}...) pode ser potencializado com a 'Técnica de Espaçamento'. Recomendamos revisar brevemente o conteúdo do dia anterior antes de iniciar o novo tópico de hoje.`;
+        content = `Para fortalecer o plano de "${weeklyTheme}", recomendamos aplicar a 'Instrução por Pares'. Essa técnica ajudará os alunos a consolidarem os conceitos através da explicação entre colegas.`;
       } else {
         const profileLabel = profile === 'tdah' ? 'TDAH' : (profile === 'tea' ? 'Autismo' : (profile === 'dislexia' ? 'Dislexia' : 'Inclusão'));
-        content = `Para apoiar alunos com ${profileLabel} durante ${dayContext}, sugerimos adaptar a atividade de "${firstActiveDay?.theme || 'hoje'}" usando 'Chunking' (dividir em pedaços). Como o conteúdo é "${firstActiveDay?.content || 'extenso'}", forneça um guia visual com apenas 3 passos claros por vez.`;
+        content = `Para apoiar alunos com ${profileLabel} durante ${dayContext}, sugerimos adaptar a atividade de "${firstActiveDay?.theme || 'hoje'}" usando 'Chunking'. Forneça um guia visual com apenas 3 passos claros por vez.`;
       }
 
       const newSuggestion: AISuggestion = {
-        id: `s${Date.now()}`,
+        id: Date.now().toString(),
         type,
         content,
         isFavorite: false,
         createdAt: new Date().toISOString()
       };
-
       setFormData(prev => ({
         ...prev,
         aiSuggestions: [newSuggestion, ...(prev.aiSuggestions || [])]
       }));
       setIsAiLoading(false);
+      setActiveTab('ideas');
     }, 1500);
   };
 
-  const handleSave = (status: LessonPlan['status'] = 'draft') => {
+  const handleSave = (status: LessonPlan['status']) => {
     const plan: LessonPlan = {
       ...formData as LessonPlan,
       id: formData.id || `lp${Date.now()}`,
@@ -183,382 +164,338 @@ export function LessonPlanning() {
     });
 
     setActiveTab('list');
-    
-    let msg = 'Operação realizada com sucesso!';
-    if (status === 'pending') msg = 'Plano enviado para a coordenação!';
-    if (status === 'approved') msg = 'Plano aprovado com sucesso!';
-    if (status === 'returned') msg = 'Plano devolvido para o professor com observações.';
-    
-    alert(msg);
+    alert(status === 'pending' ? 'Plano enviado para a coordenação!' : status === 'approved' ? 'Plano aprovado!' : 'Operação realizada!');
   };
 
   return (
-    <div className="container" style={{ maxWidth: '1100px' }}>
-      <div className="flex justify-between items-center mb-8">
+    <div className="lesson-planning">
+      <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <BookOpen size={32} color="var(--color-primary)" /> Planejamento Pedagógico
-          </h1>
-          <p className="text-muted">Crie, otimize e receba suporte da IA para suas aulas</p>
+          <h2 style={{ margin: 0 }}>Planejamento Pedagógico</h2>
+          <p className="text-muted">Gestão estratégica de conteúdos e atividades</p>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button onClick={() => setActiveTab('list')} className={`btn ${activeTab === 'list' ? 'btn-primary' : 'btn-secondary'}`}>Lista de Planos</button>
-          <button onClick={() => setActiveTab('ideas')} className={`btn ${activeTab === 'ideas' ? 'btn-primary' : 'btn-secondary'}`}>Banco de Ideias</button>
-          {!isAdmin && <button onClick={handleCreate} className="btn btn-primary" style={{ backgroundColor: '#10b981', boxShadow: 'none' }}><Plus size={18} /> Novo Plano</button>}
-        </div>
+        {!isAdmin && activeTab === 'list' && (
+          <button className="btn btn-primary" onClick={handleCreate}>
+            <Plus size={20} /> Novo Planejamento
+          </button>
+        )}
       </div>
 
-      {/* ===== LIST VIEW ===== */}
-      {activeTab === 'list' && (
-        <div className="grid grid-cols-1 gap-4">
-          {filteredPlans.map(plan => (
-            <div key={plan.id} className="card hover-scale" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => handleEdit(plan)}>
-              <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-                <div style={{ 
-                  width: '50px', height: '50px', borderRadius: '12px', 
-                  backgroundColor: plan.status === 'approved' ? '#dcfce7' : (plan.status === 'returned' ? '#fee2e2' : (plan.status === 'pending' ? '#fff7ed' : '#f1f5f9')),
-                  display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                  <BookOpen size={24} color={plan.status === 'approved' ? '#166534' : (plan.status === 'returned' ? '#b91c1c' : (plan.status === 'pending' ? '#c2410c' : '#64748b'))} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{plan.weeklyTheme}</h3>
-                    {isAdmin && <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', backgroundColor: '#f1f5f9', borderRadius: '4px', color: '#64748b' }}>Prof. {plan.teacherName}</span>}
-                  </div>
-                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-                    {plan.className} • {new Date(plan.startDate).toLocaleDateString()} a {new Date(plan.endDate).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ 
-                    padding: '0.3rem 0.75rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800,
+      {activeTab === 'list' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {filteredPlans.length === 0 ? (
+            <div className="card col-span-full p-12 text-center">
+              <FileText size={48} color="#cbd5e1" style={{ margin: '0 auto 1rem' }} />
+              <h3 className="text-muted">Nenhum planejamento encontrado</h3>
+              <p className="text-muted">Crie seu primeiro plano para começar.</p>
+            </div>
+          ) : (
+            filteredPlans.map(plan => (
+              <div key={plan.id} className="card p-6 cursor-pointer hover-card" onClick={() => handleEdit(plan)}>
+                <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+                  <div style={{ 
+                    width: '50px', height: '50px', borderRadius: '12px', 
                     backgroundColor: plan.status === 'approved' ? '#dcfce7' : (plan.status === 'returned' ? '#fee2e2' : (plan.status === 'pending' ? '#fff7ed' : '#f1f5f9')),
-                    color: plan.status === 'approved' ? '#166534' : (plan.status === 'returned' ? '#b91c1c' : (plan.status === 'pending' ? '#c2410c' : '#64748b'))
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
                   }}>
-                    {plan.status === 'returned' ? 'PEDIDO DE AJUSTE' : plan.status.toUpperCase()}
-                  </span>
-                  {plan.aiSuggestions.length > 0 && (
-                    <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}>
-                      <Sparkles size={12} /> {plan.aiSuggestions.length} Ideias de IA
+                    <BookOpen size={24} color={plan.status === 'approved' ? '#166534' : (plan.status === 'returned' ? '#b91c1c' : (plan.status === 'pending' ? '#c2410c' : '#64748b'))} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{plan.weeklyTheme}</h3>
+                      {isAdmin && <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', backgroundColor: '#f1f5f9', borderRadius: '4px', color: '#64748b' }}>Prof. {plan.teacherName}</span>}
                     </div>
-                  )}
+                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+                      {plan.className} • {new Date(plan.startDate).toLocaleDateString()} a {new Date(plan.endDate).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ 
+                      padding: '0.3rem 0.75rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800,
+                      backgroundColor: plan.status === 'approved' ? '#dcfce7' : (plan.status === 'returned' ? '#fee2e2' : (plan.status === 'pending' ? '#fff7ed' : '#f1f5f9')),
+                      color: plan.status === 'approved' ? '#166534' : (plan.status === 'returned' ? '#b91c1c' : (plan.status === 'pending' ? '#c2410c' : '#64748b'))
+                    }}>
+                      {plan.status === 'returned' ? 'PEDIDO DE AJUSTE' : plan.status.toUpperCase()}
+                    </span>
+                  </div>
                 </div>
-                <ChevronRight size={20} color="#cbd5e1" />
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
-      )}
-
-      {/* ===== EDITOR VIEW ===== */}
-      {activeTab === 'editor' && (
-        <div className="grid grid-cols" style={{ gridTemplateColumns: '1.5fr 1fr', gap: '2rem' }}>
-          <div className="card" style={{ padding: '2rem' }}>
-            <h3 className="mb-6">{selectedPlan ? 'Editar Plano de Aula' : 'Novo Plano de Aula'}</h3>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className="form-group">
-                <label>Turma</label>
-                <select name="classId" value={formData.classId} onChange={handleInputChange} disabled={isAdmin}>
-                  <option value="">Selecione a turma</option>
-                  {mockClasses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+      ) : activeTab === 'editor' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="card p-8">
+              <div className="flex justify-between items-center mb-8">
+                <h3 className="flex items-center gap-2" style={{ margin: 0 }}>
+                  <FileText size={24} color="var(--color-primary)" /> Informações Gerais
+                </h3>
+                <button className="btn btn-secondary" onClick={() => setActiveTab('list')}>Voltar</button>
               </div>
-              <div className="form-group">
-                <label>Início da Semana</label>
-                <input type="date" name="startDate" value={formData.startDate} onChange={handleInputChange} disabled={isAdmin} />
-              </div>
-              <div className="form-group">
-                <label>Fim da Semana</label>
-                <input type="date" name="endDate" value={formData.endDate} onChange={handleInputChange} disabled={isAdmin} />
-              </div>
-            </div>
-            <div className="form-group mb-4">
-              <label>Tema Geral da Semana</label>
-              <input type="text" name="weeklyTheme" value={formData.weeklyTheme} onChange={handleInputChange} placeholder="Ex: Semana do Meio Ambiente, Frações..." disabled={isAdmin} />
-            </div>
 
-            {/* DYNAMIC DAILY FIELDS */}
-            <div className="mt-8 mb-8">
-              <h4 className="flex items-center gap-2 mb-4" style={{ color: 'var(--color-primary)' }}>
-                <Calendar size={18} /> Detalhamento Diário
-              </h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                {(formData.dailyPlans || []).map((day, idx) => (
-                  <div key={day.date} className="card" style={{ padding: '1.5rem', backgroundColor: '#f8fafc', borderLeft: '5px solid var(--color-primary)', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                    <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-200">
-                      <span style={{ fontWeight: 800, fontSize: '1rem', color: '#1e293b' }}>
-                        {day.dayOfWeek} — {new Date(day.date + 'T00:00:00').toLocaleDateString('pt-BR')}
-                      </span>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div className="form-group">
-                        <label style={{ fontSize: '0.75rem', fontWeight: 700 }}>Disciplina</label>
-                        <input 
-                          type="text" 
-                          value={day.subject} 
-                          onChange={(e) => handleDailyPlanChange(idx, 'subject', e.target.value)}
-                          placeholder="Matemática, Português..."
-                          disabled={isAdmin}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label style={{ fontSize: '0.75rem', fontWeight: 700 }}>Tema do Dia</label>
-                        <input 
-                          type="text" 
-                          value={day.theme} 
-                          onChange={(e) => handleDailyPlanChange(idx, 'theme', e.target.value)}
-                          placeholder="Assunto da aula..."
-                          disabled={isAdmin}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="form-group mb-4">
-                      <label style={{ fontSize: '0.75rem', fontWeight: 700 }}>Objetivos de Aprendizagem</label>
-                      <textarea 
-                        value={day.objectives} 
-                        onChange={(e) => handleDailyPlanChange(idx, 'objectives', e.target.value)}
-                        rows={2}
-                        placeholder="O que o aluno deve aprender hoje?"
-                        disabled={isAdmin}
-                      ></textarea>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="form-group">
-                        <label style={{ fontSize: '0.75rem', fontWeight: 700 }}>Conteúdo</label>
-                        <textarea 
-                          value={day.content} 
-                          onChange={(e) => handleDailyPlanChange(idx, 'content', e.target.value)}
-                          rows={2}
-                          placeholder="Teoria e tópicos..."
-                          disabled={isAdmin}
-                        ></textarea>
-                      </div>
-                      <div className="form-group">
-                        <label style={{ fontSize: '0.75rem', fontWeight: 700 }}>Atividades</label>
-                        <textarea 
-                          value={day.activities} 
-                          onChange={(e) => handleDailyPlanChange(idx, 'activities', e.target.value)}
-                          rows={2}
-                          placeholder="Prática e exercícios..."
-                          disabled={isAdmin}
-                        ></textarea>
-                      </div>
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="field-group">
+                    <label>Turma</label>
+                    <select name="classId" value={formData.classId} onChange={handleInputChange} disabled={isAdmin}>
+                      <option value="">Selecione a turma</option>
+                      {mockClasses.filter(c => c.teacherId === user?.id || isAdmin).map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="field-group">
+                    <label>Período (Início - Fim)</label>
+                    <div className="flex gap-2">
+                      <input type="date" name="startDate" value={formData.startDate} onChange={handleInputChange} disabled={isAdmin} />
+                      <input type="date" name="endDate" value={formData.endDate} onChange={handleInputChange} disabled={isAdmin} />
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
 
-            <div className="form-group mb-4">
-              <label>Metodologia e Estratégias Gerais</label>
-              <textarea name="methodology" value={formData.methodology} onChange={handleInputChange} rows={4} placeholder="Como a semana será conduzida?" disabled={isAdmin}></textarea>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="form-group">
-                <label>Recursos Necessários</label>
-                <textarea name="resources" value={formData.resources} onChange={handleInputChange} rows={2} disabled={isAdmin}></textarea>
-              </div>
-              <div className="form-group">
-                <label>Avaliação</label>
-                <textarea name="evaluation" value={formData.evaluation} onChange={handleInputChange} rows={2} disabled={isAdmin}></textarea>
-              </div>
-            </div>
+                <div className="field-group">
+                  <label>Tema da Semana</label>
+                  <input 
+                    type="text" 
+                    name="weeklyTheme" 
+                    value={formData.weeklyTheme} 
+                    onChange={handleInputChange} 
+                    placeholder="Ex: Primavera e Meio Ambiente"
+                    disabled={isAdmin}
+                  />
+                </div>
 
-            {!isAdmin && (
-              <div className="flex gap-4 mt-8">
-                <button className="btn btn-secondary" onClick={() => handleSave('draft')}><Save size={18} /> Salvar Rascunho</button>
-                <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => handleSave('pending')}><Send size={18} /> Enviar para Coordenação</button>
-              </div>
-            )}
+                {/* Daily Breakdown */}
+                <div className="mt-8">
+                  <h4 className="flex items-center gap-2 mb-4" style={{ color: 'var(--color-primary)' }}>
+                    <Calendar size={18} /> Detalhamento Diário
+                  </h4>
+                  
+                  <div className="space-y-4">
+                    {formData.dailyPlans?.map((day, idx) => (
+                      <div key={idx} className="p-4 rounded-lg border border-border bg-surface/50">
+                        <div className="flex items-center justify-between mb-3">
+                          <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-primary)' }}>
+                            {day.dayOfWeek} ({new Date(day.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })})
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                          <div className="field-group">
+                            <label style={{ fontSize: '0.75rem' }}>Disciplina</label>
+                            <input 
+                              type="text" 
+                              value={day.subject} 
+                              onChange={(e) => handleDailyPlanChange(idx, 'subject', e.target.value)}
+                              placeholder="Ex: Português"
+                              disabled={isAdmin}
+                              style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
+                            />
+                          </div>
+                          <div className="field-group">
+                            <label style={{ fontSize: '0.75rem' }}>Tema do Dia</label>
+                            <input 
+                              type="text" 
+                              value={day.theme} 
+                              onChange={(e) => handleDailyPlanChange(idx, 'theme', e.target.value)}
+                              placeholder="Ex: Leitura Compartilhada"
+                              disabled={isAdmin}
+                              style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
+                            />
+                          </div>
+                        </div>
+                        <div className="field-group mb-4">
+                          <label style={{ fontSize: '0.75rem' }}>Objetivos de Aprendizagem</label>
+                          <textarea 
+                            value={day.objectives} 
+                            onChange={(e) => handleDailyPlanChange(idx, 'objectives', e.target.value)}
+                            placeholder="Descreva o que os alunos devem aprender..."
+                            disabled={isAdmin}
+                            rows={2}
+                            style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
+                          ></textarea>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="field-group">
+                            <label style={{ fontSize: '0.75rem' }}>Conteúdo</label>
+                            <textarea 
+                              value={day.content} 
+                              onChange={(e) => handleDailyPlanChange(idx, 'content', e.target.value)}
+                              placeholder="Conteúdo programático..."
+                              disabled={isAdmin}
+                              rows={3}
+                              style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
+                            ></textarea>
+                          </div>
+                          <div className="field-group">
+                            <label style={{ fontSize: '0.75rem' }}>Atividades</label>
+                            <textarea 
+                              value={day.activities} 
+                              onChange={(e) => handleDailyPlanChange(idx, 'activities', e.target.value)}
+                              placeholder="Atividades práticas..."
+                              disabled={isAdmin}
+                              rows={3}
+                              style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
+                            ></textarea>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
-            {isAdmin && (
-              <div className="mt-8 pt-8 border-t" style={{ backgroundColor: '#fff7ed', padding: '1.5rem', borderRadius: '12px', border: '1px solid #ffedd5' }}>
-                <h4 className="flex items-center gap-2 mb-2" style={{ color: '#c2410c' }}>
-                  <MessageSquare size={18} /> Devolutiva da Coordenação
-                </h4>
-                <p style={{ fontSize: '0.8rem', color: '#9a3412', marginBottom: '1rem' }}>
-                  {formData.status === 'pending' 
-                    ? 'Este plano aguarda sua revisão. Escreva as orientações e escolha uma ação abaixo.' 
-                    : `Status atual: ${formData.status === 'approved' ? 'Aprovado' : 'Em rascunho/ajuste'}`}
-                </p>
-                <textarea 
-                   placeholder="Escreva suas orientações pedagógicas aqui..." 
-                   name="coordinatorFeedback"
-                   value={formData.coordinatorFeedback || ''}
-                   onChange={handleInputChange}
-                   style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid #fed7aa', marginBottom: '1rem', fontSize: '0.9rem' }}
-                   rows={4}
-                ></textarea>
-                <div className="flex gap-4">
-                  <button className="btn btn-primary" style={{ flex: 1, backgroundColor: '#10b981', boxShadow: 'none' }} onClick={() => handleSave('approved')}>
-                    {formData.status === 'approved' ? 'Atualizar Feedback' : 'Aprovar Plano'}
+                <div className="field-group">
+                  <label>Metodologia Geral</label>
+                  <textarea name="methodology" value={formData.methodology} onChange={handleInputChange} rows={3} disabled={isAdmin}></textarea>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="field-group">
+                    <label>Recursos</label>
+                    <textarea name="resources" value={formData.resources} onChange={handleInputChange} rows={3} disabled={isAdmin}></textarea>
+                  </div>
+                  <div className="field-group">
+                    <label>Avaliação</label>
+                    <textarea name="evaluation" value={formData.evaluation} onChange={handleInputChange} rows={3} disabled={isAdmin}></textarea>
+                  </div>
+                </div>
+              </div>
+
+              {!isAdmin && (
+                <div className="flex gap-4 mt-8 pt-8 border-t">
+                  <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => handleSave('draft')}>
+                    <Save size={20} /> Salvar Rascunho
                   </button>
-                  <button className="btn btn-secondary" style={{ flex: 1, color: '#ef4444', border: '1px solid #fee2e2' }} onClick={() => handleSave('returned')}>Solicitar Ajustes</button>
+                  <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => handleSave('pending')}>
+                    <Send size={20} /> Enviar para Coordenação
+                  </button>
                 </div>
-              </div>
-            )}
+              )}
 
-            {formData.coordinatorFeedback && !isAdmin && (
-              <div className="mt-8 pt-8 border-t" style={{ backgroundColor: '#f0f9ff', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e0f2fe' }}>
-                <h4 className="flex items-center gap-2 mb-2" style={{ color: '#0369a1' }}>
-                  <MessageSquare size={18} /> Comentários da Coordenação
-                </h4>
-                <p style={{ fontSize: '0.9rem', color: '#0c4a6e', margin: 0, whiteSpace: 'pre-wrap' }}>{formData.coordinatorFeedback}</p>
-                <p style={{ fontSize: '0.75rem', color: '#38bdf8', marginTop: '0.5rem', fontWeight: 600 }}>Revise as orientações e envie novamente se necessário.</p>
-              </div>
-            )}
-          </div>
-
-          {/* AI PANEL */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <div className="card" style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #ffffff 100%)', border: '1px solid #bfdbfe' }}>
-              <h3 className="flex items-center gap-2 mb-4" style={{ color: 'var(--color-primary)' }}>
-                <Sparkles size={22} /> Copiloto Pedagógico IA
-              </h3>
-              <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1.5rem' }}>
-                Use a inteligência artificial para potencializar seu planejamento. Clique nos botões abaixo para receber sugestões:
-              </p>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <button 
-                  className="btn btn-secondary ai-btn" 
-                  disabled={isAiLoading}
-                  onClick={() => simulateAiSuggestion('ideas')}
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#1e293b', fontWeight: 600 }}
-                >
-                  <Wand2 size={18} color="var(--color-primary)" /> 
-                  <span>Gerar ideias de aula</span>
-                </button>
-                <button 
-                  className="btn btn-secondary ai-btn" 
-                  disabled={isAiLoading}
-                  onClick={() => simulateAiSuggestion('improvement')}
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#1e293b', fontWeight: 600 }}
-                >
-                  <TrendingUp size={18} color="var(--color-primary)" /> 
-                  <span>Melhorar metodologia</span>
-                </button>
-                <div className="mt-4 pt-4 border-t">
-                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '0.5rem' }}>Perfil para Adaptação</label>
-                  <select 
-                    style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.85rem' }}
-                    defaultValue="tdah"
-                    id="inclusion-profile"
-                  >
-                    <option value="tdah">TDAH (Atenção/Hiperatividade)</option>
-                    <option value="tea">TEA (Autismo)</option>
-                    <option value="dislexia">Dislexia</option>
-                    <option value="tod">TOD (Opositor Desafiador)</option>
-                    <option value="altas-habilidades">Altas Habilidades</option>
-                    <option value="outros">Outros / Geral</option>
-                  </select>
+              {isAdmin && (
+                <div className="mt-8 pt-8 border-t" style={{ backgroundColor: '#fff7ed', padding: '1.5rem', borderRadius: '12px', border: '1px solid #ffedd5' }}>
+                  <h4 className="flex items-center gap-2 mb-2" style={{ color: '#c2410c' }}>
+                    <MessageSquare size={18} /> Devolutiva da Coordenação
+                  </h4>
+                  <p style={{ fontSize: '0.8rem', color: '#9a3412', marginBottom: '1rem' }}>
+                    {formData.status === 'pending' 
+                      ? 'Este plano aguarda sua revisão. Escreva as orientações e escolha uma ação abaixo.' 
+                      : `Status atual: ${formData.status === 'approved' ? 'Aprovado' : 'Em rascunho/ajuste'}`}
+                  </p>
+                  <textarea 
+                     placeholder="Escreva suas orientações pedagógicas aqui..." 
+                     name="coordinatorFeedback"
+                     value={formData.coordinatorFeedback || ''}
+                     onChange={handleInputChange}
+                     style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid #fed7aa', marginBottom: '1rem', fontSize: '0.9rem' }}
+                     rows={4}
+                  ></textarea>
+                  <div className="flex gap-4">
+                    <button className="btn btn-primary" style={{ flex: 1, backgroundColor: '#10b981', boxShadow: 'none' }} onClick={() => handleSave('approved')}>
+                      {formData.status === 'approved' ? 'Atualizar Feedback' : 'Aprovar Plano'}
+                    </button>
+                    <button className="btn btn-secondary" style={{ flex: 1, color: '#ef4444', border: '1px solid #fee2e2' }} onClick={() => handleSave('returned')}>Solicitar Ajustes</button>
+                  </div>
                 </div>
-                <button 
-                  className="btn btn-secondary ai-btn mt-2" 
-                  disabled={isAiLoading}
-                  onClick={() => {
-                    const profile = (document.getElementById('inclusion-profile') as HTMLSelectElement)?.value;
-                    simulateAiSuggestion('adaptation', profile);
-                  }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#1e293b', fontWeight: 600, width: '100%' }}
-                >
-                  <Users2 size={18} color="var(--color-primary)" /> 
-                  <span>Sugerir adaptação (Inclusão)</span>
-                </button>
-              </div>
+              )}
 
-              {isAiLoading && (
-                <div style={{ marginTop: '2rem', textAlign: 'center' }}>
-                  <div className="loader" style={{ margin: '0 auto 1rem' }}></div>
-                  <p style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-primary)' }}>IA analisando seu plano...</p>
+              {formData.coordinatorFeedback && !isAdmin && (
+                <div className="mt-8 pt-8 border-t" style={{ backgroundColor: '#f0f9ff', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e0f2fe' }}>
+                  <h4 className="flex items-center gap-2 mb-2" style={{ color: '#0369a1' }}>
+                    <MessageSquare size={18} /> Comentários da Coordenação
+                  </h4>
+                  <p style={{ fontSize: '0.9rem', color: '#0c4a6e', margin: 0, whiteSpace: 'pre-wrap' }}>{formData.coordinatorFeedback}</p>
+                  <p style={{ fontSize: '0.75rem', color: '#38bdf8', marginTop: '0.5rem', fontWeight: 600 }}>Revise as orientações e envie novamente se necessário.</p>
                 </div>
               )}
             </div>
+          </div>
 
-            <div className="card" style={{ flex: 1 }}>
-              <h3 className="mb-4 flex items-center gap-2">
-                <History size={18} color="#64748b" /> Sugestões Recentes
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {(formData.aiSuggestions || []).map(s => (
-                  <div key={s.id} style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', position: 'relative' }}>
-                    <div className="flex justify-between items-start mb-2">
-                      <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-primary)', backgroundColor: '#eff6ff', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
-                        {s.type === 'ideas' ? 'IDEIAS' : (s.type === 'improvement' ? 'MELHORIA' : 'ADAPTAÇÃO')}
-                      </span>
-                      <button style={{ background: 'none', border: 'none', cursor: 'pointer' }}><Star size={16} color={s.isFavorite ? '#f59e0b' : '#cbd5e1'} fill={s.isFavorite ? '#f59e0b' : 'none'} /></button>
+          <div className="space-y-6">
+            <div className="card p-6" style={{ background: 'linear-gradient(135deg, #0a73ff 0%, #0052cc 100%)', color: 'white' }}>
+              <div className="flex items-center gap-3 mb-6">
+                <div style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.5rem', borderRadius: '8px' }}>
+                  <Brain size={24} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0 }}>Copiloto Pedagógico</h3>
+                  <p style={{ margin: 0, fontSize: '0.8rem', opacity: 0.8 }}>IA Assistente de Planejamento</p>
+                </div>
+              </div>
+              
+              <div className="space-y-4">
+                <button 
+                  className="btn" 
+                  style={{ width: '100%', backgroundColor: 'white', color: 'var(--color-primary)', justifyContent: 'flex-start', gap: '0.75rem' }}
+                  onClick={() => simulateAiSuggestion('ideas')}
+                  disabled={isAiLoading}
+                >
+                  <Sparkles size={18} /> {isAiLoading ? 'Analisando...' : 'Sugerir ideias de aula'}
+                </button>
+                <button 
+                  className="btn" 
+                  style={{ width: '100%', backgroundColor: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.3)', justifyContent: 'flex-start', gap: '0.75rem' }}
+                  onClick={() => simulateAiSuggestion('improvement')}
+                  disabled={isAiLoading}
+                >
+                  <Target size={18} /> Sugerir melhorias no plano
+                </button>
+                
+                <div style={{ paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                  <p style={{ fontSize: '0.85rem', marginBottom: '0.75rem', fontWeight: 600 }}>Sugerir adaptação para inclusão:</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button onClick={() => simulateAiSuggestion('adaptation', 'tdah')} className="btn-ai-sub">TDAH</button>
+                    <button onClick={() => simulateAiSuggestion('adaptation', 'tea')} className="btn-ai-sub">Autismo</button>
+                    <button onClick={() => simulateAiSuggestion('adaptation', 'dislexia')} className="btn-ai-sub">Dislexia</button>
+                    <button onClick={() => simulateAiSuggestion('adaptation', 'down')} className="btn-ai-sub">T. de Down</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="card p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h4 style={{ margin: 0 }}>Histórico do Copiloto</h4>
+                <button className="btn btn-secondary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.7rem' }} onClick={() => setActiveTab('ideas')}>Ver todos</button>
+              </div>
+              <div className="space-y-4">
+                {formData.aiSuggestions?.slice(0, 3).map((s, i) => (
+                  <div key={i} style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '10px', fontSize: '0.85rem', border: '1px solid #e2e8f0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: 'var(--color-primary)', fontWeight: 700 }}>
+                      <Sparkles size={14} /> {s.type === 'ideas' ? 'Ideias' : s.type === 'improvement' ? 'Melhoria' : 'Adaptação'}
                     </div>
-                    <p style={{ fontSize: '0.85rem', lineHeight: 1.5, margin: 0 }}>{s.content}</p>
-                    <button 
-                      style={{ marginTop: '1rem', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                      onClick={() => {
-                        // Clean up the content (remove prefixes like "Sugestão: ", "A IA sugere: ", etc)
-                        const cleanContent = s.content
-                          .replace(/^(Sugestão|Sugerimos|A IA sugere|Dica):\s*/i, '')
-                          .trim();
-
-                        if (s.type === 'ideas') {
-                          // For ideas, we append to methodology or theme notes
-                          setFormData(prev => ({ ...prev, methodology: (prev.methodology ? prev.methodology + '\n\n' : '') + 'Ideia de Atividade: ' + cleanContent }));
-                        } else if (s.type === 'improvement') {
-                          setFormData(prev => ({ ...prev, methodology: (prev.methodology ? prev.methodology + '\n\n' : '') + cleanContent }));
-                        } else {
-                          // For adaptation, maybe add to methodology or a new notes field
-                          setFormData(prev => ({ ...prev, methodology: (prev.methodology ? prev.methodology + '\n\n' : '') + 'Adaptação: ' + cleanContent }));
-                        }
-                        alert('Sugestão aplicada ao seu plano!');
-                      }}
-                    >
-                      + Aplicar ao meu plano
-                    </button>
+                    <p style={{ margin: 0, lineClamp: 3, overflow: 'hidden', display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 3 }}>{s.content}</p>
                   </div>
                 ))}
-                {(formData.aiSuggestions || []).length === 0 && !isAiLoading && (
-                  <div style={{ textAlign: 'center', padding: '3rem 1rem', opacity: 0.5 }}>
-                    <MessageSquare size={32} style={{ margin: '0 auto 0.5rem' }} />
-                    <p style={{ fontSize: '0.85rem' }}>As sugestões da IA aparecerão aqui conforme você as solicitar.</p>
-                  </div>
+                {(!formData.aiSuggestions || formData.aiSuggestions.length === 0) && (
+                  <p className="text-center text-muted" style={{ padding: '2rem 0', fontSize: '0.85rem' }}>Nenhuma sugestão gerada ainda.</p>
                 )}
               </div>
             </div>
           </div>
         </div>
-      )}
-
-      {/* ===== IDEAS BANK VIEW ===== */}
-      {activeTab === 'ideas' && (
-        <div className="grid grid-cols-1 gap-6">
-          <div className="card" style={{ display: 'flex', gap: '1rem', alignItems: 'center', padding: '1.25rem' }}>
-            <Filter size={20} color="#64748b" />
-            <select style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.85rem' }}>
-              <option>Todas as Disciplinas</option>
-              <option>Matemática</option>
-              <option>Artes</option>
-            </select>
-            <input type="text" placeholder="Pesquisar por tema..." style={{ flex: 1, padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.85rem' }} />
+      ) : (
+        <div className="card p-8">
+          <div className="flex justify-between items-center mb-8">
+            <h3 style={{ margin: 0 }}>Banco de Ideias da IA</h3>
+            <button className="btn btn-secondary" onClick={() => setActiveTab('editor')}>Voltar ao Editor</button>
           </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            {plans.flatMap(p => p.aiSuggestions.map(s => ({ ...s, planTheme: p.weeklyTheme }))).map(item => (
-              <div key={item.id} className="card">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-primary)', backgroundColor: '#eff6ff', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
-                      {item.type.toUpperCase()}
-                    </span>
-                    <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.4rem' }}>Plano: {item.planTheme}</p>
-                  </div>
-                  <Star size={18} color="#f59e0b" fill="#f59e0b" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {formData.aiSuggestions?.map((s, i) => (
+              <div key={i} className="card p-6" style={{ border: '1px solid #e2e8f0', position: 'relative' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--color-primary)', fontWeight: 800 }}>
+                  <Sparkles size={18} /> {s.type === 'ideas' ? 'Sugestão de Aula' : s.type === 'improvement' ? 'Melhoria Pedagógica' : 'Adaptação Curricular'}
                 </div>
-                <p style={{ fontSize: '0.9rem', lineHeight: 1.5 }}>{item.content}</p>
-                <button className="btn btn-secondary mt-4" style={{ width: '100%', fontSize: '0.8rem' }}>Usar em novo plano</button>
+                <p style={{ marginBottom: '1.5rem', lineHeight: 1.6 }}>{s.content}</p>
+                <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => {
+                   // Simple mock implementation of "Apply"
+                   const cleanContent = s.content.replace(/^(Sugestão|A IA sugere|Recomendação): /i, '');
+                   if (s.type === 'ideas') setFormData(f => ({ ...f, activities: (f.activities ? f.activities + '\n\n' : '') + cleanContent }));
+                   else if (s.type === 'improvement') setFormData(f => ({ ...f, methodology: (f.methodology ? f.methodology + '\n\n' : '') + cleanContent }));
+                   alert('Sugestão copiada para o plano!');
+                }}>
+                  Aplicar ao meu plano
+                </button>
               </div>
             ))}
           </div>
@@ -566,15 +503,20 @@ export function LessonPlanning() {
       )}
 
       <style>{`
-        .ai-btn { 
-          justify-content: flex-start; text-align: left; padding: 0.75rem 1.25rem; 
-          background: white; border: 1px solid #e2e8f0; font-size: 0.9rem;
+        .field-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        .field-group label { font-weight: 700; font-size: 0.85rem; color: #475569; }
+        .btn-ai-sub {
+          padding: 0.5rem;
+          background-color: rgba(255,255,255,0.1);
+          border: 1px solid rgba(255,255,255,0.2);
+          color: white;
+          border-radius: 6px;
+          font-size: 0.75rem;
+          cursor: pointer;
           transition: all 0.2s;
         }
-        .ai-btn:hover:not(:disabled) { 
-          border-color: var(--color-primary); background-color: #eff6ff; transform: translateX(5px);
-        }
-        .ai-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-ai-sub:hover { background-color: rgba(255,255,255,0.2); }
+        .hover-card:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
       `}</style>
     </div>
   );

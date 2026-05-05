@@ -109,15 +109,21 @@ export function LessonPlanning() {
 
   const simulateAiSuggestion = (type: AISuggestion['type'], profile?: string) => {
     setIsAiLoading(true);
+    
+    // Get context from form
+    const theme = formData.weeklyTheme || "tema atual";
+    const subjects = (formData.dailyPlans || []).map(d => d.subject).filter(Boolean).join(', ') || "disciplina";
+    const mainSubject = (formData.dailyPlans && formData.dailyPlans[0]?.subject) || "conteúdo";
+
     setTimeout(() => {
       let content = "";
       if (type === 'ideas') {
-        content = "Sugerimos integrar uma estação de 'Realidade Aumentada' simples usando cartões impressos para visualizar os elementos do tema. Para a dinâmica, um 'Quiz Interativo' em duplas aumentaria o engajamento.";
+        content = `Com base no seu tema "${theme}", sugerimos integrar uma estação de 'Aprendizagem Ativa'. Para ${mainSubject}, uma dinâmica de 'Resolução de Problemas Reais' em pequenos grupos aumentaria significativamente o engajamento dos alunos.`;
       } else if (type === 'improvement') {
-        content = "Sua metodologia pode ser fortalecida com a técnica de 'Sala de Aula Invertida'. Sugerimos que os alunos pesquisem o tema base antes da aula para que o tempo em sala seja 100% focado em resolução de problemas.";
+        content = `Para fortalecer o ensino de "${theme}", recomendamos aplicar a 'Instrução por Pares'. Como você está trabalhando com ${subjects}, essa técnica ajudará os alunos a consolidarem os conceitos através da explicação entre colegas antes da sua intervenção final.`;
       } else {
-        const profileLabel = profile === 'tdah' ? 'TDAH' : (profile === 'tea' ? 'Autismo' : 'Inclusão');
-        content = `Para alunos com ${profileLabel}, sugerimos dividir a atividade principal em blocos de 15 minutos com pausas ativas. Use estímulos visuais coloridos e forneça um roteiro passo-a-passo simplificado para evitar sobrecarga cognitiva.`;
+        const profileLabel = profile === 'tdah' ? 'TDAH' : (profile === 'tea' ? 'Autismo' : (profile === 'dislexia' ? 'Dislexia' : 'Inclusão'));
+        content = `Considerando seu plano sobre "${theme}" e o perfil de ${profileLabel}, sugerimos adaptar as atividades de ${mainSubject} usando cronogramas visuais e dividindo as tarefas em subtarefas menores. Use fontes maiores e contraste alto para facilitar a leitura e reduzir a sobrecarga cognitiva.`;
       }
 
       const newSuggestion: AISuggestion = {

@@ -7,6 +7,7 @@ import {
   Sliders, UserCog, Baby, FileArchive, Printer, MessageSquareText, Menu, X
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { mockClasses } from '../store/mockDb';
 
 interface NavItem {
   name: string;
@@ -66,12 +67,18 @@ export function Layout() {
     academicoItems.push({ name: 'Frequência', path: '/attendance', icon: <CalendarCheck size={18} /> });
     academicoItems.push({ name: 'Conteúdos', path: '/lessons', icon: <BookOpen size={18} /> });
     
-    if (user.role === 'admin' || user.role === 'coordinator' || user.specialty === 'english') {
+    if ((user.role === 'admin' || user.role === 'coordinator' || user.specialty === 'english') && user.managedLevel !== 'infantil') {
       academicoItems.push({ name: 'Lançar Notas', path: '/grades', icon: <ClipboardList size={18} /> });
     }
   }
 
-  academicoItems.push({ name: 'Boletim', path: '/bulletin', icon: <BookOpenCheck size={18} /> });
+  const isInfantilTeacher = user.role === 'teacher' && mockClasses.find(c => c.teacherId === user.id)?.level === 'infantil';
+  const isInfantilCoord = user.role === 'coordinator' && user.managedLevel === 'infantil';
+  const hideBulletin = isInfantilTeacher || isInfantilCoord;
+
+  if (!hideBulletin) {
+    academicoItems.push({ name: 'Boletim', path: '/bulletin', icon: <BookOpenCheck size={18} /> });
+  }
   
   if (!isResponsible) {
     academicoItems.push({ name: 'Imprimir Diário', path: '/diary', icon: <Printer size={18} /> });

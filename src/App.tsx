@@ -4,6 +4,7 @@ import { SettingsProvider } from './contexts/SettingsContext';
 import { YearProvider } from './contexts/YearContext';
 import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
+import { LessonPlanning } from './pages/LessonPlanning';
 import { Home } from './pages/Home';
 import { ReportGenerator } from './pages/ReportGenerator';
 import { PeiGenerator } from './pages/PeiGenerator';
@@ -46,6 +47,7 @@ export function App() {
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/diary" element={<ClassDiary />} />
                 <Route path="/agenda" element={<Agenda />} />
+                <Route path="/planning" element={<LessonPlanning />} />
               </Route>
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>

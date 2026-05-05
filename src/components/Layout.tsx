@@ -57,6 +57,7 @@ export function Layout() {
   // INÍCIO — everyone
   flatItems.push({ name: 'Início', path: '/', icon: <LayoutDashboard size={18} /> });
   flatItems.push({ name: 'Agenda Digital', path: '/agenda', icon: <MessageSquareText size={18} /> });
+  flatItems.push({ name: 'Planejamento de Aula', path: '/planning', icon: <BookOpenCheck size={18} /> });
 
   // ACADÊMICO
   const academicoItems: NavItem[] = [];

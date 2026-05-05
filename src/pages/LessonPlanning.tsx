@@ -306,9 +306,20 @@ export function LessonPlanning() {
                     <button 
                       style={{ marginTop: '1rem', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
                       onClick={() => {
-                        // Logic to append to specific field
-                        if (s.type === 'ideas') setFormData(prev => ({ ...prev, activities: (prev.activities ? prev.activities + '\n\n' : '') + s.content }));
-                        if (s.type === 'improvement') setFormData(prev => ({ ...prev, methodology: (prev.methodology ? prev.methodology + '\n\n' : '') + s.content }));
+                        // Clean up the content (remove prefixes like "Sugestão: ", "A IA sugere: ", etc)
+                        const cleanContent = s.content
+                          .replace(/^(Sugestão|Sugerimos|A IA sugere|Dica):\s*/i, '')
+                          .trim();
+
+                        if (s.type === 'ideas') {
+                          setFormData(prev => ({ ...prev, activities: (prev.activities ? prev.activities + '\n\n' : '') + cleanContent }));
+                        } else if (s.type === 'improvement') {
+                          setFormData(prev => ({ ...prev, methodology: (prev.methodology ? prev.methodology + '\n\n' : '') + cleanContent }));
+                        } else {
+                          // For adaptation, maybe add to methodology or a new notes field
+                          setFormData(prev => ({ ...prev, methodology: (prev.methodology ? prev.methodology + '\n\n' : '') + 'Adaptação: ' + cleanContent }));
+                        }
+                        alert('Sugestão aplicada ao seu plano!');
                       }}
                     >
                       + Aplicar ao meu plano

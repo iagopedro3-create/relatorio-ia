@@ -1,13 +1,13 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Users, TrendingUp, AlertCircle, FileCheck } from 'lucide-react';
+import { Calendar, Users, TrendingUp, AlertCircle, FileCheck, CheckCircle2, BookOpenCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useYear } from '../contexts/YearContext';
-import { mockStudents, mockReports, mockClasses, mockEnrollments } from '../store/mockDb';
+import { mockStudents, mockReports, mockClasses, mockEnrollments, mockUsers } from '../store/mockDb';
 import type { ClassGroup, ReportRecord, Enrollment } from '../store/mockDb';
 import { Management } from './Management';
 import { mockMessages, mockEvents, CATEGORY_LABELS, EVENT_TYPES } from '../store/agendaDb';
-import { MessageSquare, Bell, Heart, BookOpenCheck, Clock } from 'lucide-react';
+import { MessageSquare, Bell, Heart, Clock } from 'lucide-react';
 
 const BIMESTRES = ['1º Bimestre', '2º Bimestre', '3º Bimestre', '4º Bimestre'];
 

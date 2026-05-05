@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { 
   BookOpen, Plus, Sparkles, Wand2, Users2, Save, 
   MessageSquare, CheckCircle2, History, Star, 
-  ChevronRight, Filter, Send, AlertCircle
+  ChevronRight, Filter, Send, AlertCircle, TrendingUp
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { mockClasses } from '../store/mockDb';

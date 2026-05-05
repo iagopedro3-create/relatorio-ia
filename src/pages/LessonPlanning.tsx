@@ -24,10 +24,10 @@ export function LessonPlanning() {
     className: '',
     subject: '',
     startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    endDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 5 days by default
     theme: '',
     objectives: '',
-    content: '',
+    dailyPlans: [],
     methodology: '',
     resources: '',
     activities: '',
@@ -55,14 +55,55 @@ export function LessonPlanning() {
     setActiveTab('editor');
   };
 
+  const getDayOfWeek = (dateStr: string) => {
+    const date = new Date(dateStr + 'T00:00:00');
+    return new Intl.DateTimeFormat('pt-BR', { weekday: 'long' }).format(date);
+  };
+
+  const generateDailyPlans = (start: string, end: string) => {
+    const days = [];
+    let current = new Date(start + 'T00:00:00');
+    const last = new Date(end + 'T00:00:00');
+    
+    while (current <= last) {
+      const dateStr = current.toISOString().split('T')[0];
+      days.push({
+        date: dateStr,
+        dayOfWeek: getDayOfWeek(dateStr).charAt(0).toUpperCase() + getDayOfWeek(dateStr).slice(1),
+        content: '',
+        activities: ''
+      });
+      current.setDate(current.getDate() + 1);
+    }
+    return days;
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    if (name === 'classId') {
-      const cls = mockClasses.find(c => c.id === value);
-      setFormData(prev => ({ ...prev, classId: value, className: cls?.name || '' }));
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
-    }
+    
+    setFormData(prev => {
+      const next = { ...prev, [name]: value };
+      
+      if (name === 'classId') {
+        const cls = mockClasses.find(c => c.id === value);
+        next.className = cls?.name || '';
+      }
+
+      // Re-generate daily plans if dates change
+      if (name === 'startDate' || name === 'endDate') {
+        if (next.startDate && next.endDate) {
+          next.dailyPlans = generateDailyPlans(next.startDate, next.endDate);
+        }
+      }
+      
+      return next;
+    });
+  };
+
+  const handleDailyPlanChange = (index: number, field: string, value: string) => {
+    const updatedDailyPlans = [...(formData.dailyPlans || [])];
+    updatedDailyPlans[index] = { ...updatedDailyPlans[index], [field]: value };
+    setFormData(prev => ({ ...prev, dailyPlans: updatedDailyPlans }));
   };
 
   const simulateAiSuggestion = (type: AISuggestion['type']) => {
@@ -199,12 +240,53 @@ export function LessonPlanning() {
               <input type="text" name="theme" value={formData.theme} onChange={handleInputChange} placeholder="Ex: Frações, Cores Primárias..." disabled={isAdmin} />
             </div>
             <div className="form-group mb-4">
-              <label>Objetivos de Aprendizagem</label>
+              <label>Objetivos de Aprendizagem (Semanais)</label>
               <textarea name="objectives" value={formData.objectives} onChange={handleInputChange} rows={3} disabled={isAdmin}></textarea>
             </div>
+
+            {/* DYNAMIC DAILY FIELDS */}
+            <div className="mt-8 mb-8">
+              <h4 className="flex items-center gap-2 mb-4" style={{ color: 'var(--color-primary)' }}>
+                <Calendar size={18} /> Cronograma Diário
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {(formData.dailyPlans || []).map((day, idx) => (
+                  <div key={day.date} className="card" style={{ padding: '1.25rem', backgroundColor: '#f8fafc', borderLeft: '4px solid var(--color-primary)' }}>
+                    <div className="flex justify-between items-center mb-3">
+                      <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#1e293b' }}>
+                        {day.dayOfWeek} — {new Date(day.date + 'T00:00:00').toLocaleDateString('pt-BR')}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3">
+                      <div className="form-group">
+                        <label style={{ fontSize: '0.75rem' }}>Conteúdo do Dia</label>
+                        <input 
+                          type="text" 
+                          value={day.content} 
+                          onChange={(e) => handleDailyPlanChange(idx, 'content', e.target.value)}
+                          placeholder="O que será ensinado?"
+                          disabled={isAdmin}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label style={{ fontSize: '0.75rem' }}>Atividades</label>
+                        <textarea 
+                          value={day.activities} 
+                          onChange={(e) => handleDailyPlanChange(idx, 'activities', e.target.value)}
+                          rows={2}
+                          placeholder="Atividades práticas..."
+                          disabled={isAdmin}
+                        ></textarea>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="form-group mb-4">
-              <label>Metodologia e Estratégias</label>
-              <textarea name="methodology" value={formData.methodology} onChange={handleInputChange} rows={4} placeholder="Como a aula será conduzida?" disabled={isAdmin}></textarea>
+              <label>Metodologia e Estratégias Gerais</label>
+              <textarea name="methodology" value={formData.methodology} onChange={handleInputChange} rows={4} placeholder="Como a semana será conduzida?" disabled={isAdmin}></textarea>
             </div>
             
             <div className="grid grid-cols-2 gap-4">

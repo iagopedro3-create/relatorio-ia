@@ -110,20 +110,25 @@ export function LessonPlanning() {
   const simulateAiSuggestion = (type: AISuggestion['type'], profile?: string) => {
     setIsAiLoading(true);
     
-    // Get context from form
-    const theme = formData.weeklyTheme || "tema atual";
-    const subjects = (formData.dailyPlans || []).map(d => d.subject).filter(Boolean).join(', ') || "disciplina";
-    const mainSubject = (formData.dailyPlans && formData.dailyPlans[0]?.subject) || "conteúdo";
+    // Extract deep context from form
+    const weeklyTheme = formData.weeklyTheme || "tema atual";
+    const dailyData = (formData.dailyPlans || []).map(d => {
+      if (!d.subject && !d.theme && !d.content) return null;
+      return `${d.dayOfWeek}: ${d.subject || ''} - ${d.theme || ''} (${d.content || ''})`;
+    }).filter(Boolean).join('; ');
+
+    const firstActiveDay = (formData.dailyPlans || []).find(d => d.subject || d.theme || d.content);
+    const dayContext = firstActiveDay ? `${firstActiveDay.dayOfWeek} (${firstActiveDay.subject})` : "suas aulas";
 
     setTimeout(() => {
       let content = "";
       if (type === 'ideas') {
-        content = `Com base no seu tema "${theme}", sugerimos integrar uma estação de 'Aprendizagem Ativa'. Para ${mainSubject}, uma dinâmica de 'Resolução de Problemas Reais' em pequenos grupos aumentaria significativamente o engajamento dos alunos.`;
+        content = `Analisando seu detalhamento para "${weeklyTheme}" e as atividades planejadas, sugerimos que em ${dayContext} você inclua uma 'Gincana de Conceitos'. Como você descreveu "${firstActiveDay?.content || 'os tópicos'} ", essa dinâmica ajudará a fixar o conteúdo de forma lúdica.`;
       } else if (type === 'improvement') {
-        content = `Para fortalecer o ensino de "${theme}", recomendamos aplicar a 'Instrução por Pares'. Como você está trabalhando com ${subjects}, essa técnica ajudará os alunos a consolidarem os conceitos através da explicação entre colegas antes da sua intervenção final.`;
+        content = `Para otimizar o fluxo de "${weeklyTheme}", notamos que seu cronograma diário (${dailyData.substring(0, 50)}...) pode ser potencializado com a 'Técnica de Espaçamento'. Recomendamos revisar brevemente o conteúdo do dia anterior antes de iniciar o novo tópico de hoje.`;
       } else {
         const profileLabel = profile === 'tdah' ? 'TDAH' : (profile === 'tea' ? 'Autismo' : (profile === 'dislexia' ? 'Dislexia' : 'Inclusão'));
-        content = `Considerando seu plano sobre "${theme}" e o perfil de ${profileLabel}, sugerimos adaptar as atividades de ${mainSubject} usando cronogramas visuais e dividindo as tarefas em subtarefas menores. Use fontes maiores e contraste alto para facilitar a leitura e reduzir a sobrecarga cognitiva.`;
+        content = `Para apoiar alunos com ${profileLabel} durante ${dayContext}, sugerimos adaptar a atividade de "${firstActiveDay?.theme || 'hoje'}" usando 'Chunking' (dividir em pedaços). Como o conteúdo é "${firstActiveDay?.content || 'extenso'}", forneça um guia visual com apenas 3 passos claros por vez.`;
       }
 
       const newSuggestion: AISuggestion = {

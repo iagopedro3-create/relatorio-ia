@@ -69,6 +69,7 @@ export interface ReportRecord {
 export const mockReports: ReportRecord[] = [
   { id: 'r1', studentId: 's1', studentName: 'Lucas Silva', classId: 'c1', teacherId: 'u3', yearId: '2026', context: '1º Bimestre', status: 'approved', approvedBy: 'u2', createdAt: '2026-04-10' },
   { id: 'r2', studentId: 's2', studentName: 'Marina Souza', classId: 'c1', teacherId: 'u3', yearId: '2026', context: '1º Bimestre', status: 'submitted', createdAt: '2026-04-12' },
+  { id: 'r3', studentId: 's3', studentName: 'Pedro Alves', classId: 'c2', teacherId: 'u4', yearId: '2026', context: '1º Bimestre', status: 'submitted', createdAt: '2026-04-18' },
 ];
 
 export const mockUsers: User[] = [
@@ -140,11 +141,7 @@ export const mockEnrollments: Enrollment[] = [
   { studentId: 's17', classId: 'c10', yearId: '2026' },
 ];
 
-export const mockReports: ReportRecord[] = [
-  { id: 'r1', studentId: 's1', classId: 'c1', teacherId: 'u3', yearId: '2026', context: '1º Bimestre', createdAt: '2026-04-15' },
-  { id: 'r2', studentId: 's2', classId: 'c1', teacherId: 'u3', yearId: '2026', context: '1º Bimestre', createdAt: '2026-04-16' },
-  { id: 'r3', studentId: 's3', classId: 'c2', teacherId: 'u4', yearId: '2026', context: '1º Bimestre', createdAt: '2026-04-18' },
-];
+
 
 export interface AttendanceRecord {
   id: string;

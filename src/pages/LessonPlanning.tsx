@@ -24,9 +24,8 @@ export function LessonPlanning() {
     className: '',
     subject: '',
     startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 5 days by default
-    theme: '',
-    objectives: '',
+    endDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    weeklyTheme: '',
     dailyPlans: [],
     methodology: '',
     resources: '',
@@ -69,6 +68,9 @@ export function LessonPlanning() {
       days.push({
         date: dateStr,
         dayOfWeek: getDayOfWeek(dateStr).charAt(0).toUpperCase() + getDayOfWeek(dateStr).slice(1),
+        subject: '',
+        theme: '',
+        objectives: '',
         content: '',
         activities: ''
       });
@@ -181,9 +183,9 @@ export function LessonPlanning() {
                   <BookOpen size={24} color={plan.status === 'approved' ? '#166534' : (plan.status === 'pending' ? '#c2410c' : '#64748b')} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{plan.theme}</h3>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{plan.weeklyTheme}</h3>
                   <p style={{ margin: '0.2rem 0', fontSize: '0.85rem', color: '#64748b' }}>
-                    {plan.className} • {plan.subject} • {new Date(plan.startDate).toLocaleDateString('pt-BR')} a {new Date(plan.endDate).toLocaleDateString('pt-BR')}
+                    {plan.className} • {new Date(plan.startDate).toLocaleDateString('pt-BR')} a {new Date(plan.endDate).toLocaleDateString('pt-BR')}
                   </p>
                 </div>
               </div>
@@ -232,49 +234,76 @@ export function LessonPlanning() {
               </div>
             </div>
             <div className="form-group mb-4">
-              <label>Disciplina / Matéria</label>
-              <input type="text" name="subject" value={formData.subject} onChange={handleInputChange} placeholder="Ex: Matemática, Artes..." disabled={isAdmin} />
-            </div>
-            <div className="form-group mb-4">
-              <label>Tema da Aula</label>
-              <input type="text" name="theme" value={formData.theme} onChange={handleInputChange} placeholder="Ex: Frações, Cores Primárias..." disabled={isAdmin} />
-            </div>
-            <div className="form-group mb-4">
-              <label>Objetivos de Aprendizagem (Semanais)</label>
-              <textarea name="objectives" value={formData.objectives} onChange={handleInputChange} rows={3} disabled={isAdmin}></textarea>
+              <label>Tema Geral da Semana</label>
+              <input type="text" name="weeklyTheme" value={formData.weeklyTheme} onChange={handleInputChange} placeholder="Ex: Semana do Meio Ambiente, Frações..." disabled={isAdmin} />
             </div>
 
             {/* DYNAMIC DAILY FIELDS */}
             <div className="mt-8 mb-8">
               <h4 className="flex items-center gap-2 mb-4" style={{ color: 'var(--color-primary)' }}>
-                <Calendar size={18} /> Cronograma Diário
+                <Calendar size={18} /> Detalhamento Diário
               </h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 {(formData.dailyPlans || []).map((day, idx) => (
-                  <div key={day.date} className="card" style={{ padding: '1.25rem', backgroundColor: '#f8fafc', borderLeft: '4px solid var(--color-primary)' }}>
-                    <div className="flex justify-between items-center mb-3">
-                      <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#1e293b' }}>
+                  <div key={day.date} className="card" style={{ padding: '1.5rem', backgroundColor: '#f8fafc', borderLeft: '5px solid var(--color-primary)', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
+                    <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-200">
+                      <span style={{ fontWeight: 800, fontSize: '1rem', color: '#1e293b' }}>
                         {day.dayOfWeek} — {new Date(day.date + 'T00:00:00').toLocaleDateString('pt-BR')}
                       </span>
                     </div>
-                    <div className="grid grid-cols-1 gap-3">
+                    
+                    <div className="grid grid-cols-2 gap-4 mb-4">
                       <div className="form-group">
-                        <label style={{ fontSize: '0.75rem' }}>Conteúdo do Dia</label>
+                        <label style={{ fontSize: '0.75rem', fontWeight: 700 }}>Disciplina</label>
                         <input 
                           type="text" 
-                          value={day.content} 
-                          onChange={(e) => handleDailyPlanChange(idx, 'content', e.target.value)}
-                          placeholder="O que será ensinado?"
+                          value={day.subject} 
+                          onChange={(e) => handleDailyPlanChange(idx, 'subject', e.target.value)}
+                          placeholder="Matemática, Português..."
                           disabled={isAdmin}
                         />
                       </div>
                       <div className="form-group">
-                        <label style={{ fontSize: '0.75rem' }}>Atividades</label>
+                        <label style={{ fontSize: '0.75rem', fontWeight: 700 }}>Tema do Dia</label>
+                        <input 
+                          type="text" 
+                          value={day.theme} 
+                          onChange={(e) => handleDailyPlanChange(idx, 'theme', e.target.value)}
+                          placeholder="Assunto da aula..."
+                          disabled={isAdmin}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-group mb-4">
+                      <label style={{ fontSize: '0.75rem', fontWeight: 700 }}>Objetivos de Aprendizagem</label>
+                      <textarea 
+                        value={day.objectives} 
+                        onChange={(e) => handleDailyPlanChange(idx, 'objectives', e.target.value)}
+                        rows={2}
+                        placeholder="O que o aluno deve aprender hoje?"
+                        disabled={isAdmin}
+                      ></textarea>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="form-group">
+                        <label style={{ fontSize: '0.75rem', fontWeight: 700 }}>Conteúdo</label>
+                        <textarea 
+                          value={day.content} 
+                          onChange={(e) => handleDailyPlanChange(idx, 'content', e.target.value)}
+                          rows={2}
+                          placeholder="Teoria e tópicos..."
+                          disabled={isAdmin}
+                        ></textarea>
+                      </div>
+                      <div className="form-group">
+                        <label style={{ fontSize: '0.75rem', fontWeight: 700 }}>Atividades</label>
                         <textarea 
                           value={day.activities} 
                           onChange={(e) => handleDailyPlanChange(idx, 'activities', e.target.value)}
                           rows={2}
-                          placeholder="Atividades práticas..."
+                          placeholder="Prática e exercícios..."
                           disabled={isAdmin}
                         ></textarea>
                       </div>

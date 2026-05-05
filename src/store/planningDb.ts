@@ -1,6 +1,9 @@
 export interface DailyPlan {
   date: string;
   dayOfWeek: string;
+  subject: string;
+  theme: string;
+  objectives: string;
   content: string;
   activities: string;
 }
@@ -11,11 +14,9 @@ export interface LessonPlan {
   teacherName: string;
   classId: string;
   className: string;
-  subject: string;
   startDate: string;
   endDate: string;
-  theme: string;
-  objectives: string;
+  weeklyTheme: string; // Overall theme for the week
   dailyPlans: DailyPlan[];
   methodology: string;
   resources: string;
@@ -41,14 +42,19 @@ export const mockLessonPlans: LessonPlan[] = [
     teacherName: 'Profa. Maria (Infantil)',
     classId: 'c1',
     className: 'NINHO',
-    subject: 'Experiências Sensoriais',
     startDate: '2026-05-11',
     endDate: '2026-05-15',
-    theme: 'Semana da Exploração Tátil',
-    objectives: 'Explorar diferentes texturas (folhas, gravetos, areia) ao longo da semana.',
+    weeklyTheme: 'Semana da Exploração Tátil',
     dailyPlans: [
-      { date: '2026-05-11', dayOfWeek: 'Segunda-feira', content: 'Introdução às texturas secas.', activities: 'Manuseio de folhas e gravetos.' },
-      { date: '2026-05-12', dayOfWeek: 'Terça-feira', content: 'Texturas úmidas.', activities: 'Brincadeiras com argila e água.' }
+      { 
+        date: '2026-05-11', 
+        dayOfWeek: 'Segunda-feira', 
+        subject: 'Experiências Sensoriais',
+        theme: 'Texturas Secas',
+        objectives: 'Identificar texturas ásperas e lisas.',
+        content: 'Introdução às texturas secas.', 
+        activities: 'Manuseio de folhas e gravetos.' 
+      }
     ],
     methodology: 'Roda de conversa seguida de exploração livre.',
     resources: 'Cestas, elementos naturais.',

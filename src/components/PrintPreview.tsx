@@ -126,7 +126,7 @@ export function PrintPreview({ isOpen, onClose, title, subtitle, studentData, co
 
         <div className="print-content" style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
           <div style={{ flex: 1 }}>
-            {cleanContent.split('\n\n').slice(0, Math.ceil(cleanContent.split('\n\n').length / 2)).map((p, i) => (
+            {cleanContent.split('\n\n').slice(0, Math.ceil(cleanContent.split('\n\n').length / 3)).map((p, i) => (
               <p key={i} style={{ marginBottom: '1rem' }}>{p}</p>
             ))}
           </div>
@@ -142,21 +142,13 @@ export function PrintPreview({ isOpen, onClose, title, subtitle, studentData, co
           )}
         </div>
 
-        {/* Page Break for more content and 2nd photo if infantil */}
+        {/* 2nd Part and 2nd photo */}
         {type === 'report' && studentData.photo2 && (
-          <div style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '1px dashed #eee', display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
+          <div style={{ marginTop: '2rem', display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
             <div style={{ flex: 1 }}>
-              {cleanContent.split('\n\n').slice(Math.ceil(cleanContent.split('\n\n').length / 2)).map((p, i) => (
+              {cleanContent.split('\n\n').slice(Math.ceil(cleanContent.split('\n\n').length / 3), Math.ceil(cleanContent.split('\n\n').length * 2 / 3)).map((p, i) => (
                 <p key={i} style={{ marginBottom: '1rem' }}>{p}</p>
               ))}
-              
-              {/* Fallback for general observations or points if they fit here */}
-              {(studentData.positivePoints || studentData.attentionPoints) && (
-                <div style={{ marginTop: '2rem', padding: '1rem', backgroundColor: '#fdfbf0', borderRadius: '8px', border: '1px solid #faefcc' }}>
-                  {studentData.positivePoints && <p><strong>Destaques:</strong> {studentData.positivePoints}</p>}
-                  {studentData.attentionPoints && <p><strong>Próximos Passos:</strong> {studentData.attentionPoints}</p>}
-                </div>
-              )}
             </div>
             <div style={{ width: '250px', position: 'relative', marginTop: '1rem' }}>
               <div style={{ 
@@ -169,8 +161,36 @@ export function PrintPreview({ isOpen, onClose, title, subtitle, studentData, co
           </div>
         )}
 
-        {!studentData.photo2 && (
-          <div className="print-content" style={{ marginTop: '2rem' }}>
+        {/* 3rd Part and 3rd photo */}
+        {type === 'report' && (
+          <div style={{ marginTop: '2rem', display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
+            <div style={{ flex: 1 }}>
+              {cleanContent.split('\n\n').slice(Math.ceil(cleanContent.split('\n\n').length * 2 / 3)).map((p, i) => (
+                <p key={i} style={{ marginBottom: '1rem' }}>{p}</p>
+              ))}
+              
+              {(studentData.positivePoints || studentData.attentionPoints) && (
+                <div style={{ marginTop: '2rem', padding: '1rem', backgroundColor: '#fdfbf0', borderRadius: '8px', border: '1px solid #faefcc' }}>
+                  {studentData.positivePoints && <p><strong>Destaques:</strong> {studentData.positivePoints}</p>}
+                  {studentData.attentionPoints && <p><strong>Próximos Passos:</strong> {studentData.attentionPoints}</p>}
+                </div>
+              )}
+            </div>
+            {studentData.photo3 && (
+              <div style={{ width: '250px', position: 'relative', marginTop: '1rem' }}>
+                <div style={{ 
+                  position: 'absolute', top: '-15px', right: '40px', width: '80px', height: '30px', 
+                  backgroundColor: 'rgba(239, 68, 68, 0.6)', transform: 'rotate(5deg)', zIndex: 1,
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }} />
+                <img src={studentData.photo3} alt="Atividade 3" style={{ width: '100%', borderRadius: '4px', boxShadow: '0 4px 10px rgba(0,0,0,0.15)', border: '8px solid white' }} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {type === 'pei' && (
+           <div className="print-content" style={{ marginTop: '2rem' }}>
             {cleanContent.split('\n\n').slice(Math.ceil(cleanContent.split('\n\n').length / 2)).map((p, i) => (
               <p key={i} style={{ marginBottom: '1rem' }}>{p}</p>
             ))}

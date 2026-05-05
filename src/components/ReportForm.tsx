@@ -42,6 +42,7 @@ export type StudentData = {
   
   photo1?: string; // Base64
   photo2?: string; // Base64
+  photo3?: string; // Base64
 };
 
 interface ReportFormProps {
@@ -93,7 +94,8 @@ export function ReportForm({ onSubmit, isLoading }: ReportFormProps) {
     positivePoints: '',
     attentionPoints: '',
     photo1: '',
-    photo2: ''
+    photo2: '',
+    photo3: ''
   });
 
   useEffect(() => {
@@ -142,7 +144,7 @@ export function ReportForm({ onSubmit, isLoading }: ReportFormProps) {
     });
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'photo1' | 'photo2') => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'photo1' | 'photo2' | 'photo3') => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -351,6 +353,18 @@ export function ReportForm({ onSubmit, isLoading }: ReportFormProps) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'photo2')} style={{ fontSize: '0.8rem' }} />
               {formData.photo2 && <img src={formData.photo2} alt="Preview 2" style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px', border: '2px solid var(--color-border)' }} />}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeGroupId !== 'fundamental_1' && (
+        <div className="grid grid-cols-1 mt-4">
+          <div className="form-group">
+            <label>Foto do Aluno em Atividade 3</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'photo3')} style={{ fontSize: '0.8rem' }} />
+              {formData.photo3 && <img src={formData.photo3} alt="Preview 3" style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px', border: '2px solid var(--color-border)' }} />}
             </div>
           </div>
         </div>

@@ -22,7 +22,6 @@ export function LessonPlanning() {
     teacherName: user?.name || '',
     classId: '',
     className: '',
-    subject: '',
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     weeklyTheme: '',
@@ -482,7 +481,7 @@ export function LessonPlanning() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            {plans.flatMap(p => p.aiSuggestions.map(s => ({ ...s, planTheme: p.theme }))).map(item => (
+            {plans.flatMap(p => p.aiSuggestions.map(s => ({ ...s, planTheme: p.weeklyTheme }))).map(item => (
               <div key={item.id} className="card">
                 <div className="flex justify-between items-start mb-2">
                   <div>

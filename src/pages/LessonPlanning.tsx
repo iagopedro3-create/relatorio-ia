@@ -31,7 +31,9 @@ export function LessonPlanning() {
     evaluation: '',
     status: 'draft',
     coordinatorFeedback: '',
-    aiSuggestions: []
+    aiSuggestions: [],
+    teacherId: user?.id || '',
+    teacherName: user?.name || ''
   };
 
   const [formData, setFormData] = useState<Partial<LessonPlan>>(initialPlan);
@@ -163,7 +165,9 @@ export function LessonPlanning() {
       id: formData.id || `lp${Date.now()}`,
       status,
       coordinatorFeedback: formData.coordinatorFeedback || '',
-      createdAt: formData.createdAt || new Date().toISOString()
+      createdAt: formData.createdAt || new Date().toISOString(),
+      teacherId: formData.teacherId || user?.id || '',
+      teacherName: formData.teacherName || user?.name || ''
     };
 
     setPlans(prevPlans => {
@@ -217,10 +221,13 @@ export function LessonPlanning() {
                 }}>
                   <BookOpen size={24} color={plan.status === 'approved' ? '#166534' : (plan.status === 'returned' ? '#b91c1c' : (plan.status === 'pending' ? '#c2410c' : '#64748b'))} />
                 </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{plan.weeklyTheme}</h3>
-                  <p style={{ margin: '0.2rem 0', fontSize: '0.85rem', color: '#64748b' }}>
-                    {plan.className} • {new Date(plan.startDate).toLocaleDateString('pt-BR')} a {new Date(plan.endDate).toLocaleDateString('pt-BR')}
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{plan.weeklyTheme}</h3>
+                    {isAdmin && <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', backgroundColor: '#f1f5f9', borderRadius: '4px', color: '#64748b' }}>Prof. {plan.teacherName}</span>}
+                  </div>
+                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+                    {plan.className} • {new Date(plan.startDate).toLocaleDateString()} a {new Date(plan.endDate).toLocaleDateString()}
                   </p>
                 </div>
               </div>
@@ -371,21 +378,28 @@ export function LessonPlanning() {
               </div>
             )}
 
-            {isAdmin && selectedPlan?.status === 'pending' && (
+            {isAdmin && (
               <div className="mt-8 pt-8 border-t" style={{ backgroundColor: '#fff7ed', padding: '1.5rem', borderRadius: '12px', border: '1px solid #ffedd5' }}>
-                <h4 className="flex items-center gap-2 mb-4" style={{ color: '#c2410c' }}>
+                <h4 className="flex items-center gap-2 mb-2" style={{ color: '#c2410c' }}>
                   <MessageSquare size={18} /> Devolutiva da Coordenação
                 </h4>
+                <p style={{ fontSize: '0.8rem', color: '#9a3412', marginBottom: '1rem' }}>
+                  {formData.status === 'pending' 
+                    ? 'Este plano aguarda sua revisão. Escreva as orientações e escolha uma ação abaixo.' 
+                    : `Status atual: ${formData.status === 'approved' ? 'Aprovado' : 'Em rascunho/ajuste'}`}
+                </p>
                 <textarea 
                    placeholder="Escreva suas orientações pedagógicas aqui..." 
                    name="coordinatorFeedback"
-                   value={formData.coordinatorFeedback}
+                   value={formData.coordinatorFeedback || ''}
                    onChange={handleInputChange}
                    style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid #fed7aa', marginBottom: '1rem', fontSize: '0.9rem' }}
                    rows={4}
                 ></textarea>
                 <div className="flex gap-4">
-                  <button className="btn btn-primary" style={{ flex: 1, backgroundColor: '#10b981', boxShadow: 'none' }} onClick={() => handleSave('approved')}>Aprovar Plano</button>
+                  <button className="btn btn-primary" style={{ flex: 1, backgroundColor: '#10b981', boxShadow: 'none' }} onClick={() => handleSave('approved')}>
+                    {formData.status === 'approved' ? 'Atualizar Feedback' : 'Aprovar Plano'}
+                  </button>
                   <button className="btn btn-secondary" style={{ flex: 1, color: '#ef4444', border: '1px solid #fee2e2' }} onClick={() => handleSave('returned')}>Solicitar Ajustes</button>
                 </div>
               </div>
@@ -397,7 +411,7 @@ export function LessonPlanning() {
                   <MessageSquare size={18} /> Comentários da Coordenação
                 </h4>
                 <p style={{ fontSize: '0.9rem', color: '#0c4a6e', margin: 0, whiteSpace: 'pre-wrap' }}>{formData.coordinatorFeedback}</p>
-                <p style={{ fontSize: '0.75rem', color: '#7dd3fc', marginTop: '0.5rem', fontWeight: 600 }}>Revise as orientações e envie novamente se necessário.</p>
+                <p style={{ fontSize: '0.75rem', color: '#38bdf8', marginTop: '0.5rem', fontWeight: 600 }}>Revise as orientações e envie novamente se necessário.</p>
               </div>
             )}
           </div>

@@ -298,6 +298,13 @@ export function StudentManagement() {
         <div className="flex gap-3">
           <button
             className="btn btn-secondary"
+            onClick={handleDownloadTemplate}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px dashed var(--color-primary)', color: 'var(--color-primary)' }}
+          >
+            <Download size={18} /> Baixar Modelo
+          </button>
+          <button
+            className="btn btn-secondary"
             onClick={() => fileInputRef.current?.click()}
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
           >

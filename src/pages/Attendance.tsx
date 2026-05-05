@@ -78,16 +78,23 @@ export function Attendance() {
   const daysInMonth = new Date(year, selectedMonth + 1, 0).getDate();
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-  const toggleStatus = (studentId: string, day: number) => {
+  const toggleStatus = (studentId: string, day: number, targetStatus?: 'P' | 'F' | '') => {
     const dateKey = `${year}-${String(selectedMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     setAttendanceData(prev => {
       const studentDays = prev[studentId] || {};
-      const currentStatus = studentDays[dateKey];
+      const currentStatus = studentDays[dateKey] || '';
+      
       let nextStatus: 'P' | 'F' | '' = '';
       
-      if (currentStatus === '') nextStatus = 'P';
-      else if (currentStatus === 'P') nextStatus = 'F';
-      else nextStatus = '';
+      if (targetStatus !== undefined) {
+        // Direct set (useful for mobile buttons)
+        nextStatus = currentStatus === targetStatus ? '' : targetStatus;
+      } else {
+        // Cycling toggle (useful for desktop grid)
+        if (currentStatus === '') nextStatus = 'P';
+        else if (currentStatus === 'P') nextStatus = 'F';
+        else nextStatus = '';
+      }
 
       return {
         ...prev,
@@ -200,19 +207,21 @@ export function Attendance() {
                   <span style={{ fontWeight: 600 }}>{student.name}</span>
                   <div className="flex gap-2">
                     <button 
-                      onClick={() => toggleStatus(student.id, selectedDay)}
+                      onClick={() => toggleStatus(student.id, selectedDay, 'P')}
                       style={{ 
-                        padding: '0.5rem 1rem', borderRadius: 'var(--radius-sm)', border: '1px solid #C6EFCE',
+                        padding: '0.5rem 1.5rem', borderRadius: 'var(--radius-sm)', border: '2px solid #C6EFCE',
                         backgroundColor: status === 'P' ? '#C6EFCE' : 'white',
-                        fontWeight: 700, color: status === 'P' ? '#166534' : '#666'
+                        fontWeight: 800, color: status === 'P' ? '#166534' : '#666',
+                        transition: 'all 0.1s'
                       }}
                     >P</button>
                     <button 
-                      onClick={() => toggleStatus(student.id, selectedDay)}
+                      onClick={() => toggleStatus(student.id, selectedDay, 'F')}
                       style={{ 
-                        padding: '0.5rem 1rem', borderRadius: 'var(--radius-sm)', border: '1px solid #FFC7CE',
+                        padding: '0.5rem 1.5rem', borderRadius: 'var(--radius-sm)', border: '2px solid #FFC7CE',
                         backgroundColor: status === 'F' ? '#FFC7CE' : 'white',
-                        fontWeight: 700, color: status === 'F' ? '#991b1b' : '#666'
+                        fontWeight: 800, color: status === 'F' ? '#991b1b' : '#666',
+                        transition: 'all 0.1s'
                       }}
                     >F</button>
                   </div>

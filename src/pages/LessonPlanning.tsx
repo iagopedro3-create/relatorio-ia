@@ -13,7 +13,6 @@ export function LessonPlanning() {
   
   const [activeTab, setActiveTab] = useState<'list' | 'editor' | 'ideas'>('list');
   const [plans, setPlans] = useState<LessonPlan[]>(getStoredPlans());
-  const [selectedPlan, setSelectedPlan] = useState<LessonPlan | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
 
   const isAdmin = user?.role === 'admin' || user?.role === 'coordinator';
@@ -75,13 +74,11 @@ export function LessonPlanning() {
 
   const handleCreate = () => {
     setFormData(initialPlan);
-    setSelectedPlan(null);
     setActiveTab('editor');
   };
 
   const handleEdit = (plan: LessonPlan) => {
     setFormData(plan);
-    setSelectedPlan(plan);
     setActiveTab('editor');
   };
 

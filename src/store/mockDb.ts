@@ -56,12 +56,20 @@ export interface Enrollment {
 export interface ReportRecord {
   id: string;
   studentId: string;
+  studentName: string;
   classId: string;
   teacherId: string;
   yearId: string;
   context: string; // 1b, 2b, etc
+  status: 'draft' | 'submitted' | 'approved';
+  approvedBy?: string;
   createdAt: string;
 }
+
+export const mockReports: ReportRecord[] = [
+  { id: 'r1', studentId: 's1', studentName: 'Lucas Silva', classId: 'c1', teacherId: 'u3', yearId: '2026', context: '1º Bimestre', status: 'approved', approvedBy: 'u2', createdAt: '2026-04-10' },
+  { id: 'r2', studentId: 's2', studentName: 'Marina Souza', classId: 'c1', teacherId: 'u3', yearId: '2026', context: '1º Bimestre', status: 'submitted', createdAt: '2026-04-12' },
+];
 
 export const mockUsers: User[] = [
   { id: 'u1',  name: 'Diretora Ana',           username: 'diretora',  password: 'direcao123', role: 'admin',       managedLevel: 'all' },

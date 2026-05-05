@@ -23,11 +23,20 @@ export function ReportGenerator() {
   // Filter students based on role
   const availableStudents = mockStudents.filter(s => {
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase());
-    if (user?.role === 'teacher' && user.classId) {
-      // In a real app, s.classId would exist. In our mock it's simpler
-      return matchesSearch;
+    if (!matchesSearch) return false;
+
+    // Join with classes to check level
+    const studentClass = mockClasses.find(c => c.id === s.classId);
+    
+    if (user?.role === 'coordinator' && user.managedLevel && user.managedLevel !== 'all') {
+      return studentClass?.level === user.managedLevel;
     }
-    return matchesSearch;
+    
+    if (user?.role === 'teacher' && user.classId) {
+      return s.classId === user.classId;
+    }
+    
+    return true;
   });
 
   const handleGenerateReport = async (data: StudentData) => {

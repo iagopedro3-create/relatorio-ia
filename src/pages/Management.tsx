@@ -128,15 +128,24 @@ export function Management() {
     
     const completionRate = totalClasses === 0 ? 0 : Math.round((completedAttendance / totalClasses) * 100);
 
-    // Calculate rates by segment
     const infantil = filteredStatus.filter(c => c.level === 'infantil');
     const fundamental = filteredStatus.filter(c => c.level === 'fundamental');
     
     const infantilRate = infantil.length ? Math.round((infantil.filter(c => c.status === 'COMPLETO').length / infantil.length) * 100) : 0;
     const fundamentalRate = fundamental.length ? Math.round((fundamental.filter(c => c.status === 'COMPLETO').length / fundamental.length) * 100) : 0;
 
-    return { totalStudents, pendingAttendance, completedAttendance, activeTeachers, totalClasses, completionRate, infantilRate, fundamentalRate };
-  }, [filteredStatus, selectedYear]);
+    // Report specific stats
+    const reportClasses = mockClasses.filter(c => c.yearId === selectedYear.id && (user?.managedLevel === 'all' || c.level === user?.managedLevel));
+    const totalPossibleReports = mockEnrollments.filter(e => e.yearId === selectedYear.id && reportClasses.some(c => c.id === e.classId)).length;
+    const totalReportsCreated = mockReports.filter(r => r.yearId === selectedYear.id).length;
+    const totalReportsApproved = mockReports.filter(r => r.yearId === selectedYear.id && r.status === 'approved').length;
+
+    return { 
+      totalStudents, pendingAttendance, completedAttendance, activeTeachers, totalClasses, completionRate, 
+      infantilRate, fundamentalRate,
+      totalPossibleReports, totalReportsCreated, totalReportsApproved
+    };
+  }, [filteredStatus, selectedYear, user]);
 
   return (
     <div className="management-dashboard">
@@ -186,9 +195,35 @@ export function Management() {
         <div className="card stat-card relative overflow-hidden" style={{ border: 'none', background: 'linear-gradient(135deg, #fef2f2 0%, #ffffff 100%)', boxShadow: '0 4px 20px rgba(239,68,68,0.08)' }}>
           <div className="absolute top-0 right-0 p-4 opacity-10"><Clock size={80} /></div>
           <div className="relative z-10">
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Diários Pendentes Hoje</span>
-            <h3 style={{ fontSize: '2.5rem', margin: '0.5rem 0', fontWeight: 900, color: '#7f1d1d' }}>{stats.pendingAttendance}</h3>
-            <p style={{ fontSize: '0.8rem', margin: 0, color: '#64748b' }}>Aguardando preenchimento</p>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Relatórios Pendentes</span>
+            <h3 style={{ fontSize: '2.5rem', margin: '0.5rem 0', fontWeight: 900, color: '#7f1d1d' }}>{stats.totalPossibleReports - stats.totalReportsCreated}</h3>
+            <p style={{ fontSize: '0.8rem', margin: 0, color: '#64748b' }}>De um total de {stats.totalPossibleReports}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '2rem', padding: '1.5rem', borderLeft: '4px solid #8b5cf6' }}>
+          <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <BookOpen size={24} color="#8b5cf6" />
+          </div>
+          <div>
+            <p style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Status de Aprovação (Coordenador)</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800 }}>{stats.totalReportsApproved} / {stats.totalReportsCreated}</h3>
+              <span style={{ fontSize: '0.8rem', backgroundColor: '#ecfdf5', color: '#10b981', padding: '0.2rem 0.6rem', borderRadius: '4px', fontWeight: 700 }}>
+                {stats.totalReportsCreated > 0 ? Math.round((stats.totalReportsApproved / stats.totalReportsCreated) * 100) : 0}% OK
+              </span>
+            </div>
+            <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.25rem' }}>Relatórios que já receberam o visto da coordenação.</p>
+          </div>
+        </div>
+        
+        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '2rem', padding: '1.5rem', borderLeft: '4px solid #0a73ff' }}>
+          <DonutChart percent={stats.totalPossibleReports > 0 ? Math.round((stats.totalReportsCreated / stats.totalPossibleReports) * 100) : 0} color="#0a73ff" label="Preenchimento Geral" />
+          <div style={{ flex: 1 }}>
+             <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9rem' }}>Progresso Bimestral</h4>
+             <ProgressBar label="Relatórios Redigidos" percent={stats.totalPossibleReports > 0 ? (stats.totalReportsCreated / stats.totalPossibleReports) * 100 : 0} color="#0a73ff" value={`${stats.totalReportsCreated} / ${stats.totalPossibleReports}`} />
           </div>
         </div>
       </div>

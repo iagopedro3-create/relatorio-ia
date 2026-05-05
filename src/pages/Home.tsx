@@ -338,60 +338,122 @@ export function Home() {
           <PeriodSelector />
         </div>
 
-      <div className="grid grid-cols-2 mt-6">
-        {/* Class Progress — report classes only */}
-        <div className="card">
-          <h3 className="mb-6">Relatórios por Turma — {selectedBimestre}</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {classProgress.map((c: any) => (
-              <div key={c.id}>
-                <div className="flex justify-between mb-2" style={{ fontSize: '0.9rem' }}>
-                  <span style={{ fontWeight: 600 }}>{c.name}</span>
-                  <span className="text-muted">{c.done} / {c.total} alunos</span>
-                </div>
-                <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--color-bg)', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div style={{ 
-                    width: `${c.percent}%`, 
-                    height: '100%', 
-                    backgroundColor: c.percent === 100 ? 'var(--color-success)' : 'var(--color-primary)', 
-                    transition: 'width 0.5s ease' 
-                  }}></div>
-                </div>
-              </div>
-            ))}
+        {/* Report Approval List for Coordinators */}
+        {(user?.role === 'coordinator' || user?.role === 'admin') && (
+          <div className="card mt-6" style={{ padding: 0 }}>
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <BookOpenCheck size={20} color="var(--color-primary)" /> Relatórios para Revisão
+              </h3>
+              <span className="text-muted" style={{ fontSize: '0.85rem' }}>{filteredReports.filter(r => r.status === 'submitted').length} aguardando visto</span>
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ textAlign: 'left', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+                    <th style={{ padding: '1rem 1.5rem', fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b' }}>Aluno</th>
+                    <th style={{ padding: '1rem', fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b' }}>Professor</th>
+                    <th style={{ padding: '1rem', fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b' }}>Status</th>
+                    <th style={{ padding: '1rem 1.5rem', textAlign: 'right', fontSize: '0.75rem', textTransform: 'uppercase', color: '#64748b' }}>Ação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredReports.map(r => (
+                    <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '0.75rem 1.5rem' }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{r.studentName}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{mockClasses.find(c => c.id === r.classId)?.name}</div>
+                      </td>
+                      <td style={{ padding: '0.75rem 1rem', fontSize: '0.85rem' }}>{mockUsers.find(u => u.id === r.teacherId)?.name}</td>
+                      <td style={{ padding: '0.75rem 1rem' }}>
+                        <span style={{ 
+                          padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700,
+                          backgroundColor: r.status === 'approved' ? '#dcfce7' : '#fff7ed',
+                          color: r.status === 'approved' ? '#166534' : '#c2410c'
+                        }}>
+                          {r.status === 'approved' ? 'APROVADO' : 'SUBMETIDO'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '0.75rem 1.5rem', textAlign: 'right' }}>
+                        {r.status !== 'approved' ? (
+                          <button 
+                            className="btn btn-primary" 
+                            style={{ padding: '0.3rem 0.75rem', fontSize: '0.75rem', boxShadow: 'none' }}
+                            onClick={() => alert(`Relatório de ${r.studentName} aprovado!`)}
+                          >
+                            Dar OK
+                          </button>
+                        ) : (
+                          <span style={{ color: '#10b981', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: 600 }}>
+                            <BookOpenCheck size={16} /> Visto
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredReports.length === 0 && (
+                    <tr>
+                      <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>Nenhum relatório submetido para este período.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Pending Reports List */}
-        <div className="card" style={{ borderTop: '4px solid var(--color-secondary)' }}>
-          <h3 className="flex items-center gap-2 mb-6" style={{ color: 'var(--color-secondary)' }}>
-            <AlertCircle size={20} /> Relatórios Pendentes
-          </h3>
-          <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-            {Object.entries(pendingGrouped).length > 0 ? (
-              Object.entries(pendingGrouped).map(([className, students]) => (
-                <div key={className} style={{ marginBottom: '1.5rem' }}>
-                  <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--color-primary)', borderBottom: '1px solid var(--color-bg)', paddingBottom: '0.25rem', marginBottom: '0.5rem' }}>
-                    {className}
-                  </h4>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    {students.map(s => (
-                      <span key={s.id} style={{ padding: '0.25rem 0.6rem', backgroundColor: 'var(--color-bg)', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }}>
-                        {s.name}
-                      </span>
-                    ))}
+        <div className="grid grid-cols-2 mt-6">
+          <div className="card">
+            <h3 className="mb-6">Relatórios por Turma — {selectedBimestre}</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              {classProgress.map((c: any) => (
+                <div key={c.id}>
+                  <div className="flex justify-between mb-2" style={{ fontSize: '0.9rem' }}>
+                    <span style={{ fontWeight: 600 }}>{c.name}</span>
+                    <span className="text-muted">{c.done} / {c.total} alunos</span>
+                  </div>
+                  <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--color-bg)', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ 
+                      width: `${c.percent}%`, 
+                      height: '100%', 
+                      backgroundColor: c.percent === 100 ? 'var(--color-success)' : 'var(--color-primary)', 
+                      transition: 'width 0.5s ease' 
+                    }}></div>
                   </div>
                 </div>
-              ))
-            ) : (
-              <div style={{ textAlign: 'center', padding: '2rem' }}>
-                <FileCheck size={48} color="var(--color-success)" style={{ opacity: 0.3, marginBottom: '1rem' }} />
-                <p className="text-success" style={{ fontWeight: 600 }}>Parabéns! Todos os relatórios foram lançados para este período.</p>
-              </div>
-            )}
+              ))}
+            </div>
+          </div>
+
+          <div className="card" style={{ borderTop: '4px solid var(--color-secondary)' }}>
+            <h3 className="flex items-center gap-2 mb-6" style={{ color: 'var(--color-secondary)' }}>
+              <AlertCircle size={20} /> Relatórios Pendentes
+            </h3>
+            <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+              {Object.entries(pendingGrouped).length > 0 ? (
+                Object.entries(pendingGrouped).map(([className, students]) => (
+                  <div key={className} style={{ marginBottom: '1.5rem' }}>
+                    <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: 'var(--color-primary)', borderBottom: '1px solid var(--color-bg)', paddingBottom: '0.25rem', marginBottom: '0.5rem' }}>
+                      {className}
+                    </h4>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      {students.map(s => (
+                        <span key={s.id} style={{ padding: '0.25rem 0.6rem', backgroundColor: 'var(--color-bg)', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }}>
+                          {s.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                  <FileCheck size={48} color="var(--color-success)" style={{ opacity: 0.3, marginBottom: '1rem' }} />
+                  <p className="text-success" style={{ fontWeight: 600 }}>🎉 Tudo em dia para este período!</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
       </div>
     </div>
   );

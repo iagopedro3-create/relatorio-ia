@@ -30,6 +30,7 @@ export function LessonPlanning() {
     resources: '',
     evaluation: '',
     status: 'draft',
+    coordinatorFeedback: '',
     aiSuggestions: []
   };
 
@@ -140,16 +141,26 @@ export function LessonPlanning() {
       ...formData as LessonPlan,
       id: formData.id || `lp${Date.now()}`,
       status,
+      coordinatorFeedback: formData.coordinatorFeedback || '',
       createdAt: formData.createdAt || new Date().toISOString()
     };
 
-    if (formData.id) {
-      setPlans(plans.map(p => p.id === plan.id ? plan : p));
-    } else {
-      setPlans([plan, ...plans]);
-    }
+    setPlans(prevPlans => {
+      const exists = prevPlans.find(p => p.id === plan.id);
+      if (exists) {
+        return prevPlans.map(p => p.id === plan.id ? plan : p);
+      }
+      return [plan, ...prevPlans];
+    });
+
     setActiveTab('list');
-    alert(status === 'pending' ? 'Plano enviado para a coordenação!' : 'Plano salvo como rascunho.');
+    
+    let msg = 'Operação realizada com sucesso!';
+    if (status === 'pending') msg = 'Plano enviado para a coordenação!';
+    if (status === 'approved') msg = 'Plano aprovado com sucesso!';
+    if (status === 'returned') msg = 'Plano devolvido para o professor com observações.';
+    
+    alert(msg);
   };
 
   return (
@@ -176,10 +187,10 @@ export function LessonPlanning() {
               <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
                 <div style={{ 
                   width: '50px', height: '50px', borderRadius: '12px', 
-                  backgroundColor: plan.status === 'approved' ? '#dcfce7' : (plan.status === 'pending' ? '#fff7ed' : '#f1f5f9'),
+                  backgroundColor: plan.status === 'approved' ? '#dcfce7' : (plan.status === 'returned' ? '#fee2e2' : (plan.status === 'pending' ? '#fff7ed' : '#f1f5f9')),
                   display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }}>
-                  <BookOpen size={24} color={plan.status === 'approved' ? '#166534' : (plan.status === 'pending' ? '#c2410c' : '#64748b')} />
+                  <BookOpen size={24} color={plan.status === 'approved' ? '#166534' : (plan.status === 'returned' ? '#b91c1c' : (plan.status === 'pending' ? '#c2410c' : '#64748b'))} />
                 </div>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{plan.weeklyTheme}</h3>
@@ -192,10 +203,10 @@ export function LessonPlanning() {
                 <div style={{ textAlign: 'right' }}>
                   <span style={{ 
                     padding: '0.3rem 0.75rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800,
-                    backgroundColor: plan.status === 'approved' ? '#dcfce7' : (plan.status === 'pending' ? '#fff7ed' : '#f1f5f9'),
-                    color: plan.status === 'approved' ? '#166534' : (plan.status === 'pending' ? '#c2410c' : '#64748b')
+                    backgroundColor: plan.status === 'approved' ? '#dcfce7' : (plan.status === 'returned' ? '#fee2e2' : (plan.status === 'pending' ? '#fff7ed' : '#f1f5f9')),
+                    color: plan.status === 'approved' ? '#166534' : (plan.status === 'returned' ? '#b91c1c' : (plan.status === 'pending' ? '#c2410c' : '#64748b'))
                   }}>
-                    {plan.status.toUpperCase()}
+                    {plan.status === 'returned' ? 'PEDIDO DE AJUSTE' : plan.status.toUpperCase()}
                   </span>
                   {plan.aiSuggestions.length > 0 && (
                     <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}>
@@ -336,17 +347,32 @@ export function LessonPlanning() {
             )}
 
             {isAdmin && selectedPlan?.status === 'pending' && (
-              <div className="mt-8 pt-8 border-t">
-                <h4 className="mb-4">Análise da Coordenação</h4>
+              <div className="mt-8 pt-8 border-t" style={{ backgroundColor: '#fff7ed', padding: '1.5rem', borderRadius: '12px', border: '1px solid #ffedd5' }}>
+                <h4 className="flex items-center gap-2 mb-4" style={{ color: '#c2410c' }}>
+                  <MessageSquare size={18} /> Devolutiva da Coordenação
+                </h4>
                 <textarea 
-                   placeholder="Escreva sua devolutiva para o professor..." 
-                   style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '1rem' }}
+                   placeholder="Escreva suas orientações pedagógicas aqui..." 
+                   name="coordinatorFeedback"
+                   value={formData.coordinatorFeedback}
+                   onChange={handleInputChange}
+                   style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid #fed7aa', marginBottom: '1rem', fontSize: '0.9rem' }}
                    rows={4}
                 ></textarea>
                 <div className="flex gap-4">
-                  <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => handleSave('approved')}>Aprovar Plano</button>
-                  <button className="btn btn-secondary" style={{ flex: 1, color: '#ef4444' }} onClick={() => handleSave('returned')}>Solicitar Ajustes</button>
+                  <button className="btn btn-primary" style={{ flex: 1, backgroundColor: '#10b981', boxShadow: 'none' }} onClick={() => handleSave('approved')}>Aprovar Plano</button>
+                  <button className="btn btn-secondary" style={{ flex: 1, color: '#ef4444', border: '1px solid #fee2e2' }} onClick={() => handleSave('returned')}>Solicitar Ajustes</button>
                 </div>
+              </div>
+            )}
+
+            {formData.coordinatorFeedback && !isAdmin && (
+              <div className="mt-8 pt-8 border-t" style={{ backgroundColor: '#f0f9ff', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e0f2fe' }}>
+                <h4 className="flex items-center gap-2 mb-2" style={{ color: '#0369a1' }}>
+                  <MessageSquare size={18} /> Comentários da Coordenação
+                </h4>
+                <p style={{ fontSize: '0.9rem', color: '#0c4a6e', margin: 0, whiteSpace: 'pre-wrap' }}>{formData.coordinatorFeedback}</p>
+                <p style={{ fontSize: '0.75rem', color: '#7dd3fc', marginTop: '0.5rem', fontWeight: 600 }}>Revise as orientações e envie novamente se necessário.</p>
               </div>
             )}
           </div>

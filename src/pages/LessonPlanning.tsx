@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { 
   BookOpen, Plus, Sparkles, Wand2, Users2, Save, 
   MessageSquare, History, Star, 
-  ChevronRight, Filter, Send, TrendingUp
+  ChevronRight, Filter, Send, TrendingUp, Calendar
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { mockClasses } from '../store/mockDb';
@@ -30,7 +30,6 @@ export function LessonPlanning() {
     dailyPlans: [],
     methodology: '',
     resources: '',
-    activities: '',
     evaluation: '',
     status: 'draft',
     aiSuggestions: []
@@ -106,7 +105,7 @@ export function LessonPlanning() {
     setFormData(prev => ({ ...prev, dailyPlans: updatedDailyPlans }));
   };
 
-  const simulateAiSuggestion = (type: AISuggestion['type']) => {
+  const simulateAiSuggestion = (type: AISuggestion['type'], profile?: string) => {
     setIsAiLoading(true);
     setTimeout(() => {
       let content = "";
@@ -115,7 +114,8 @@ export function LessonPlanning() {
       } else if (type === 'improvement') {
         content = "Sua metodologia pode ser fortalecida com a técnica de 'Sala de Aula Invertida'. Sugerimos que os alunos pesquisem o tema base antes da aula para que o tempo em sala seja 100% focado em resolução de problemas.";
       } else {
-        content = "Para alunos com TDAH, sugerimos dividir a atividade principal em blocos de 15 minutos com pausas ativas. Use estímulos visuais coloridos e forneça um roteiro passo-a-passo simplificado.";
+        const profileLabel = profile === 'tdah' ? 'TDAH' : (profile === 'tea' ? 'Autismo' : 'Inclusão');
+        content = `Para alunos com ${profileLabel}, sugerimos dividir a atividade principal em blocos de 15 minutos com pausas ativas. Use estímulos visuais coloridos e forneça um roteiro passo-a-passo simplificado para evitar sobrecarga cognitiva.`;
       }
 
       const newSuggestion: AISuggestion = {
@@ -352,11 +352,29 @@ export function LessonPlanning() {
                   <TrendingUp size={18} color="var(--color-primary)" /> 
                   <span>Melhorar metodologia</span>
                 </button>
+                <div className="mt-4 pt-4 border-t">
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '0.5rem' }}>Perfil para Adaptação</label>
+                  <select 
+                    style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.85rem' }}
+                    defaultValue="tdah"
+                    id="inclusion-profile"
+                  >
+                    <option value="tdah">TDAH (Atenção/Hiperatividade)</option>
+                    <option value="tea">TEA (Autismo)</option>
+                    <option value="dislexia">Dislexia</option>
+                    <option value="tod">TOD (Opositor Desafiador)</option>
+                    <option value="altas-habilidades">Altas Habilidades</option>
+                    <option value="outros">Outros / Geral</option>
+                  </select>
+                </div>
                 <button 
-                  className="btn btn-secondary ai-btn" 
+                  className="btn btn-secondary ai-btn mt-2" 
                   disabled={isAiLoading}
-                  onClick={() => simulateAiSuggestion('adaptation')}
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#1e293b', fontWeight: 600 }}
+                  onClick={() => {
+                    const profile = (document.getElementById('inclusion-profile') as HTMLSelectElement)?.value;
+                    simulateAiSuggestion('adaptation', profile);
+                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#1e293b', fontWeight: 600, width: '100%' }}
                 >
                   <Users2 size={18} color="var(--color-primary)" /> 
                   <span>Sugerir adaptação (Inclusão)</span>
@@ -394,7 +412,8 @@ export function LessonPlanning() {
                           .trim();
 
                         if (s.type === 'ideas') {
-                          setFormData(prev => ({ ...prev, activities: (prev.activities ? prev.activities + '\n\n' : '') + cleanContent }));
+                          // For ideas, we append to methodology or theme notes
+                          setFormData(prev => ({ ...prev, methodology: (prev.methodology ? prev.methodology + '\n\n' : '') + 'Ideia de Atividade: ' + cleanContent }));
                         } else if (s.type === 'improvement') {
                           setFormData(prev => ({ ...prev, methodology: (prev.methodology ? prev.methodology + '\n\n' : '') + cleanContent }));
                         } else {

@@ -191,12 +191,14 @@ export function Login() {
             </p>
             {[
               { label: 'Direção', user: 'diretora', pwd: 'direcao123' },
-              { label: 'Coordenação', user: 'carla', pwd: 'coord123' },
-              { label: 'Professor(a)', user: 'maria', pwd: 'prof123' },
+              { label: 'Coord. Infantil', user: 'coordinfantil', pwd: 'coord123' },
+              { label: 'Coord. Fundamental', user: 'coordfundamental', pwd: 'coord123' },
+              { label: 'Prof. Infantil', user: 'profinfantil', pwd: 'prof123' },
+              { label: 'Prof. Fundamental', user: 'proffundamental', pwd: 'prof123' },
               { label: 'Responsável', user: 'pai', pwd: 'pai123' },
             ].map(c => (
               <button
-                key={c.label}
+                key={c.label + c.user}
                 type="button"
                 onClick={() => { setUsername(c.user); setPassword(c.pwd); setError(''); }}
                 style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: '0.35rem 0', cursor: 'pointer', fontSize: '0.82rem', color: '#0a73ff', fontFamily: 'inherit' }}

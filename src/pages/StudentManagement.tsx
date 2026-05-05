@@ -240,7 +240,11 @@ export function StudentManagement() {
             return;
           }
 
-          parsed.push({ name, birthDate, parent1, parent2: parent2 || undefined });
+          // Auto-suggest class
+          const series = suggestSeries(birthDate, parseInt(selectedYear.id));
+          const autoClassId = series ? managedClasses.find((c: ClassGroup) => c.series === series)?.id : undefined;
+
+          parsed.push({ name, birthDate, parent1, parent2: parent2 || undefined, classId: autoClassId });
         });
 
         setImportPreview(parsed);
@@ -265,7 +269,7 @@ export function StudentManagement() {
       id: `s${Date.now()}_${i}`,
       name: s.name!,
       birthDate: s.birthDate!,
-      classId: importClassId,
+      classId: s.classId || importClassId, // Use auto-linked class or the manually selected fallback
       parent1: s.parent1!,
       parent2: s.parent2,
     }));
@@ -299,9 +303,14 @@ export function StudentManagement() {
           <button
             className="btn btn-secondary"
             onClick={handleDownloadTemplate}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px dashed var(--color-primary)', color: 'var(--color-primary)' }}
+            title="Baixar modelo de planilha"
+            style={{ 
+              display: 'flex', alignItems: 'center', justifyContent: 'center', 
+              width: '38px', height: '38px', padding: 0,
+              border: '1px solid var(--color-border)', color: '#64748b' 
+            }}
           >
-            <Download size={18} /> Baixar Modelo
+            <Download size={18} />
           </button>
           <button
             className="btn btn-secondary"
@@ -623,17 +632,17 @@ export function StudentManagement() {
                 </div>
               )}
 
-              {/* Class selector for import */}
+              {/* Class selector for import (FALLBACK) */}
               <div style={{ marginBottom: '1.25rem' }}>
                 <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.4rem' }}>
-                  Turma de destino <span style={{ color: '#ef4444' }}>*</span>
+                  Turma de destino (caso não seja identificada automaticamente)
                 </label>
                 <select
                   value={importClassId}
                   onChange={(e) => setImportClassId(e.target.value)}
-                  style={{ width: '100%', maxWidth: '350px' }}
+                  style={{ width: '100%', maxWidth: '400px' }}
                 >
-                  <option value="">Selecione a turma para os alunos</option>
+                  <option value="">Selecione a turma padrão para os alunos sem turma sugerida</option>
                   {managedClasses.map((c: ClassGroup) => (
                     <option key={c.id} value={c.id}>{c.name} ({c.level === 'infantil' ? 'Infantil' : 'Fundamental'})</option>
                   ))}
@@ -667,12 +676,21 @@ export function StudentManagement() {
                             <td style={{ padding: '0.6rem 1rem', color: '#64748b' }}>{s.parent1}</td>
                             <td style={{ padding: '0.6rem 1rem', color: '#94a3b8' }}>{s.parent2 || '—'}</td>
                             <td style={{ padding: '0.6rem 1rem', textAlign: 'center' }}>
-                              {sug ? (
+                              {s.classId ? (
                                 <span style={{
                                   fontSize: '0.75rem', padding: '0.2rem 0.6rem', borderRadius: '20px',
-                                  backgroundColor: '#eff6ff', color: '#1d4ed8', fontWeight: 600,
-                                }}>{sug}</span>
-                              ) : '—'}
+                                  backgroundColor: '#dcfce7', color: '#166534', fontWeight: 700,
+                                }}>
+                                  {managedClasses.find(c => c.id === s.classId)?.name}
+                                </span>
+                              ) : (
+                                sug ? (
+                                  <span style={{
+                                    fontSize: '0.75rem', padding: '0.2rem 0.6rem', borderRadius: '20px',
+                                    backgroundColor: '#eff6ff', color: '#1d4ed8', fontWeight: 600,
+                                  }}>{sug} (Sem turma)</span>
+                                ) : '—'
+                              )}
                             </td>
                           </tr>
                         );
@@ -709,13 +727,10 @@ export function StudentManagement() {
                 >
                   Cancelar
                 </button>
-                <button
+                 <button
                   className="btn btn-primary"
                   onClick={handleConfirmImport}
-                  disabled={importPreview.length === 0 || !importClassId}
-                  style={{
-                    opacity: (importPreview.length === 0 || !importClassId) ? 0.5 : 1,
-                  }}
+                  disabled={importPreview.length === 0}
                 >
                   <CheckCircle2 size={18} /> Importar {importPreview.length} Aluno(s)
                 </button>

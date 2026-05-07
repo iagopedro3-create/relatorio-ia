@@ -258,44 +258,44 @@ export function TranscriptGenerator() {
       {student && (
         <div className="print-only" style={{ color: '#000', fontFamily: 'Arial, sans-serif', padding: '0', maxWidth: '210mm', margin: '0 auto' }}>
           {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', gap: '15px' }}>
-            <img src="/logo.png" alt="Logo" style={{ height: '55px', filter: 'grayscale(100%) brightness(0)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px', gap: '12px' }}>
+            <img src="/logo.png" alt="Logo" style={{ height: '45px', filter: 'grayscale(100%) brightness(0)' }} />
             <div style={{ color: '#000' }}>
-              <h1 style={{ fontSize: '13px', margin: '0', fontWeight: 'bold' }}>Escola Vida de Aprendiz | Ensino Fundamental I</h1>
-              <p style={{ margin: 0, fontSize: '9px' }}>CNPJ: 43.642.767/0001-27 | SEI-030030/005656/2023</p>
-              <p style={{ margin: 0, fontSize: '9px' }}>(22) 2040-8464 | Rua Teresina, 333, Palmeiras, Cabo Frio - RJ</p>
+              <h1 style={{ fontSize: '11px', margin: '0', fontWeight: 'bold' }}>Escola Vida de Aprendiz | Ensino Fundamental I</h1>
+              <p style={{ margin: 0, fontSize: '8px' }}>CNPJ: 43.642.767/0001-27 | SEI-030030/005656/2023</p>
+              <p style={{ margin: 0, fontSize: '8px' }}>(22) 2040-8464 | Rua Teresina, 333, Palmeiras, Cabo Frio - RJ</p>
             </div>
           </div>
 
           <div style={{ border: '2px solid #000' }}>
-            <div style={{ backgroundColor: '#f1f5f9', textAlign: 'center', padding: '3px', borderBottom: '1px solid #000', fontWeight: 'bold', fontSize: '12px' }}>
+            <div style={{ backgroundColor: '#f1f5f9', textAlign: 'center', padding: '2px', borderBottom: '1px solid #000', fontWeight: 'bold', fontSize: '10px' }}>
               HISTÓRICO ESCOLAR – ENSINO FUNDAMENTAL {status}
             </div>
 
             {/* Student Info Box */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px', borderBottom: '2px solid #000' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px', borderBottom: '1px solid #000' }}>
               <tbody>
                 <tr>
-                  <td colSpan={2} style={{ padding: '1px 4px', borderBottom: '1px solid #000', borderRight: '1px solid #000' }}>
+                  <td colSpan={2} style={{ padding: '0px 4px', borderBottom: '1px solid #000', borderRight: '1px solid #000' }}>
                     <strong>Nome do Aluno:</strong> {student.name.toUpperCase()}
                   </td>
-                  <td colSpan={2} style={{ padding: '1px 4px', borderBottom: '1px solid #000' }}>
+                  <td colSpan={2} style={{ padding: '0px 4px', borderBottom: '1px solid #000' }}>
                     <strong>CPF:</strong> {cpf || '_________________'}
                   </td>
                 </tr>
                 <tr>
-                  <td rowSpan={2} style={{ width: '12%', textAlign: 'center', borderRight: '1px solid #000', fontWeight: 'bold', fontSize: '9px' }}>
+                  <td rowSpan={2} style={{ width: '12%', textAlign: 'center', borderRight: '1px solid #000', fontWeight: 'bold', fontSize: '8px' }}>
                     Nascimento
                   </td>
-                  <td colSpan={2} style={{ padding: '1px 4px', borderRight: '1px solid #000', borderBottom: '1px solid #000' }}>
+                  <td colSpan={2} style={{ padding: '0px 4px', borderRight: '1px solid #000', borderBottom: '1px solid #000' }}>
                     Município: {naturalidade.toUpperCase()}
                   </td>
-                  <td style={{ padding: '1px 4px', borderBottom: '1px solid #000' }}>
+                  <td style={{ padding: '0px 4px', borderBottom: '1px solid #000' }}>
                     Estado: {estado.toUpperCase()} <span style={{ marginLeft: '15px' }}>País: {pais}</span>
                   </td>
                 </tr>
                 <tr>
-                  <td colSpan={3} style={{ padding: '1px 4px' }}>
+                  <td colSpan={3} style={{ padding: '0px 4px' }}>
                     Data: {student.birthDate ? new Date(student.birthDate).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) : '—'}
                   </td>
                 </tr>
@@ -303,31 +303,31 @@ export function TranscriptGenerator() {
             </table>
 
             {/* Main Grades Table */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8px' }}>
               <tbody>
                 {/* HEADERS */}
                 <tr>
-                  <th rowSpan={11} style={{ borderRight: '1px solid #000', borderBottom: '2px solid #000', width: '20px' }}>
-                    <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', padding: '5px 0' }}>Fundamento Legal: Lei Federal 9394/96.</div>
+                  <th rowSpan={11} style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', width: '20px' }}>
+                    <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', padding: '3px 0' }}>Fundamento Legal: Lei Federal 9394/96.</div>
                   </th>
                   <th rowSpan={10} style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', width: '20px' }}>
-                    <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', padding: '5px 0' }}>BASE NACIONAL COMUM</div>
+                    <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', padding: '3px 0' }}>BASE NACIONAL COMUM</div>
                   </th>
-                  <th rowSpan={3} style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', padding: '2px', textAlign: 'left', width: '150px' }}>
+                  <th rowSpan={3} style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', padding: '1px', textAlign: 'left', width: '150px' }}>
                     COMPONENTES CURRICULARES
                   </th>
-                  <th colSpan={5} style={{ borderBottom: '1px solid #000', padding: '2px', backgroundColor: '#f1f5f9' }}>ANO LETIVO</th>
+                  <th colSpan={5} style={{ borderBottom: '1px solid #000', padding: '1px', backgroundColor: '#f1f5f9' }}>ANO LETIVO</th>
                 </tr>
                 <tr>
-                  <th colSpan={5} style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', borderLeft: '1px solid #000', padding: '2px' }}>CICLO I / Anos Iniciais</th>
+                  <th colSpan={5} style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', borderLeft: '1px solid #000', padding: '1px' }}>CICLO I / Anos Iniciais</th>
                 </tr>
                 <tr>
                   {YEARS.map((y, i) => {
                     const l = getYearLabels(y);
                     return (
-                      <th key={y} style={{ borderRight: i < 4 ? '1px solid #000' : 'none', borderBottom: '1px solid #000', padding: '2px', textAlign: 'center', borderLeft: i === 0 ? '1px solid #000' : 'none' }}>
+                      <th key={y} style={{ borderRight: i < 4 ? '1px solid #000' : 'none', borderBottom: '1px solid #000', padding: '1px', textAlign: 'center', borderLeft: i === 0 ? '1px solid #000' : 'none' }}>
                         <div>{l.top}</div>
-                        <div style={{ fontSize: '7px' }}>{l.bot}</div>
+                        <div style={{ fontSize: '6px' }}>{l.bot}</div>
                       </th>
                     );
                   })}
@@ -336,7 +336,7 @@ export function TranscriptGenerator() {
                 {/* BASE NACIONAL COMUM */}
                 {SUBJECTS_BASE.map(sub => (
                   <tr key={sub}>
-                    <td style={{ borderRight: '1px solid #000', borderLeft: '1px solid #000', borderBottom: '1px solid #000', padding: '1px 3px' }}>{sub}</td>
+                    <td style={{ borderRight: '1px solid #000', borderLeft: '1px solid #000', borderBottom: '1px solid #000', padding: '0px 3px' }}>{sub}</td>
                     {YEARS.map((y, i) => (
                       <td key={y} style={{ borderRight: i < 4 ? '1px solid #000' : 'none', borderBottom: '1px solid #000', textAlign: 'center' }}>
                         {historyData[y].notas[sub] || ''}
@@ -348,10 +348,10 @@ export function TranscriptGenerator() {
                 {/* PARTE DIVERSIFICADA */}
                 <tr>
                   <td rowSpan={1} style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', borderTop: '1px solid #000' }}>
-                    <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', padding: '5px 0' }}>Parte DIVERSIF.</div>
+                    <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', padding: '3px 0' }}>Parte DIVERSIF.</div>
                   </td>
                   {SUBJECTS_DIVERSIFIED.map((sub, idx) => (
-                    <td key={sub} style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', borderTop: idx === 0 ? '1px solid #000' : 'none', padding: '1px 3px' }}>{sub}</td>
+                    <td key={sub} style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', borderTop: idx === 0 ? '1px solid #000' : 'none', padding: '0px 3px' }}>{sub}</td>
                   ))}
                   {YEARS.map((y, i) => (
                     <td key={y} style={{ borderRight: i < 4 ? '1px solid #000' : 'none', borderBottom: '1px solid #000', borderTop: '1px solid #000', textAlign: 'center' }}>
@@ -365,11 +365,11 @@ export function TranscriptGenerator() {
                   <th rowSpan={6} style={{ borderRight: '1px solid #000' }}>
                     <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>ESTUDOS REALIZADOS</div>
                   </th>
-                  <th colSpan={2} style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', backgroundColor: '#f1f5f9', padding: '2px' }}>Série/Ano</th>
-                  <th style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', backgroundColor: '#f1f5f9', padding: '2px' }}>Ano Letivo</th>
-                  <th colSpan={2} style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', backgroundColor: '#f1f5f9', padding: '2px' }}>ESCOLA DE ORIGEM / Estabelecimento de Ensino</th>
-                  <th style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', backgroundColor: '#f1f5f9', padding: '2px' }}>Município</th>
-                  <th style={{ borderBottom: '1px solid #000', backgroundColor: '#f1f5f9', padding: '2px' }}>UF</th>
+                  <th colSpan={2} style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', backgroundColor: '#f1f5f9', padding: '1px' }}>Série/Ano</th>
+                  <th style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', backgroundColor: '#f1f5f9', padding: '1px' }}>Ano Letivo</th>
+                  <th colSpan={2} style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', backgroundColor: '#f1f5f9', padding: '1px' }}>ESCOLA DE ORIGEM / Estabelecimento de Ensino</th>
+                  <th style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', backgroundColor: '#f1f5f9', padding: '1px' }}>Município</th>
+                  <th style={{ borderBottom: '1px solid #000', backgroundColor: '#f1f5f9', padding: '1px' }}>UF</th>
                 </tr>
                 {YEARS.map(y => {
                   const l = getYearLabels(y);
@@ -397,34 +397,34 @@ export function TranscriptGenerator() {
             </table>
 
             {/* Escala / Observações */}
-            <div style={{ fontSize: '9px', padding: '2px 4px', borderBottom: '1px solid #000', fontStyle: 'italic' }}>
-              Escala de Avaliação: Escala numérica de notas de 0 (zero) a 100 com palavra indicativa de desempenho escolar satisfatório, anota igual ou superior a 70.
+            <div style={{ fontSize: '8px', padding: '1px 4px', borderBottom: '1px solid #000', fontStyle: 'italic' }}>
+              Escala de Avaliação: Escala numérica de notas de 0 a 100 com palavra indicativa de desempenho escolar satisfatório, anota igual ou superior a 70.
             </div>
-            <div style={{ padding: '2px 4px', borderBottom: '1px solid #000', minHeight: '40px', fontSize: '9px' }}>
+            <div style={{ padding: '1px 4px', borderBottom: '1px solid #000', minHeight: '30px', fontSize: '8px' }}>
               <strong>OBSERVAÇÕES:</strong><br/>
               {observacoes}
             </div>
 
             {/* DECLARAÇÃO */}
-            <div style={{ padding: '2px', borderBottom: '1px solid #000', fontSize: '9px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f1f5f9' }}>
+            <div style={{ padding: '1px', borderBottom: '1px solid #000', fontSize: '8px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f1f5f9' }}>
               DECLARAÇÃO
             </div>
-            <div style={{ padding: '4px', borderBottom: '1px solid #000', fontSize: '9px', textAlign: 'justify' }}>
+            <div style={{ padding: '3px', borderBottom: '1px solid #000', fontSize: '8px', textAlign: 'justify' }}>
               O Diretor da Escola Vida de Aprendiz declara nos termos do Inciso VII, Artigo 24 da Lei Federal 9394/96, que {student.name.toUpperCase()}, CPF {cpf || '_______________'}, cursou até o presente momento nesta instituição, tendo sido considerado {resultadoFinalDescritivo.toUpperCase()}. Vide anexo o aproveitamento do aluno durante o período cursado.
             </div>
 
             {/* Signatures */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 20px 2px 20px', fontSize: '9px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 20px 2px 20px', fontSize: '8px' }}>
               <div style={{ textAlign: 'center', width: '30%' }}>
-                <div style={{ borderBottom: '1px solid #000', marginBottom: '2px' }}>{new Date().toLocaleDateString('pt-BR')}</div>
+                <div style={{ borderBottom: '1px solid #000', marginBottom: '1px' }}>{new Date().toLocaleDateString('pt-BR')}</div>
                 DATA
               </div>
               <div style={{ textAlign: 'center', width: '30%' }}>
-                <div style={{ borderBottom: '1px solid #000', marginBottom: '2px' }}></div>
+                <div style={{ borderBottom: '1px solid #000', marginBottom: '1px' }}></div>
                 Secretaria da Escola
               </div>
               <div style={{ textAlign: 'center', width: '30%' }}>
-                <div style={{ borderBottom: '1px solid #000', marginBottom: '2px' }}></div>
+                <div style={{ borderBottom: '1px solid #000', marginBottom: '1px' }}></div>
                 Diretor de Escola
               </div>
             </div>
@@ -436,13 +436,14 @@ export function TranscriptGenerator() {
         .print-only { display: none; }
         
         @media print {
-          @page { size: A4; margin: 0.5cm 1cm; }
+          @page { size: A4; margin: 0.3cm 0.8cm; }
           .screen-only, aside { display: none !important; }
           .print-only { 
             display: block !important; 
             width: 100% !important;
             page-break-inside: avoid;
             overflow: hidden;
+            height: 98vh;
           }
           
           body, main { 

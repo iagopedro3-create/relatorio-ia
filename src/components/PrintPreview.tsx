@@ -1,3 +1,4 @@
+import React from 'react';
 import { X, Printer, Download } from 'lucide-react';
 
 interface PrintPreviewProps {
@@ -33,10 +34,10 @@ export function PrintPreview({ isOpen, onClose, title, subtitle, studentData, co
     html2pdf().set(opt).from(element).save();
   };
 
-  // Helper to render markdown-like content to JSX
+  // Helper to render markdown-like content to ReactNode
   const renderContent = (text: string) => {
     const lines = text.split('\n');
-    const result: JSX.Element[] = [];
+    const result: React.ReactNode[] = [];
     let i = 0;
 
     while (i < lines.length) {

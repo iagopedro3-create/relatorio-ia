@@ -18,7 +18,7 @@ export function PeiGenerator() {
 
   const handleGeneratePei = async (data: PeiData) => {
     if (!settings.apiKey) {
-      setError('A chave da API não foi configurada.');
+      setError('A chave da API não foi detectada. Verifique se a Direção configurou a chave neste computador ou use as variáveis de ambiente.');
       return;
     }
 

@@ -7,9 +7,12 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { mockClasses } from '../store/mockDb';
 import { getStoredPlans, saveStoredPlans, type LessonPlan, type AISuggestion } from '../store/planningDb';
+import { useSettings } from '../contexts/SettingsContext';
+import { generateLessonPlanSuggestion } from '../lib/aiService';
 
 export function LessonPlanning() {
   const { user } = useAuth();
+  const { settings } = useSettings();
   
   const [activeTab, setActiveTab] = useState<'list' | 'editor' | 'ideas'>('list');
   const [plans, setPlans] = useState<LessonPlan[]>(getStoredPlans());
@@ -102,38 +105,61 @@ export function LessonPlanning() {
     setFormData({ ...formData, dailyPlans: newDailyPlans });
   };
 
-  const simulateAiSuggestion = (type: AISuggestion['type'], profile?: string) => {
+  const simulateAiSuggestion = async (type: AISuggestion['type'], profile?: string) => {
+    if (!settings.apiKey) {
+      alert('A IA está em modo de demonstração pois a chave API não foi configurada nas Configurações.');
+      // Keep simulation as fallback
+      setIsAiLoading(true);
+      setTimeout(() => {
+        setIsAiLoading(false);
+        setActiveTab('ideas');
+      }, 1000);
+      return;
+    }
+
     setIsAiLoading(true);
     
     const weeklyTheme = formData.weeklyTheme || "tema atual";
     const firstActiveDay = (formData.dailyPlans || []).find(d => d.subject || d.theme || d.content);
     const dayContext = firstActiveDay ? `${firstActiveDay.dayOfWeek} (${firstActiveDay.subject})` : "suas aulas";
 
-    setTimeout(() => {
-      let content = "";
+    try {
+      let prompt = "";
       if (type === 'ideas') {
-        content = `Analisando seu detalhamento para "${weeklyTheme}" e as atividades planejadas, sugerimos que em ${dayContext} você inclua uma 'Gincana de Conceitos'. Como você descreveu "${firstActiveDay?.content || 'os tópicos'} ", essa dinâmica ajudará a fixar o conteúdo de forma lúdica.`;
+        prompt = `Com base no tema semanal "${weeklyTheme}" e no planejamento de ${dayContext}, sugira 3 ideias criativas de atividades práticas.`;
       } else if (type === 'improvement') {
-        content = `Para fortalecer o plano de "${weeklyTheme}", recomendamos aplicar a 'Instrução por Pares'. Essa técnica ajudará os alunos a consolidarem os conceitos através da explicação entre colegas.`;
+        prompt = `Analise o seguinte plano de aula e sugira melhorias pedagógicas focadas em engajamento e metodologias ativas: Theme: ${weeklyTheme}, Methodology: ${formData.methodology}`;
       } else {
         const profileLabel = profile === 'tdah' ? 'TDAH' : (profile === 'tea' ? 'Autismo' : (profile === 'dislexia' ? 'Dislexia' : 'Inclusão'));
-        content = `Para apoiar alunos com ${profileLabel} durante ${dayContext}, sugerimos adaptar a atividade de "${firstActiveDay?.theme || 'hoje'}" usando 'Chunking'. Forneça um guia visual com apenas 3 passos claros por vez.`;
+        prompt = `Como posso adaptar as atividades de "${dayContext}" sobre "${weeklyTheme}" para um aluno com ${profileLabel}? Forneça orientações práticas.`;
       }
+
+      // Use the dedicated planning suggestion method
+      const result = await generateLessonPlanSuggestion(prompt, {
+        provider: settings.aiProvider,
+        modelId: settings.aiModel,
+        apiKey: settings.apiKey
+      });
 
       const newSuggestion: AISuggestion = {
         id: Date.now().toString(),
         type,
-        content,
+        content: result,
         isFavorite: false,
         createdAt: new Date().toISOString()
       };
+      
       setFormData(prev => ({
         ...prev,
         aiSuggestions: [newSuggestion, ...(prev.aiSuggestions || [])]
       }));
-      setIsAiLoading(false);
       setActiveTab('ideas');
-    }, 1500);
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao consultar a IA. Verifique sua chave API.');
+    } finally {
+      setIsAiLoading(false);
+    }
   };
 
   const handleSave = (status: LessonPlan['status']) => {

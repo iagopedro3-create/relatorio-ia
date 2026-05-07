@@ -216,3 +216,35 @@ Analise esses dados e gere o painel completo de Inteligência Pedagógica.
     return response.choices[0].message.content || '';
   }
 }
+
+// --- LESSON PLANNING COPILOT ---
+
+const PLANNING_SYSTEM_PROMPT = `Você é um mentor pedagógico especializado em metodologias ativas e BNCC. Sua função é auxiliar professores na criação de planos de aula criativos, inclusivos e eficientes. 
+
+Ao sugerir atividades, foque em:
+- Engajamento dos alunos.
+- Objetivos de aprendizagem claros.
+- Praticidade na execução em sala de aula.
+- Alinhamento com a faixa etária.`;
+
+export async function generateLessonPlanSuggestion(prompt: string, aiConfig: AIConfig) {
+  const { provider, modelId, apiKey } = aiConfig;
+  if (!apiKey) throw new Error('API Key não configurada');
+
+  if (provider === 'gemini') {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: modelId, systemInstruction: PLANNING_SYSTEM_PROMPT });
+    const result = await model.generateContent(prompt);
+    return result.response.text();
+  } else {
+    const openai = new OpenAI({ apiKey, dangerouslyAllowBrowser: true });
+    const response = await openai.chat.completions.create({
+      model: modelId,
+      messages: [
+        { role: 'system', content: PLANNING_SYSTEM_PROMPT },
+        { role: 'user', content: prompt }
+      ],
+    });
+    return response.choices[0].message.content || '';
+  }
+}

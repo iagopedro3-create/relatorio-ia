@@ -41,7 +41,7 @@ export function ReportGenerator() {
 
   const handleGenerateReport = async (data: StudentData) => {
     if (!settings.apiKey) {
-      setError('A chave da API não foi configurada pela Direção.');
+      setError('A chave da API não foi detectada neste navegador. Se você já configurou em outro computador, lembre-se que as configurações são locais. Vá em "Configurações" para inserir a chave neste dispositivo ou peça para a Direção.');
       return;
     }
 

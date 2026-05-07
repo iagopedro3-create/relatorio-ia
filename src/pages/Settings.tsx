@@ -64,8 +64,20 @@ export function Settings() {
         
         <p className="text-muted mb-4">
           Configure a inteligência artificial que irá gerar os relatórios da escola. 
-          Ao salvar aqui, todos os professores utilizarão esta mesma chave sem precisarem configurar nada.
+          As configurações abaixo são <strong>salvas localmente no seu navegador</strong>.
         </p>
+
+        <div style={{ 
+          padding: '1rem', 
+          backgroundColor: '#fff7ed', 
+          borderRadius: '8px', 
+          border: '1px solid #ffedd5',
+          marginBottom: '1.5rem',
+          fontSize: '0.85rem',
+          color: '#9a3412'
+        }}>
+          <strong>Dica para a Direção:</strong> Se você deseja que todos os computadores da escola usem a mesma chave automaticamente sem precisar configurar um por um, peça ao suporte técnico para configurar as variáveis de ambiente (<code>VITE_AI_API_KEY</code>, <code>VITE_AI_PROVIDER</code>, <code>VITE_AI_MODEL</code>) na plataforma de hospedagem.
+        </div>
 
         <form onSubmit={handleSave}>
           {/* Provider Selection - visual cards */}

@@ -61,7 +61,7 @@ export function PedagogicalIntelligence() {
 
   const handleGenerateAI = async () => {
     if (!settings.apiKey) {
-      alert('A chave da API não foi configurada pela Direção.');
+      alert('A chave da API não foi detectada neste dispositivo. Peça para a Direção configurar em "Configurações" ou utilize variáveis de ambiente globais.');
       return;
     }
 

@@ -13,9 +13,9 @@ interface SettingsContextType {
 }
 
 const DEFAULT_SETTINGS: Settings = {
-  apiKey: '',
-  aiProvider: 'gemini',
-  aiModel: 'gemini-1.5-flash',
+  apiKey: import.meta.env.VITE_AI_API_KEY || '',
+  aiProvider: (import.meta.env.VITE_AI_PROVIDER as 'gemini' | 'openai') || 'gemini',
+  aiModel: import.meta.env.VITE_AI_MODEL || 'gemini-1.5-flash',
 };
 
 const SETTINGS_KEY = 'vidadeaprendiz_settings';

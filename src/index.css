@@ -1,3 +1,11 @@
+/* Declarada antes do import para ficar na base da cascata: os utilitários
+   legados abaixo perdem para os do Tailwind, que são gerados em @layer
+   utilities. Sem isso, CSS sem layer sempre vence CSS com layer — e regras
+   como `.flex` anulavam variantes responsivas como `md:hidden`. */
+@layer legacy;
+
+@import "tailwindcss";
+
 :root {
   --font-sans: 'Inter', sans-serif;
   
@@ -38,10 +46,15 @@
   --transition-normal: 300ms ease;
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+/* Na layer legada: sem layer, este reset venceria os utilitários do Tailwind
+   e zeraria todo utilitário de margin e padding. O preflight do Tailwind
+   já faz exatamente o mesmo reset. */
+@layer legacy {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
 }
 
 body {
@@ -67,9 +80,11 @@ body {
   padding: 2rem 1.5rem;
 }
 
-.grid {
-  display: grid;
-  gap: 2rem;
+@layer legacy {
+  .grid {
+    display: grid;
+    gap: 2rem;
+  }
 }
 
 @media (min-width: 768px) {
@@ -269,20 +284,22 @@ header {
   color: #334155;
 }
 
-/* Utilities */
-.flex { display: flex; }
-.items-center { align-items: center; }
-.justify-between { justify-content: space-between; }
-.justify-center { justify-content: center; }
-.gap-2 { gap: 0.5rem; }
-.gap-3 { gap: 0.75rem; }
-.gap-4 { gap: 1rem; }
-.w-full { width: 100%; }
-.mt-4 { margin-top: 1rem; }
-.mt-8 { margin-top: 2rem; }
-.mb-2 { margin-bottom: 0.5rem; }
-.mb-4 { margin-bottom: 1rem; }
-.text-center { text-align: center; }
+/* Utilities (legadas — o Tailwind já define todas com os mesmos valores) */
+@layer legacy {
+  .flex { display: flex; }
+  .items-center { align-items: center; }
+  .justify-between { justify-content: space-between; }
+  .justify-center { justify-content: center; }
+  .gap-2 { gap: 0.5rem; }
+  .gap-3 { gap: 0.75rem; }
+  .gap-4 { gap: 1rem; }
+  .w-full { width: 100%; }
+  .mt-4 { margin-top: 1rem; }
+  .mt-8 { margin-top: 2rem; }
+  .mb-2 { margin-bottom: 0.5rem; }
+  .mb-4 { margin-bottom: 1rem; }
+  .text-center { text-align: center; }
+}
 
 /* Loader */
 .loader {
@@ -423,7 +440,6 @@ header {
 .print-content {
   text-align: justify;
   line-height: 1.8;
-  white-space: pre-wrap;
   font-size: 11.5pt;
   color: #222;
 }
@@ -515,7 +531,7 @@ header {
 }
 
 @media (max-width: 480px) {
-  .grid.grid-cols-1.md\\:grid-cols-4 {
+  .grid.grid-cols-1.md\:grid-cols-4 {
     grid-template-columns: 1fr !important;
   }
 

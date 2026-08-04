@@ -3,11 +3,12 @@ import { Outlet, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import {
   LogOut, Users, Settings, LayoutDashboard, FileText,
   ShieldCheck, Brain, CalendarCheck, BookOpen, ClipboardList,
-  GraduationCap, ChevronDown, ChevronRight, BookOpenCheck,
+  GraduationCap, ChevronDown, BookOpenCheck,
   Sliders, UserCog, Baby, FileArchive, Printer, MessageSquareText, Menu, X
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { mockClasses } from '../store/mockDb';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface NavItem {
   name: string;
@@ -35,7 +36,7 @@ export function Layout() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: 'var(--color-bg)' }}>
+      <div className="flex items-center justify-center min-h-screen bg-[#f6f3dd]">
         <div className="loader"></div>
       </div>
     );
@@ -49,18 +50,14 @@ export function Layout() {
     setOpenGroups(prev => ({ ...prev, [label]: !prev[label] }));
   };
 
-  // ----- Build nav structure based on role -----
   const flatItems: NavItem[] = [];
   const groups: NavGroup[] = [];
-
   const isResponsible = user.role === 'responsible';
 
-  // INÍCIO — everyone
   flatItems.push({ name: 'Início', path: '/', icon: <LayoutDashboard size={18} /> });
   flatItems.push({ name: 'Agenda Digital', path: '/agenda', icon: <MessageSquareText size={18} /> });
   flatItems.push({ name: 'Planejamento de Aula', path: '/planning', icon: <BookOpenCheck size={18} /> });
 
-  // ACADÊMICO
   const academicoItems: NavItem[] = [];
   
   if (!isResponsible) {
@@ -87,7 +84,6 @@ export function Layout() {
   
   groups.push({ label: 'acadêmico', icon: <GraduationCap size={16} />, items: academicoItems });
 
-  // RELATÓRIOS
   if (!isResponsible) {
     const relatoriosItems: NavItem[] = [
       { name: 'Relatório IA', path: '/reports', icon: <FileText size={18} /> },
@@ -100,7 +96,6 @@ export function Layout() {
     groups.push({ label: 'relatórios', icon: <FileText size={16} />, items: relatoriosItems });
   }
 
-  // ADMINISTRATIVO — admin + coordinator only
   if (user.role === 'admin' || user.role === 'coordinator') {
     const adminItems: NavItem[] = [
       { name: 'Turmas',             path: '/classes',    icon: <GraduationCap size={18} /> },
@@ -110,7 +105,6 @@ export function Layout() {
     groups.push({ label: 'administrativo', icon: <UserCog size={16} />, items: adminItems });
   }
 
-  // CONFIGURAÇÕES — admin only
   if (user.role === 'admin') {
     const configItems: NavItem[] = [
       { name: 'Chave de API', path: '/settings', icon: <Sliders size={18} /> },
@@ -119,42 +113,6 @@ export function Layout() {
   }
 
   const isActive = (path: string) => location.pathname === path;
-
-  const navBtnStyle = (active: boolean): React.CSSProperties => ({
-    width: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.65rem',
-    padding: '0.7rem 1.25rem 0.7rem 2rem',
-    backgroundColor: active ? 'rgba(10, 115, 255, 0.1)' : 'transparent',
-    color: active ? 'var(--color-primary)' : '#64748b',
-    border: 'none',
-    borderRight: active ? '3px solid var(--color-primary)' : '3px solid transparent',
-    cursor: 'pointer',
-    textAlign: 'left',
-    fontFamily: 'var(--font-sans)',
-    fontSize: '0.88rem',
-    fontWeight: active ? 600 : 400,
-    transition: 'all 0.15s',
-  });
-
-  const groupHeaderStyle: React.CSSProperties = {
-    width: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '0.55rem 1.25rem',
-    backgroundColor: 'transparent',
-    border: 'none',
-    cursor: 'pointer',
-    fontFamily: 'var(--font-sans)',
-    fontSize: '0.7rem',
-    fontWeight: 700,
-    letterSpacing: '0.08em',
-    textTransform: 'uppercase',
-    color: '#94a3b8',
-    marginTop: '0.5rem',
-  };
 
   const getRoleLabel = (role: string) => {
     switch (role) {
@@ -165,12 +123,12 @@ export function Layout() {
     }
   };
 
-  const getRoleColor = (role: string) => {
+  const getRoleColorClass = (role: string) => {
     switch (role) {
-      case 'admin': return '#9333ea';
-      case 'coordinator': return 'var(--color-primary)';
-      case 'teacher': return 'var(--color-secondary)';
-      default: return '#64748b';
+      case 'admin': return 'bg-purple-600';
+      case 'coordinator': return 'bg-[#0a73ff]';
+      case 'teacher': return 'bg-[#fd852d]';
+      default: return 'bg-slate-500';
     }
   };
 
@@ -185,132 +143,124 @@ export function Layout() {
   }
 
   return (
-    <div className="flex" style={{ minHeight: '100vh' }}>
+    <div className="flex min-h-screen bg-[#f6f3dd]">
       {/* Mobile Top Bar */}
-      <div className="mobile-topbar" style={{
-        display: 'none', position: 'fixed', top: 0, left: 0, right: 0, height: '56px',
-        backgroundColor: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)',
-        zIndex: 1001, padding: '0 1rem', alignItems: 'center', justifyContent: 'space-between',
-      }}>
-        <button onClick={() => setMobileMenuOpen(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem' }}>
-          <Menu size={24} color="var(--color-text)" />
+      <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-slate-200 z-40 flex items-center justify-between px-4">
+        <button onClick={() => setMobileMenuOpen(true)} className="p-2 text-slate-700 bg-transparent border-none">
+          <Menu size={24} />
         </button>
-        <img src="/logo.png" alt="Vida de Aprendiz" style={{ height: '32px' }} />
-        <div style={{ width: '40px' }} />
+        <img src="/logo.png" alt="Vida de Aprendiz" className="h-8" />
+        <div className="w-10"></div>
       </div>
 
       {/* Mobile Overlay */}
-      {mobileMenuOpen && (
-        <div onClick={() => setMobileMenuOpen(false)} style={{
-          position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1002,
-        }} />
-      )}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setMobileMenuOpen(false)} 
+            className="fixed inset-0 bg-black/50 z-40 md:hidden" 
+          />
+        )}
+      </AnimatePresence>
 
       {/* Sidebar */}
-      <aside className="app-sidebar" style={{
-        width: '240px',
-        backgroundColor: 'var(--color-surface)',
-        borderRight: '1px solid var(--color-border)',
-        display: 'flex',
-        flexDirection: 'column',
-        padding: '1.25rem 0',
-        position: 'fixed',
-        height: '100vh',
-        overflowY: 'auto',
-        zIndex: 1003,
-        transition: 'transform 0.3s ease',
-      }}>
+      <aside className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-slate-200 z-50 transform transition-transform duration-300 ease-in-out md:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} flex flex-col py-5 shadow-xl md:shadow-none`}>
         {/* Logo + Close on mobile */}
-        <div style={{ padding: '0 1.25rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <img src="/logo.png" alt="Vida de Aprendiz" style={{ maxWidth: '160px' }} />
-          <button className="mobile-close-btn" onClick={() => setMobileMenuOpen(false)} style={{ display: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem' }}>
-            <X size={20} color="#94a3b8" />
+        <div className="px-5 mb-6 flex items-center justify-between">
+          <img src="/logo.png" alt="Vida de Aprendiz" className="max-w-[160px]" />
+          <button className="md:hidden p-1 text-slate-400 bg-transparent border-none" onClick={() => setMobileMenuOpen(false)}>
+            <X size={20} />
           </button>
         </div>
 
         {/* User Badge */}
-        <div style={{ padding: '0.75rem 1.25rem', marginBottom: '1rem', borderBottom: '1px solid var(--color-border)' }}>
-          <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0, fontWeight: 600, textTransform: 'uppercase' }}>Bem-vindo(a)</p>
-          <p style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.95rem', margin: '0.2rem 0' }}>{user.name}</p>
-          <span style={{
-            fontSize: '0.65rem',
-            backgroundColor: getRoleColor(user.role),
-            color: '#fff',
-            padding: '0.1rem 0.5rem',
-            borderRadius: '1rem',
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.25rem',
-          }}>
+        <div className="px-5 pb-4 mb-4 border-b border-slate-200">
+          <p className="text-xs font-semibold text-slate-400 uppercase m-0">Bem-vindo(a)</p>
+          <p className="font-bold text-slate-800 text-base my-1">{user.name}</p>
+          <span className={`text-[10px] text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider inline-flex items-center gap-1 ${getRoleColorClass(user.role)}`}>
             {user.role === 'admin' && <ShieldCheck size={10} />}
             {getRoleLabel(user.role)}
           </span>
         </div>
 
-        <nav style={{ flex: 1 }}>
-          {/* Flat top item: Início */}
+        <nav className="flex-1 overflow-y-auto px-3 space-y-1">
+          {/* Flat top items */}
           {flatItems.map(item => (
-            <button key={item.path} onClick={() => { navigate(item.path); setMobileMenuOpen(false); }} style={navBtnStyle(isActive(item.path))}>
-              {item.icon}
+            <button 
+              key={item.path} 
+              onClick={() => { navigate(item.path); setMobileMenuOpen(false); }} 
+              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-colors bg-transparent border-none cursor-pointer ${isActive(item.path) ? 'text-[#0a73ff] bg-blue-50 font-semibold' : 'text-slate-500 hover:bg-slate-50 font-medium'}`}
+            >
+              <div className={isActive(item.path) ? 'text-[#0a73ff]' : 'text-slate-400'}>
+                {item.icon}
+              </div>
               {item.name}
             </button>
           ))}
 
           {/* Grouped sections */}
-          {groups.map(group => {
-            const isOpen = openGroups[group.label] ?? true;
-            const hasActive = group.items.some(i => isActive(i.path));
-            return (
-              <div key={group.label}>
-                <button
-                  onClick={() => toggleGroup(group.label)}
-                  style={{
-                    ...groupHeaderStyle,
-                    color: hasActive ? 'var(--color-primary)' : '#94a3b8',
-                  }}
-                >
-                  <span className="flex items-center gap-2">
-                    {group.icon}
-                    {group.label}
-                  </span>
-                  {isOpen
-                    ? <ChevronDown size={12} />
-                    : <ChevronRight size={12} />}
-                </button>
+          <div className="mt-4">
+            {groups.map(group => {
+              const isOpen = openGroups[group.label] ?? true;
+              const hasActive = group.items.some(i => isActive(i.path));
+              return (
+                <div key={group.label} className="mb-2">
+                  <button
+                    onClick={() => toggleGroup(group.label)}
+                    className={`w-full flex items-center justify-between px-4 py-2 text-xs font-bold tracking-widest uppercase transition-colors bg-transparent border-none cursor-pointer ${hasActive ? 'text-[#0a73ff]' : 'text-slate-400 hover:text-slate-600'}`}
+                  >
+                    <span className="flex items-center gap-2">
+                      {group.icon}
+                      {group.label}
+                    </span>
+                    <motion.div
+                      animate={{ rotate: isOpen ? 180 : 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <ChevronDown size={14} />
+                    </motion.div>
+                  </button>
 
-                {isOpen && (
-                  <div>
-                    {group.items.map(item => (
-                      <button
-                        key={item.path}
-                        onClick={() => { navigate(item.path); setMobileMenuOpen(false); }}
-                        style={navBtnStyle(isActive(item.path))}
+                  <AnimatePresence>
+                    {isOpen && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
                       >
-                        {item.icon}
-                        {item.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                        <div className="mt-1 space-y-1">
+                          {group.items.map(item => (
+                            <button
+                              key={item.path}
+                              onClick={() => { navigate(item.path); setMobileMenuOpen(false); }}
+                              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-colors bg-transparent border-none cursor-pointer ${isActive(item.path) ? 'text-[#0a73ff] bg-blue-50 font-semibold' : 'text-slate-500 hover:bg-slate-50 font-medium'}`}
+                            >
+                              <div className={isActive(item.path) ? 'text-[#0a73ff]' : 'text-slate-400'}>
+                                {item.icon}
+                              </div>
+                              {item.name}
+                            </button>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
+          </div>
         </nav>
 
         {/* Logout */}
-        <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)' }}>
+        <div className="px-5 pt-4 border-t border-slate-200 mt-auto">
           <button
             onClick={handleLogout}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: '0.5rem',
-              padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)',
-              backgroundColor: 'transparent', cursor: 'pointer', color: '#64748b',
-              fontFamily: 'var(--font-sans)', fontWeight: 500, fontSize: '0.88rem',
-              transition: 'all 0.15s',
-            }}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-slate-200 rounded-lg text-slate-500 font-medium text-sm transition-colors hover:bg-slate-50 hover:text-red-500 bg-transparent cursor-pointer"
           >
             <LogOut size={16} /> Sair do Sistema
           </button>
@@ -318,18 +268,9 @@ export function Layout() {
       </aside>
 
       {/* Main Content */}
-      <main className="app-main" style={{ flex: 1, padding: '2rem', marginLeft: '240px', minHeight: '100vh', backgroundColor: 'var(--color-bg)' }}>
+      <main className="flex-1 px-4 py-6 md:px-8 md:py-8 md:ml-64 pt-20 md:pt-8 min-h-screen">
         <Outlet />
       </main>
-
-      <style>{`
-        @media (max-width: 768px) {
-          .mobile-topbar { display: flex !important; }
-          .app-sidebar { transform: ${mobileMenuOpen ? 'translateX(0)' : 'translateX(-100%)'}; }
-          .app-main { margin-left: 0 !important; padding: 1rem 0.75rem !important; padding-top: 72px !important; }
-          .mobile-close-btn { display: block !important; }
-        }
-      `}</style>
     </div>
   );
 }

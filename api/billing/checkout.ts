@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import { adminClient, authenticate, body, handler, HttpError, requireSchoolAdmin } from '../_lib/supabase';
+import { adminClient, authenticate, body, handler, HttpError, requireSchoolAdmin } from '../_lib/supabase.js';
 
 /**
  * Cria uma sessão de checkout do Stripe para a escola assinar um plano.

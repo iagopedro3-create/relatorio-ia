@@ -1,4 +1,4 @@
-import { adminClient, authenticate, body, handler, HttpError, requirePlatformAdmin } from '../_lib/supabase';
+import { adminClient, authenticate, body, handler, HttpError, requirePlatformAdmin } from '../_lib/supabase.js';
 
 /**
  * Backoffice da plataforma (quem opera o SaaS). Tudo aqui exige

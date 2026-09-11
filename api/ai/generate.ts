@@ -1,10 +1,10 @@
-import { adminClient, authenticate, body, handler, HttpError, requireProfile } from '../_lib/supabase';
-import { complete, providerConfig } from '../_lib/providers';
+import { adminClient, authenticate, body, handler, HttpError, requireProfile } from '../_lib/supabase.js';
+import { complete, providerConfig } from '../_lib/providers.js';
 import {
   buildPedagogicalPrompt, buildPeiPrompt, buildPlanningPrompt, buildReportPrompt,
   PEDAGOGICAL_SYSTEM_PROMPT, PEI_SYSTEM_PROMPT, PLANNING_SYSTEM_PROMPT, PROMPT_VERSION, REPORT_SYSTEM_PROMPT,
-} from '../_lib/prompts';
-import type { PedagogicalInput, PeiInput, PlanningInput, ReportInput } from '../_lib/prompts';
+} from '../_lib/prompts.js';
+import type { PedagogicalInput, PeiInput, PlanningInput, ReportInput } from '../_lib/prompts.js';
 
 type Feature = 'report' | 'pei' | 'pedagogical' | 'planning';
 

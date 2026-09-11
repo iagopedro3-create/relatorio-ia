@@ -1,4 +1,4 @@
-import { adminClient, authenticate, body, handler, HttpError, requireSchoolAdmin } from '../_lib/supabase';
+import { adminClient, authenticate, body, handler, HttpError, requireSchoolAdmin } from '../_lib/supabase.js';
 
 /**
  * Gestão de usuários DA ESCOLA, pela direção. Precisa de service_role porque

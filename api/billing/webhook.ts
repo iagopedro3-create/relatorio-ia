@@ -1,6 +1,6 @@
 import Stripe from 'stripe';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { adminClient } from '../_lib/supabase';
+import { adminClient } from '../_lib/supabase.js';
 
 /**
  * Webhook do Stripe: mantém `schools.status` / `plan_id` em dia.

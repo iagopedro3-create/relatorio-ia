@@ -1,209 +1,324 @@
-import { useState, useEffect } from 'react';
-import { Key, Bot, Save, Sparkles, Zap, Brain, Crown } from 'lucide-react';
-import { useSettings } from '../contexts/SettingsContext';
+import { useState } from 'react';
+import { Building2, Palette, CalendarRange, Sliders, Save, Upload, CreditCard, Sparkles, Plus, Check } from 'lucide-react';
+import { toast } from 'sonner';
+import { useAuth } from '../contexts/AuthContext';
+import { useSchool } from '../contexts/SchoolContext';
+import { updateSchool, uploadLogo, createYear, setActiveYear } from '../data';
+import { callApi, supabase } from '../lib/supabase';
+import { useAsync } from '../lib/useAsync';
+import type { Plan } from '../types/db';
+import { applyBranding, DEFAULT_COLORS, logoUrl } from '../lib/branding';
+import { DEFAULT_GRADING_CONFIG, validateGradingConfig } from '../store/gradingConfig';
+import type { GradingConfig } from '../store/gradingConfig';
+import type { School } from '../types/db';
 
-const GEMINI_MODELS = [
-  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', desc: 'Rápido e eficiente — ideal para relatórios', recommended: true },
-  { id: 'gemini-2.5-flash-preview-05-20', name: 'Gemini 2.5 Flash', desc: 'Mais recente, com capacidade de raciocínio avançado', recommended: false },
-  { id: 'gemini-2.5-pro-preview-05-06', name: 'Gemini 2.5 Pro', desc: 'Máxima qualidade — textos mais elaborados', recommended: false },
-  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', desc: 'Modelo estável, boa relação custo-benefício', recommended: false },
-];
+type Tab = 'school' | 'brand' | 'years' | 'grading' | 'plan';
 
-const OPENAI_MODELS = [
-  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', desc: 'Rápido e barato — bom para uso diário', recommended: true },
-  { id: 'gpt-4o', name: 'GPT-4o', desc: 'Modelo premium — textos de alta qualidade', recommended: false },
-  { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', desc: 'Potente, com contexto estendido', recommended: false },
-  { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', desc: 'Econômico — mais simples porém funcional', recommended: false },
-];
-
+/**
+ * A tela é remontada (key) sempre que a escola muda no servidor, então os
+ * formulários inicializam direto do dado atual — sem efeitos sincronizando estado.
+ */
 export function Settings() {
-  const { settings, updateSettings } = useSettings();
-  const [apiKey, setApiKey] = useState(settings.apiKey);
-  const [provider, setProvider] = useState(settings.aiProvider);
-  const [modelName, setModelName] = useState(settings.aiModel);
-  const [saved, setSaved] = useState(false);
+  const { user } = useAuth();
+  const { school, grading } = useSchool();
+  if (user?.role !== 'admin' || !school) {
+    return <div className="card text-center"><p className="text-muted">Apenas a direção acessa as configurações.</p></div>;
+  }
+  return <SettingsForm key={`${school.id}:${school.updated_at}`} school={school} grading={grading} />;
+}
 
-  // Sync state with context if it changes elsewhere
-  useEffect(() => {
-    setApiKey(settings.apiKey);
-    setProvider(settings.aiProvider);
-    setModelName(settings.aiModel);
-  }, [settings]);
+function SettingsForm({ school, grading }: { school: School; grading: GradingConfig }) {
+  const { plan, years, aiUsage, refresh } = useSchool();
+  const [tab, setTab] = useState<Tab>('school');
+  const [saving, setSaving] = useState(false);
 
-  const handleProviderChange = (newProvider: 'gemini' | 'openai') => {
-    setProvider(newProvider);
-    // Auto-select recommended model for the new provider
-    const models = newProvider === 'gemini' ? GEMINI_MODELS : OPENAI_MODELS;
-    const recommended = models.find(m => m.recommended) || models[0];
-    setModelName(recommended.id);
+  // Escola
+  const [info, setInfo] = useState({
+    name: school.name, legal_name: school.legal_name ?? '', cnpj: school.cnpj ?? '', city: school.city ?? '', uf: school.uf ?? '',
+    authorization_text: school.authorization_text ?? '', tagline: school.branding?.tagline ?? '',
+  });
+  // Marca
+  const [colors, setColors] = useState({ ...DEFAULT_COLORS, ...(school.branding?.colors ?? {}) });
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  // Anos
+  const [newYear, setNewYear] = useState(String(new Date().getFullYear() + 1));
+  // Avaliação
+  const [cfg, setCfg] = useState<GradingConfig>(grading);
+  const [cfgJson, setCfgJson] = useState(() => JSON.stringify(grading, null, 2));
+  const [jsonMode, setJsonMode] = useState(false);
+
+  const save = async (patch: Partial<School>, msg: string) => {
+    setSaving(true);
+    try {
+      await updateSchool(school.id, patch);
+      await refresh();
+      toast.success(msg);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao salvar.');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateSettings({
-      apiKey,
-      aiProvider: provider,
-      aiModel: modelName,
-    });
-    
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+  const saveInfo = () => void save({
+    name: info.name.trim(), legal_name: info.legal_name.trim() || null, cnpj: info.cnpj.trim() || null, city: info.city.trim() || null, uf: info.uf.trim().toUpperCase() || null,
+    authorization_text: info.authorization_text.trim() || null,
+    branding: { ...school.branding, tagline: info.tagline.trim() || undefined },
+  }, 'Dados da escola salvos.');
+
+  const previewColors = (next: typeof colors) => {
+    setColors(next);
+    applyBranding({ ...school, branding: { ...school.branding, colors: next } });
   };
 
-  const currentModels = provider === 'gemini' ? GEMINI_MODELS : OPENAI_MODELS;
+  const saveBrand = async () => {
+    setSaving(true);
+    try {
+      let logo_url = school.branding?.logo_url;
+      if (logoFile) logo_url = await uploadLogo(school.id, logoFile);
+      await updateSchool(school.id, { branding: { ...school.branding, logo_url, colors } });
+      await refresh();
+      setLogoFile(null);
+      toast.success('Marca atualizada.');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao salvar a marca.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addYear = async () => {
+    if (!/^\d{4}$/.test(newYear)) { toast.error('Informe o ano com 4 dígitos.'); return; }
+    try {
+      await createYear(school.id, newYear);
+      await refresh();
+      toast.success(`Ano letivo ${newYear} criado.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao criar.');
+    }
+  };
+
+  const activateYear = async (id: string) => {
+    try { await setActiveYear(school.id, id); await refresh(); toast.success('Ano ativo atualizado.'); } catch (e) { toast.error(e instanceof Error ? e.message : 'Falha.'); }
+  };
+
+  const saveGrading = () => {
+    let next: GradingConfig = cfg;
+    if (jsonMode) {
+      try { next = JSON.parse(cfgJson) as GradingConfig; } catch { toast.error('JSON inválido.'); return; }
+    }
+    const errors = validateGradingConfig(next.subjects, next.policy);
+    if (errors.length > 0) { toast.error(errors[0]); return; }
+    void save({ grading_config: next as unknown as Record<string, unknown> }, 'Política de avaliação salva.');
+  };
+
+  const resetGrading = () => void save({ grading_config: null }, 'Política restaurada para o padrão.');
+
+  const plansQ = useAsync(async () => (await supabase.from('plans').select('*').eq('active', true).order('sort_order')).data as Plan[] | null ?? [], [], [] as Plan[]);
+  const subscribe = async (planId: string) => {
+    setSaving(true);
+    try {
+      const { url } = await callApi<{ url: string }>('/api/billing/checkout', { plan_id: planId });
+      window.location.assign(url);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Não foi possível abrir o pagamento.');
+      setSaving(false);
+    }
+  };
+
+  const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
+    { id: 'school', label: 'Escola', icon: <Building2 size={16} /> },
+    { id: 'brand', label: 'Marca', icon: <Palette size={16} /> },
+    { id: 'years', label: 'Anos letivos', icon: <CalendarRange size={16} /> },
+    { id: 'grading', label: 'Avaliação', icon: <Sliders size={16} /> },
+    { id: 'plan', label: 'Plano e IA', icon: <CreditCard size={16} /> },
+  ];
+
+  const updatePolicy = (k: keyof GradingConfig['policy'], v: number) => setCfg(c => ({ ...c, policy: { ...c.policy, [k]: v } }));
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-      <h2 className="mb-4">Configurações do Sistema</h2>
+    <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+      <h2 className="mb-4">Configurações da Escola</h2>
 
-      <div className="card">
-        <div className="flex items-center gap-2 mb-4" style={{ color: 'var(--color-primary)' }}>
-          <Bot size={24} />
-          <h3 style={{ margin: 0 }}>Motor de Inteligência Artificial</h3>
-        </div>
-        
-        <p className="text-muted mb-4">
-          Configure a inteligência artificial que irá gerar os relatórios da escola. 
-          As configurações abaixo são <strong>salvas localmente no seu navegador</strong>.
-        </p>
-
-        <div style={{ 
-          padding: '1rem', 
-          backgroundColor: '#fff7ed', 
-          borderRadius: '8px', 
-          border: '1px solid #ffedd5',
-          marginBottom: '1.5rem',
-          fontSize: '0.85rem',
-          color: '#9a3412'
-        }}>
-          <strong>Dica para a Direção:</strong> Se você deseja que todos os computadores da escola usem a mesma chave automaticamente sem precisar configurar um por um, peça ao suporte técnico para configurar as variáveis de ambiente (<code>VITE_AI_API_KEY</code>, <code>VITE_AI_PROVIDER</code>, <code>VITE_AI_MODEL</code>) na plataforma de hospedagem.
-        </div>
-
-        <form onSubmit={handleSave}>
-          {/* Provider Selection - visual cards */}
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'block', fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.75rem' }}>Provedor de IA</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-              <button
-                type="button"
-                onClick={() => handleProviderChange('gemini')}
-                style={{
-                  padding: '1rem 1.25rem', borderRadius: '12px', cursor: 'pointer',
-                  border: provider === 'gemini' ? '2px solid #4285f4' : '2px solid #e2e8f0',
-                  backgroundColor: provider === 'gemini' ? '#eef4ff' : 'white',
-                  textAlign: 'left', transition: 'all 0.2s', fontFamily: 'inherit',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
-                  <Sparkles size={20} color={provider === 'gemini' ? '#4285f4' : '#94a3b8'} />
-                  <span style={{ fontWeight: 700, fontSize: '1rem', color: provider === 'gemini' ? '#1a56db' : '#334155' }}>Google Gemini</span>
-                </div>
-                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Grátis • Recomendado para escolas</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleProviderChange('openai')}
-                style={{
-                  padding: '1rem 1.25rem', borderRadius: '12px', cursor: 'pointer',
-                  border: provider === 'openai' ? '2px solid #10a37f' : '2px solid #e2e8f0',
-                  backgroundColor: provider === 'openai' ? '#f0fdf9' : 'white',
-                  textAlign: 'left', transition: 'all 0.2s', fontFamily: 'inherit',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
-                  <Brain size={20} color={provider === 'openai' ? '#10a37f' : '#94a3b8'} />
-                  <span style={{ fontWeight: 700, fontSize: '1rem', color: provider === 'openai' ? '#047857' : '#334155' }}>ChatGPT / OpenAI</span>
-                </div>
-                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Pago • Alta qualidade de texto</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Model Selection - visual grid */}
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'block', fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.75rem' }}>
-              Modelo {provider === 'gemini' ? 'Gemini' : 'OpenAI'}
-            </label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
-              {currentModels.map(m => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setModelName(m.id)}
-                  style={{
-                    padding: '0.85rem 1rem', borderRadius: '10px', cursor: 'pointer',
-                    border: modelName === m.id
-                      ? `2px solid ${provider === 'gemini' ? '#4285f4' : '#10a37f'}`
-                      : '2px solid #e2e8f0',
-                    backgroundColor: modelName === m.id
-                      ? (provider === 'gemini' ? '#eef4ff' : '#f0fdf9')
-                      : '#fafafa',
-                    textAlign: 'left', transition: 'all 0.2s', fontFamily: 'inherit',
-                    position: 'relative',
-                  }}
-                >
-                  {m.recommended && (
-                    <span style={{
-                      position: 'absolute', top: '-8px', right: '10px',
-                      fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase',
-                      padding: '0.1rem 0.5rem', borderRadius: '4px', letterSpacing: '0.5px',
-                      backgroundColor: provider === 'gemini' ? '#4285f4' : '#10a37f',
-                      color: 'white',
-                    }}>
-                      Recomendado
-                    </span>
-                  )}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                    {m.recommended ? <Crown size={14} color={provider === 'gemini' ? '#4285f4' : '#10a37f'} /> : <Zap size={14} color="#94a3b8" />}
-                    <span style={{
-                      fontWeight: 700, fontSize: '0.85rem',
-                      color: modelName === m.id ? '#1e293b' : '#475569',
-                    }}>{m.name}</span>
-                  </div>
-                  <span style={{ fontSize: '0.75rem', color: '#94a3b8', lineHeight: 1.3 }}>{m.desc}</span>
-                  <div style={{ marginTop: '0.4rem' }}>
-                    <code style={{
-                      fontSize: '0.7rem', padding: '0.15rem 0.4rem', borderRadius: '4px',
-                      backgroundColor: modelName === m.id ? 'rgba(0,0,0,0.06)' : '#f1f5f9',
-                      color: '#64748b', fontFamily: 'monospace',
-                    }}>{m.id}</code>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="form-group mt-4">
-            <label htmlFor="apiKey" className="flex items-center gap-2">
-              <Key size={16} /> Chave de API (Secret Key)
-            </label>
-            <input 
-              type="password" 
-              id="apiKey" 
-              value={apiKey} 
-              onChange={e => setApiKey(e.target.value)} 
-              placeholder={provider === 'gemini' ? 'AIzaSy...' : 'sk-...'}
-              style={{ fontFamily: 'monospace' }}
-            />
-            <small className="text-muted mt-2" style={{ display: 'block' }}>
-              {provider === 'gemini' 
-                ? 'Você pode gerar uma chave gratuita no Google AI Studio.' 
-                : 'Você precisa de uma conta com saldo na plataforma de desenvolvedores da OpenAI.'}
-            </small>
-          </div>
-
-          <button type="submit" className="btn btn-primary mt-4">
-            <Save size={18} /> Salvar Configurações
+      <div className="flex gap-2 mb-6" style={{ flexWrap: 'wrap' }}>
+        {tabs.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} className="btn" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', backgroundColor: tab === t.id ? 'var(--color-primary)' : 'white', color: tab === t.id ? 'white' : '#475569', border: '1px solid #e2e8f0', boxShadow: 'none' }}>
+            {t.icon} {t.label}
           </button>
-
-          {saved && (
-            <span style={{ marginLeft: '1rem', color: 'var(--color-success)', fontWeight: 600 }}>
-              Configurações salvas com sucesso!
-            </span>
-          )}
-        </form>
+        ))}
       </div>
+
+      {tab === 'school' && (
+        <div className="card">
+          <h3 className="mb-4">Dados cadastrais</h3>
+          <p className="text-muted mb-4" style={{ fontSize: '0.85rem' }}>Aparecem no cabeçalho de boletins, diários, histórico escolar e nos documentos gerados.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div><label>Nome (como aparece no sistema)</label><input type="text" value={info.name} onChange={e => setInfo({ ...info, name: e.target.value })} /></div>
+            <div><label>Razão social</label><input type="text" value={info.legal_name} onChange={e => setInfo({ ...info, legal_name: e.target.value })} /></div>
+            <div><label>CNPJ</label><input type="text" value={info.cnpj} onChange={e => setInfo({ ...info, cnpj: e.target.value })} placeholder="00.000.000/0000-00" /></div>
+            <div><label>Slogan (capa do relatório)</label><input type="text" value={info.tagline} onChange={e => setInfo({ ...info, tagline: e.target.value })} placeholder="Ex: Educação com propósito" /></div>
+            <div><label>Cidade</label><input type="text" value={info.city} onChange={e => setInfo({ ...info, city: e.target.value })} /></div>
+            <div><label>UF</label><input type="text" value={info.uf} maxLength={2} onChange={e => setInfo({ ...info, uf: e.target.value })} /></div>
+            <div className="md:col-span-2"><label>Texto de autorização (histórico escolar)</label><input type="text" value={info.authorization_text} onChange={e => setInfo({ ...info, authorization_text: e.target.value })} placeholder="Ex: Autorizada pela Portaria SEE nº ... | Telefone | Endereço" /></div>
+          </div>
+          <button className="btn btn-primary mt-6" onClick={saveInfo} disabled={saving}><Save size={18} /> Salvar</button>
+        </div>
+      )}
+
+      {tab === 'brand' && (
+        <div className="card">
+          <h3 className="mb-4">Identidade visual</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label>Logo</label>
+              <div style={{ padding: '1rem', border: '1px dashed #cbd5e1', borderRadius: '10px', textAlign: 'center', marginBottom: '0.75rem', backgroundColor: '#f8fafc' }}>
+                <img src={logoFile ? URL.createObjectURL(logoFile) : logoUrl(school)} alt="Logo" style={{ maxHeight: '80px', maxWidth: '220px', margin: '0 auto' }} />
+              </div>
+              <label className="btn btn-secondary" style={{ cursor: 'pointer', fontSize: '0.85rem', padding: '0.5rem 1rem' }}>
+                <Upload size={16} /> Enviar logo (PNG/SVG, até 2 MB)
+                <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style={{ display: 'none' }} onChange={e => setLogoFile(e.target.files?.[0] ?? null)} />
+              </label>
+            </div>
+            <div>
+              <label>Cores</label>
+              {([['primary', 'Principal (botões, links)'], ['secondary', 'Secundária (destaques)'], ['accent', 'Realce'], ['bg', 'Fundo das telas']] as const).map(([k, label]) => (
+                <div key={k} className="flex items-center gap-3 mb-3">
+                  <input type="color" value={colors[k]} onChange={e => previewColors({ ...colors, [k]: e.target.value })} style={{ width: '44px', height: '36px', padding: 0, border: '1px solid #e2e8f0', borderRadius: '6px' }} />
+                  <span style={{ fontSize: '0.85rem', flex: 1 }}>{label}</span>
+                  <code style={{ fontSize: '0.75rem', color: '#64748b' }}>{colors[k]}</code>
+                </div>
+              ))}
+              <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }} onClick={() => previewColors({ ...DEFAULT_COLORS })}>Restaurar padrão</button>
+            </div>
+          </div>
+          <p className="text-muted mt-4" style={{ fontSize: '0.8rem' }}>As cores são aplicadas ao vivo para você conferir. Só valem para todos depois de salvar.</p>
+          <button className="btn btn-primary mt-4" onClick={() => void saveBrand()} disabled={saving}><Save size={18} /> Salvar marca</button>
+        </div>
+      )}
+
+      {tab === 'years' && (
+        <div className="card">
+          <h3 className="mb-4">Anos letivos</h3>
+          <div className="flex flex-col gap-2 mb-6">
+            {years.map(y => (
+              <div key={y.id} className="flex items-center justify-between" style={{ padding: '0.75rem 1rem', border: '1px solid #e2e8f0', borderRadius: '8px', backgroundColor: y.active ? '#f0fdf4' : 'white' }}>
+                <span style={{ fontWeight: 700 }}>{y.label} {y.active && <span style={{ fontSize: '0.7rem', color: '#166534', marginLeft: '0.5rem' }}>ATIVO</span>}</span>
+                {!y.active && <button className="btn btn-secondary" style={{ padding: '0.3rem 0.7rem', fontSize: '0.75rem' }} onClick={() => void activateYear(y.id)}><Check size={14} /> Tornar ativo</button>}
+              </div>
+            ))}
+            {years.length === 0 && <p className="text-muted">Nenhum ano letivo. Crie o primeiro abaixo.</p>}
+          </div>
+          <div className="flex gap-2 items-end">
+            <div><label>Novo ano letivo</label><input type="text" value={newYear} onChange={e => setNewYear(e.target.value)} maxLength={4} style={{ width: '140px' }} /></div>
+            <button className="btn btn-primary" onClick={() => void addYear()}><Plus size={18} /> Criar</button>
+          </div>
+          <p className="text-muted mt-4" style={{ fontSize: '0.8rem' }}>Turmas e matrículas pertencem a um ano letivo. Ao virar o ano, crie o novo, torne-o ativo e cadastre as turmas.</p>
+        </div>
+      )}
+
+      {tab === 'grading' && (
+        <div className="card">
+          <div className="flex justify-between items-center mb-4">
+            <h3 style={{ margin: 0 }}>Política de avaliação</h3>
+            <button className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.3rem 0.7rem' }} onClick={() => setJsonMode(m => !m)}>{jsonMode ? 'Modo visual' : 'Modo avançado (JSON)'}</button>
+          </div>
+          <p className="text-muted mb-4" style={{ fontSize: '0.85rem' }}>Escala, média de aprovação, frequência mínima, disciplinas e componentes de nota. Um peso errado aqui contamina todo boletim: o sistema valida antes de salvar.</p>
+
+          {!jsonMode ? (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div><label style={{ fontSize: '0.8rem' }}>Nota máxima</label><input type="number" value={cfg.policy.scale.max} onChange={e => setCfg(c => ({ ...c, policy: { ...c.policy, scale: { ...c.policy.scale, max: Number(e.target.value) } } }))} /></div>
+                <div><label style={{ fontSize: '0.8rem' }}>Média de aprovação</label><input type="number" value={cfg.policy.passingGrade} onChange={e => updatePolicy('passingGrade', Number(e.target.value))} /></div>
+                <div><label style={{ fontSize: '0.8rem' }}>Frequência mínima (%)</label><input type="number" value={cfg.policy.minAttendance} onChange={e => updatePolicy('minAttendance', Number(e.target.value))} /></div>
+                <div><label style={{ fontSize: '0.8rem' }}>Máx. disciplinas na rec. final</label><input type="number" value={cfg.policy.maxSubjectsInFinalRecovery} onChange={e => updatePolicy('maxSubjectsInFinalRecovery', Number(e.target.value))} /></div>
+              </div>
+
+              <label style={{ fontSize: '0.85rem' }}>Períodos</label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
+                {cfg.periods.map((p, i) => <input key={i} type="text" value={p} onChange={e => setCfg(c => ({ ...c, periods: c.periods.map((x, j) => j === i ? e.target.value : x) }))} />)}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                {(['infantil', 'fundamental'] as const).map(level => (
+                  <div key={level}>
+                    <label style={{ fontSize: '0.85rem' }}>Séries · {level === 'infantil' ? 'Educação Infantil' : 'Ensino Fundamental'} (uma por linha, da mais nova à mais velha)</label>
+                    <textarea value={cfg.series[level].join('\n')} onChange={e => setCfg(c => ({ ...c, series: { ...c.series, [level]: e.target.value.split('\n').map(s => s.trim()).filter(Boolean) } }))} rows={5} style={{ minHeight: '120px' }} />
+                  </div>
+                ))}
+              </div>
+
+              <label style={{ fontSize: '0.85rem' }}>Disciplinas</label>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                  <thead><tr style={{ backgroundColor: '#f8fafc' }}><th style={{ padding: '0.5rem', textAlign: 'left' }}>Nome</th><th style={{ padding: '0.5rem', textAlign: 'left' }}>Nome oficial</th><th style={{ padding: '0.5rem' }}>Avaliação</th><th style={{ padding: '0.5rem' }}>Quem lança</th><th style={{ padding: '0.5rem', textAlign: 'left' }}>Componentes (id:máx)</th><th style={{ padding: '0.5rem' }}>Prova</th></tr></thead>
+                  <tbody>
+                    {cfg.subjects.map((s, i) => (
+                      <tr key={s.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '0.4rem' }}><input type="text" value={s.name} onChange={e => setCfg(c => ({ ...c, subjects: c.subjects.map((x, j) => j === i ? { ...x, name: e.target.value } : x) }))} style={{ padding: '0.3rem', fontSize: '0.85rem' }} /></td>
+                        <td style={{ padding: '0.4rem' }}><input type="text" value={s.officialName} onChange={e => setCfg(c => ({ ...c, subjects: c.subjects.map((x, j) => j === i ? { ...x, officialName: e.target.value } : x) }))} style={{ padding: '0.3rem', fontSize: '0.85rem' }} /></td>
+                        <td style={{ padding: '0.4rem', textAlign: 'center' }}>{s.evaluation === 'grade' ? 'Nota' : 'Relatório'}</td>
+                        <td style={{ padding: '0.4rem', textAlign: 'center' }}>{s.taughtBy === 'regente' ? 'Regente' : s.taughtBy === 'english' ? 'Inglês' : 'Ed. Física'}</td>
+                        <td style={{ padding: '0.4rem', color: '#64748b' }}>{s.scheme ? s.scheme.components.map(c => `${c.label}:${c.max}`).join(', ') : '—'}</td>
+                        <td style={{ padding: '0.4rem', textAlign: 'center' }}>{s.scheme?.exam ? s.scheme.exam.max : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-muted mt-2" style={{ fontSize: '0.75rem' }}>Para mudar pesos, componentes ou adicionar disciplinas, use o modo avançado (JSON).</p>
+            </>
+          ) : (
+            <textarea value={cfgJson} onChange={e => setCfgJson(e.target.value)} rows={24} style={{ fontFamily: 'monospace', fontSize: '0.8rem', minHeight: '420px' }} />
+          )}
+
+          <div className="flex gap-3 mt-6">
+            <button className="btn btn-primary" onClick={saveGrading} disabled={saving}><Save size={18} /> Salvar política</button>
+            <button className="btn btn-secondary" onClick={resetGrading} disabled={saving}>Restaurar padrão</button>
+            <button className="btn btn-secondary" style={{ marginLeft: 'auto', fontSize: '0.8rem' }} onClick={() => { setCfg(DEFAULT_GRADING_CONFIG); setCfgJson(JSON.stringify(DEFAULT_GRADING_CONFIG, null, 2)); }}>Carregar padrão no editor</button>
+          </div>
+        </div>
+      )}
+
+      {tab === 'plan' && (
+        <div className="card">
+          <h3 className="mb-4 flex items-center gap-2"><CreditCard size={20} /> Plano e uso</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+              <p className="text-muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 700, margin: 0 }}>Plano</p>
+              <h3 style={{ margin: '0.25rem 0' }}>{plan?.name ?? 'Sem plano'}</h3>
+              <p style={{ margin: 0, fontSize: '0.85rem' }}>Status: <strong>{school.status}</strong>{school.trial_ends_at && school.status === 'trial' ? ` · até ${new Date(school.trial_ends_at).toLocaleDateString('pt-BR')}` : ''}</p>
+            </div>
+            <div style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+              <p className="text-muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 700, margin: 0 }}>Limites</p>
+              <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem' }}>Alunos: {plan?.max_students ?? '∞'}<br />Usuários: {plan?.max_users ?? '∞'}</p>
+            </div>
+            <div style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+              <p className="text-muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 700, margin: 0 }}><Sparkles size={12} style={{ display: 'inline' }} /> IA este mês</p>
+              <h3 style={{ margin: '0.25rem 0' }}>{aiUsage.used}{aiUsage.limit !== null ? ` / ${aiUsage.limit}` : ''}</h3>
+              <p style={{ margin: 0, fontSize: '0.85rem' }}>gerações (relatórios, PEI, análises, copiloto)</p>
+            </div>
+          </div>
+          <h4 className="mb-3">Planos disponíveis</h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {plansQ.data.filter(p => p.price_cents > 0).map(p => (
+              <div key={p.id} style={{ padding: '1rem', border: `2px solid ${p.id === school.plan_id ? 'var(--color-primary)' : '#e2e8f0'}`, borderRadius: '10px' }}>
+                <h4 style={{ margin: 0 }}>{p.name}</h4>
+                <p style={{ margin: '0.25rem 0', fontSize: '1.3rem', fontWeight: 800 }}>R$ {(p.price_cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<span style={{ fontSize: '0.75rem', fontWeight: 400 }}>/mês</span></p>
+                <p className="text-muted" style={{ fontSize: '0.8rem', margin: '0 0 0.75rem' }}>até {p.max_students ?? '∞'} alunos · {p.ai_monthly_credits ?? '∞'} gerações de IA/mês</p>
+                {p.id === school.plan_id && school.status === 'active'
+                  ? <span style={{ fontSize: '0.8rem', color: '#166534', fontWeight: 700 }}>Plano atual</span>
+                  : <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} disabled={saving} onClick={() => void subscribe(p.id)}>Assinar</button>}
+              </div>
+            ))}
+          </div>
+          <p className="text-muted" style={{ fontSize: '0.85rem' }}>
+            Para ampliar limites, planos de rede ou faturamento por boleto, fale com o suporte da plataforma. A chave de IA é da plataforma — a escola não precisa configurar nada.
+          </p>
+          {school.dpa_signed_at
+            ? <p style={{ fontSize: '0.85rem', color: '#166534' }}>Contrato de tratamento de dados (LGPD) assinado em {new Date(school.dpa_signed_at).toLocaleDateString('pt-BR')}.</p>
+            : <p style={{ fontSize: '0.85rem', color: '#92400e' }}>Contrato de tratamento de dados (LGPD) ainda não registrado. Veja docs/lgpd no repositório do produto.</p>}
+        </div>
+      )}
     </div>
   );
 }

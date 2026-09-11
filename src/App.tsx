@@ -1,9 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AuthProvider } from './contexts/AuthContext';
-import { UserProvider } from './contexts/UserContext';
-import { SettingsProvider } from './contexts/SettingsContext';
-import { YearProvider } from './contexts/YearContext';
+import { SchoolProvider } from './contexts/SchoolContext';
 import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
 import { LessonPlanning } from './pages/LessonPlanning';
@@ -15,7 +13,6 @@ import { Lessons } from './pages/Lessons';
 import { Grades } from './pages/Grades';
 import { Bulletin } from './pages/Bulletin';
 import { TranscriptGenerator } from './pages/TranscriptGenerator';
-
 import { ClassManagement } from './pages/ClassManagement';
 import { UserManagement } from './pages/UserManagement';
 import { StudentManagement } from './pages/StudentManagement';
@@ -23,42 +20,43 @@ import { StudentProfile } from './pages/StudentProfile';
 import { Settings } from './pages/Settings';
 import { ClassDiary } from './pages/ClassDiary';
 import { Agenda } from './pages/Agenda';
+import { PedagogicalIntelligence } from './pages/PedagogicalIntelligence';
+import { PlatformAdmin } from './pages/PlatformAdmin';
+import { ResetPassword } from './pages/ResetPassword';
 
 export function App() {
   return (
     <AuthProvider>
-      <UserProvider>
-        <SettingsProvider>
-          <YearProvider>
-            <Toaster position="top-right" richColors />
-            <BrowserRouter>
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route element={<Layout />}>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/reports" element={<ReportGenerator />} />
-                  <Route path="/pei" element={<PeiGenerator />} />
-                  <Route path="/attendance" element={<Attendance />} />
-                  <Route path="/lessons" element={<Lessons />} />
-                  <Route path="/grades" element={<Grades />} />
-                  <Route path="/bulletin" element={<Bulletin />} />
-                  <Route path="/transcript" element={<TranscriptGenerator />} />
-
-                  <Route path="/classes" element={<ClassManagement />} />
-                  <Route path="/users" element={<UserManagement />} />
-                  <Route path="/students" element={<StudentManagement />} />
-                  <Route path="/students/:id" element={<StudentProfile />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/diary" element={<ClassDiary />} />
-                  <Route path="/agenda" element={<Agenda />} />
-                  <Route path="/planning" element={<LessonPlanning />} />
-                </Route>
-                <Route path="*" element={<Navigate to="/" />} />
-              </Routes>
-            </BrowserRouter>
-          </YearProvider>
-        </SettingsProvider>
-      </UserProvider>
+      <SchoolProvider>
+        <Toaster position="top-right" richColors />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/redefinir-senha" element={<ResetPassword />} />
+            <Route element={<Layout />}>
+              <Route path="/" element={<Home />} />
+              <Route path="/reports" element={<ReportGenerator />} />
+              <Route path="/pei" element={<PeiGenerator />} />
+              <Route path="/attendance" element={<Attendance />} />
+              <Route path="/lessons" element={<Lessons />} />
+              <Route path="/grades" element={<Grades />} />
+              <Route path="/bulletin" element={<Bulletin />} />
+              <Route path="/transcript" element={<TranscriptGenerator />} />
+              <Route path="/intelligence" element={<PedagogicalIntelligence />} />
+              <Route path="/classes" element={<ClassManagement />} />
+              <Route path="/users" element={<UserManagement />} />
+              <Route path="/students" element={<StudentManagement />} />
+              <Route path="/students/:id" element={<StudentProfile />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/diary" element={<ClassDiary />} />
+              <Route path="/agenda" element={<Agenda />} />
+              <Route path="/planning" element={<LessonPlanning />} />
+              <Route path="/admin" element={<PlatformAdmin />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </BrowserRouter>
+      </SchoolProvider>
     </AuthProvider>
   );
 }

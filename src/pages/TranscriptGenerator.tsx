@@ -8,6 +8,7 @@ import { gradedSubjects } from '../store/gradingConfig';
 import { buildGradeBook, calcStudentOutcome, attendanceRate, roundGrade } from '../lib/gradeEngine';
 import { logoUrl } from '../lib/branding';
 import { supabase } from '../lib/supabase';
+import { PageHeader } from '../components/ui';
 import type { SchoolYear, Student } from '../types/db';
 
 type YearData = {
@@ -102,30 +103,29 @@ export function TranscriptGenerator() {
   };
 
   const yearLabel = (y: string, i: number) => ({ top: y, bot: i === 0 ? '' : `${i}ª Série` });
-  const cell: React.CSSProperties = { width: '100%', textAlign: 'center', border: '1px solid #cbd5e1', padding: '0.25rem', borderRadius: '4px', fontSize: '0.8rem' };
+  const cell: React.CSSProperties = { width: '100%', textAlign: 'center', border: '1px solid var(--color-border-strong)', padding: '0.25rem', borderRadius: '4px', fontSize: '0.8rem' };
 
   return (
     <div>
       <div className="screen-only">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileText size={24} color="var(--color-primary)" /> Gerador de Histórico Escolar</h2>
-            <p className="text-muted">Secretaria: preenchimento e emissão (Ensino Fundamental I)</p>
-          </div>
-          <button className="btn btn-primary" onClick={() => window.print()} disabled={!student}><Printer size={20} /> Imprimir Histórico</button>
-        </div>
+        <PageHeader
+          icon={<FileText size={22} />}
+          title="Histórico escolar"
+          subtitle="Secretaria: preenchimento e emissão (Ensino Fundamental I). Anos cursados aqui vêm do sistema; anos anteriores são digitados."
+          actions={<button className="btn btn-primary" onClick={() => window.print()} disabled={!student}><Printer size={18} /> Imprimir histórico</button>}
+        />
 
         {!school?.legal_name || !school?.cnpj ? (
-          <div className="card mb-4" style={{ padding: '0.9rem 1.25rem', backgroundColor: '#fffbeb', borderLeft: '4px solid #f59e0b', fontSize: '0.85rem', color: '#92400e' }}>
-            Preencha razão social, CNPJ, cidade/UF e o texto de autorização em <strong>Configurações → Escola</strong> para o cabeçalho e a declaração saírem completos.
+          <div className="callout callout-warning mb-4">
+            <span>Preencha razão social, CNPJ, cidade/UF e o texto de autorização em <strong>Configurações → Escola</strong> para o cabeçalho e a declaração saírem completos.</span>
           </div>
         ) : null}
 
         <div className="card mb-6 p-6">
           <div className="flex items-center gap-4 mb-4" style={{ flexWrap: 'wrap' }}>
             <Search size={20} style={{ color: 'var(--color-text-muted)' }} />
-            <select value={selectedStudentId} onChange={e => selectStudent(e.target.value)} style={{ width: '100%', maxWidth: '400px' }}>
-              <option value="">-- Selecione o Aluno --</option>
+            <select value={selectedStudentId} onChange={e => selectStudent(e.target.value)} style={{ width: '100%', maxWidth: '400px' }} disabled={studentsQ.loading}>
+              <option value="">{studentsQ.loading ? 'Carregando alunos…' : '-- Selecione o aluno --'}</option>
               {studentsQ.data.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
             {student && <button className="btn btn-secondary" onClick={() => void fillFromSystem()} disabled={loadingSys} style={{ fontSize: '0.8rem' }}><Database size={14} /> {loadingSys ? 'Buscando...' : 'Preencher com dados do sistema'}</button>}
@@ -153,18 +153,18 @@ export function TranscriptGenerator() {
           <div className="card p-0 overflow-hidden" style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
               <thead>
-                <tr style={{ backgroundColor: '#f1f5f9' }}>
-                  <th style={{ padding: '1rem', textAlign: 'left', borderBottom: '2px solid #cbd5e1' }}>Componente Curricular</th>
-                  {years.map(y => <th key={y} style={{ padding: '1rem', textAlign: 'center', borderBottom: '2px solid #cbd5e1', borderLeft: '1px solid #cbd5e1' }}>{y}</th>)}
+                <tr style={{ backgroundColor: 'var(--color-border-soft)' }}>
+                  <th style={{ padding: '1rem', textAlign: 'left', borderBottom: '2px solid var(--color-border-strong)' }}>Componente Curricular</th>
+                  {years.map(y => <th key={y} style={{ padding: '1rem', textAlign: 'center', borderBottom: '2px solid var(--color-border-strong)', borderLeft: '1px solid var(--color-border-strong)' }}>{y}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {subjects.map(sub => (
-                  <tr key={sub.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '0.75rem 1rem', fontWeight: 600, color: '#334155' }}>{sub.officialName}</td>
+                  <tr key={sub.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                    <td style={{ padding: '0.75rem 1rem', fontWeight: 600, color: 'var(--color-text)' }}>{sub.officialName}</td>
                     {years.map(y => (
-                      <td key={y} style={{ borderLeft: '1px solid #e2e8f0', padding: '0.5rem' }}>
-                        <input type="text" value={historyData[y].notas[sub.officialName] || ''} onChange={e => handleNota(y, sub.officialName, e.target.value)} style={{ ...cell, border: '1px solid transparent', backgroundColor: '#f8fafc' }} placeholder="—" />
+                      <td key={y} style={{ borderLeft: '1px solid var(--color-border)', padding: '0.5rem' }}>
+                        <input type="text" value={historyData[y].notas[sub.officialName] || ''} onChange={e => handleNota(y, sub.officialName, e.target.value)} style={{ ...cell, border: '1px solid transparent', backgroundColor: 'var(--color-surface-2)' }} placeholder="—" />
                       </td>
                     ))}
                   </tr>
@@ -172,19 +172,19 @@ export function TranscriptGenerator() {
                 {([
                   ['Ano letivo', 'anoLetivo'], ['Frequência (%)', 'frequencia'], ['Estabelecimento de Ensino', 'escola'], ['Município', 'cidade'], ['Estado (UF)', 'uf'],
                 ] as [string, keyof YearData][]).map(([label, field]) => (
-                  <tr key={field} style={{ backgroundColor: '#f8fafc' }}>
-                    <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: '#0f172a' }}>{label}</td>
+                  <tr key={field} style={{ backgroundColor: 'var(--color-surface-2)' }}>
+                    <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--color-text)' }}>{label}</td>
                     {years.map(y => (
-                      <td key={y} style={{ borderLeft: '1px solid #e2e8f0', padding: '0.5rem' }}>
+                      <td key={y} style={{ borderLeft: '1px solid var(--color-border)', padding: '0.5rem' }}>
                         <input type="text" value={historyData[y][field] as string} onChange={e => handleInfo(y, field, e.target.value)} style={cell} />
                       </td>
                     ))}
                   </tr>
                 ))}
-                <tr style={{ backgroundColor: '#f8fafc', borderTop: '2px solid #cbd5e1' }}>
-                  <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: '#0f172a' }}>Resultado Final</td>
+                <tr style={{ backgroundColor: 'var(--color-surface-2)', borderTop: '2px solid var(--color-border-strong)' }}>
+                  <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--color-text)' }}>Resultado Final</td>
                   {years.map(y => (
-                    <td key={y} style={{ borderLeft: '1px solid #e2e8f0', padding: '0.5rem' }}>
+                    <td key={y} style={{ borderLeft: '1px solid var(--color-border)', padding: '0.5rem' }}>
                       <select value={historyData[y].resultado} onChange={e => handleInfo(y, 'resultado', e.target.value)} style={{ ...cell, padding: '0.25rem' }}>
                         <option value="">—</option><option value="Aprovado">Aprovado</option><option value="Reprovado">Reprovado</option><option value="Cursando">Cursando</option>
                       </select>
@@ -210,7 +210,7 @@ export function TranscriptGenerator() {
           </div>
 
           <div style={{ border: '2px solid #000' }}>
-            <div style={{ backgroundColor: '#f1f5f9', textAlign: 'center', padding: '2px', borderBottom: '1px solid #000', fontWeight: 'bold', fontSize: '10px' }}>HISTÓRICO ESCOLAR – ENSINO FUNDAMENTAL {status}</div>
+            <div style={{ backgroundColor: 'var(--color-border-soft)', textAlign: 'center', padding: '2px', borderBottom: '1px solid #000', fontWeight: 'bold', fontSize: '10px' }}>HISTÓRICO ESCOLAR – ENSINO FUNDAMENTAL {status}</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9px', borderBottom: '1px solid #000' }}>
               <tbody>
                 <tr>
@@ -232,7 +232,7 @@ export function TranscriptGenerator() {
                   <th rowSpan={3 + baseSubjects.length + diversified.length} style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', width: '20px' }}><div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', padding: '3px 0' }}>Fundamento Legal: Lei Federal 9394/96.</div></th>
                   <th rowSpan={3 + baseSubjects.length} style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', width: '20px' }}><div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', padding: '3px 0' }}>BASE NACIONAL COMUM</div></th>
                   <th rowSpan={3} style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', padding: '1px', textAlign: 'left', width: '150px' }}>COMPONENTES CURRICULARES</th>
-                  <th colSpan={years.length} style={{ borderBottom: '1px solid #000', padding: '1px', backgroundColor: '#f1f5f9' }}>ANO LETIVO</th>
+                  <th colSpan={years.length} style={{ borderBottom: '1px solid #000', padding: '1px', backgroundColor: 'var(--color-border-soft)' }}>ANO LETIVO</th>
                 </tr>
                 <tr><th colSpan={years.length} style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', borderLeft: '1px solid #000', padding: '1px' }}>CICLO I / Anos Iniciais</th></tr>
                 <tr>
@@ -253,11 +253,11 @@ export function TranscriptGenerator() {
                 ))}
                 <tr>
                   <th rowSpan={years.length + 1} style={{ borderRight: '1px solid #000' }}><div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>ESTUDOS REALIZADOS</div></th>
-                  <th colSpan={2} style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', backgroundColor: '#f1f5f9', padding: '1px' }}>Série/Ano</th>
-                  <th style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', backgroundColor: '#f1f5f9', padding: '1px' }}>Ano Letivo</th>
-                  <th colSpan={2} style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', backgroundColor: '#f1f5f9', padding: '1px' }}>Estabelecimento de Ensino</th>
-                  <th style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', backgroundColor: '#f1f5f9', padding: '1px' }}>Município</th>
-                  <th style={{ borderBottom: '1px solid #000', backgroundColor: '#f1f5f9', padding: '1px' }}>UF</th>
+                  <th colSpan={2} style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', backgroundColor: 'var(--color-border-soft)', padding: '1px' }}>Série/Ano</th>
+                  <th style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', backgroundColor: 'var(--color-border-soft)', padding: '1px' }}>Ano Letivo</th>
+                  <th colSpan={2} style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', backgroundColor: 'var(--color-border-soft)', padding: '1px' }}>Estabelecimento de Ensino</th>
+                  <th style={{ borderRight: '1px solid #000', borderBottom: '1px solid #000', backgroundColor: 'var(--color-border-soft)', padding: '1px' }}>Município</th>
+                  <th style={{ borderBottom: '1px solid #000', backgroundColor: 'var(--color-border-soft)', padding: '1px' }}>UF</th>
                 </tr>
                 {years.map((y, i) => {
                   const l = yearLabel(y, i);
@@ -278,7 +278,7 @@ export function TranscriptGenerator() {
               Escala de Avaliação: notas de {grading.policy.scale.min} a {grading.policy.scale.max}; desempenho satisfatório igual ou superior a {grading.policy.passingGrade}. Frequência mínima: {grading.policy.minAttendance}%.
             </div>
             <div style={{ padding: '1px 4px', borderBottom: '1px solid #000', minHeight: '30px', fontSize: '8px' }}><strong>OBSERVAÇÕES:</strong><br />{observacoes}</div>
-            <div style={{ padding: '1px', borderBottom: '1px solid #000', fontSize: '8px', textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f1f5f9' }}>DECLARAÇÃO</div>
+            <div style={{ padding: '1px', borderBottom: '1px solid #000', fontSize: '8px', textAlign: 'center', fontWeight: 'bold', backgroundColor: 'var(--color-border-soft)' }}>DECLARAÇÃO</div>
             <div style={{ padding: '3px', borderBottom: '1px solid #000', fontSize: '8px', textAlign: 'justify' }}>
               A Direção de {school.legal_name || school.name} declara, nos termos do Inciso VII, Artigo 24 da Lei Federal 9394/96, que {student.name.toUpperCase()}, CPF {cpf || '_______________'}, cursou até o presente momento nesta instituição, tendo sido considerado(a) {resultadoFinal.toUpperCase()}. Vide o aproveitamento do aluno durante o período cursado.
             </div>

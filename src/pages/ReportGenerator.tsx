@@ -8,6 +8,7 @@ import { exportToDocx } from '../lib/exportDocx';
 import { useAuth } from '../contexts/AuthContext';
 import { useSchool } from '../contexts/SchoolContext';
 import { useAsync } from '../lib/useAsync';
+import { PageHeader, SkeletonCard, StatusBadge } from '../components/ui';
 import { listEnrollments, listStudents, createDocument, updateDocument, listDocuments } from '../data';
 import type { Student, StudentDocument } from '../types/db';
 
@@ -28,6 +29,7 @@ export function ReportGenerator() {
   const classIds = useMemo(() => classes.map(c => c.id), [classes]);
   const enrollQ = useAsync(() => listEnrollments(classIds), [classIds.join(',')], []);
   const studentsQ = useAsync(() => school ? listStudents(school.id) : Promise.resolve([] as Student[]), [school?.id], [] as Student[]);
+  const rosterLoading = enrollQ.loading || studentsQ.loading;
   const roster = useMemo<RosterStudent[]>(() => {
     return enrollQ.data
       .map(e => ({ student: studentsQ.data.find(s => s.id === e.student_id), cls: classes.find(c => c.id === e.class_id) }))
@@ -138,16 +140,15 @@ export function ReportGenerator() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 style={{ margin: 0 }}>Gerador de Relatórios</h2>
-          <p className="text-muted">{roster.length} aluno(s) disponíveis · {selectedYear?.label ?? ''}</p>
-        </div>
-      </div>
+      <PageHeader
+        icon={<FileText size={22} />}
+        title="Relatório descritivo com IA"
+        subtitle={rosterLoading ? 'Carregando alunos…' : `${roster.length} aluno(s) disponíveis · ${selectedYear?.label ?? ''}`}
+      />
 
       <div className="grid grid-cols-2" style={{ gridTemplateColumns: 'minmax(0, 1.3fr) minmax(0, 0.7fr)', gap: '2rem' }}>
         <div className="left-panel">
-          <ReportForm students={roster} onSubmit={handleGenerateReport} isLoading={isLoading} onStudentChange={setFormStudentId} />
+          {rosterLoading ? <SkeletonCard lines={8} /> : <ReportForm students={roster} onSubmit={handleGenerateReport} isLoading={isLoading} onStudentChange={setFormStudentId} />}
         </div>
 
         <div className="right-panel">
@@ -157,9 +158,9 @@ export function ReportGenerator() {
               <h4 className="flex items-center gap-2 mb-2" style={{ fontSize: '0.85rem', margin: 0 }}><History size={15} /> Relatórios anteriores deste aluno</h4>
               <div style={{ maxHeight: '120px', overflowY: 'auto' }}>
                 {historyQ.data.map(d => (
-                  <button key={d.id} onClick={() => loadPrevious(d)} style={{ display: 'flex', justifyContent: 'space-between', width: '100%', background: d.id === doc?.id ? '#eff6ff' : 'none', border: '1px solid #f1f5f9', borderRadius: '6px', padding: '0.4rem 0.75rem', marginTop: '0.4rem', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.8rem' }}>
+                  <button key={d.id} onClick={() => loadPrevious(d)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', background: d.id === doc?.id ? 'var(--color-primary-soft)' : 'none', border: '1px solid var(--color-border-soft)', borderRadius: '6px', padding: '0.4rem 0.75rem', marginTop: '0.4rem', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.8rem' }}>
                     <span style={{ fontWeight: 600 }}>{d.period ?? 'Relatório'}</span>
-                    <span className="text-muted">{new Date(d.updated_at).toLocaleDateString('pt-BR')} · {d.status === 'draft' ? 'rascunho' : d.status === 'submitted' ? 'enviado' : d.status === 'approved' ? 'aprovado' : 'devolvido'}</span>
+                    <span className="text-muted flex items-center gap-2">{new Date(d.updated_at).toLocaleDateString('pt-BR')} <StatusBadge status={d.status} /></span>
                   </button>
                 ))}
               </div>
@@ -167,15 +168,15 @@ export function ReportGenerator() {
           )}
           <div className="card result-card" style={{ minHeight: '520px', maxHeight: 'calc(100vh - 160px)', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-lg)' }}>
             <div className="flex justify-between items-center mb-4" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
-              <h2 style={{ marginBottom: 0, color: 'var(--color-secondary)', fontSize: '1.2rem' }} className="flex items-center gap-2">
-                <Sparkles size={20} /> Relatório
-                {doc && <span style={{ fontSize: '0.65rem', padding: '0.15rem 0.5rem', borderRadius: '4px', backgroundColor: '#f1f5f9', color: '#475569', fontWeight: 700 }}>{doc.status === 'draft' ? 'RASCUNHO' : doc.status === 'submitted' ? 'ENVIADO' : doc.status === 'approved' ? 'APROVADO' : 'DEVOLVIDO'}</span>}
+              <h2 style={{ marginBottom: 0, color: 'var(--color-text)', fontSize: '1.1rem' }} className="flex items-center gap-2">
+                <Sparkles size={20} color="var(--color-secondary)" /> Relatório
+                {doc && <StatusBadge status={doc.status} />}
               </h2>
               {reportResult && (
                 <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
-                  <button onClick={() => setShowPrintPreview(true)} className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}><Printer size={14} /> PDF</button>
-                  <button onClick={handleDownloadDoc} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}><FileText size={14} /> Word</button>
-                  <button onClick={handleCopy} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>{copied ? <CheckCircle size={14} /> : <Copy size={14} />}</button>
+                  <button onClick={() => setShowPrintPreview(true)} className="btn btn-primary btn-sm"><Printer size={14} /> PDF</button>
+                  <button onClick={handleDownloadDoc} className="btn btn-secondary btn-sm"><FileText size={14} /> Word</button>
+                  <button onClick={handleCopy} className="btn btn-secondary btn-sm" title="Copiar texto">{copied ? <CheckCircle size={14} /> : <Copy size={14} />}</button>
                 </div>
               )}
             </div>
@@ -199,26 +200,34 @@ export function ReportGenerator() {
             </div>
 
             {doc && reportResult && (
-              <div className="flex gap-2 mt-4" style={{ flexWrap: 'wrap' }}>
-                <button className="btn btn-secondary" style={{ flex: 1, padding: '0.6rem', fontSize: '0.85rem' }} disabled={saving} onClick={() => void persist(doc.status === 'approved' ? 'approved' : 'draft')}>
-                  <Save size={16} /> Salvar edições
-                </button>
-                {user?.role === 'teacher' && doc.status !== 'approved' && (
-                  <button className="btn btn-primary" style={{ flex: 1, padding: '0.6rem', fontSize: '0.85rem' }} disabled={saving} onClick={() => void persist('submitted')}>
-                    <Send size={16} /> Enviar para coordenação
+              <div className="mt-4">
+                <p className="text-muted" style={{ fontSize: '0.78rem', margin: '0 0 0.5rem' }}>
+                  {doc.status === 'draft' && 'Rascunho salvo automaticamente. Revise o texto e envie para a coordenação.'}
+                  {doc.status === 'submitted' && 'Enviado. A coordenação vai revisar e aprovar; depois disso a família passa a ver.'}
+                  {doc.status === 'returned' && 'Devolvido pela coordenação: ajuste o texto e envie de novo.'}
+                  {doc.status === 'approved' && 'Aprovado — já visível para a família no portal.'}
+                </p>
+                <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
+                  <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} disabled={saving} onClick={() => void persist(doc.status === 'approved' ? 'approved' : 'draft')}>
+                    <Save size={16} /> Salvar edições
                   </button>
-                )}
-                {(user?.role === 'admin' || user?.role === 'coordinator') && doc.status !== 'approved' && (
-                  <button className="btn btn-primary" style={{ flex: 1, padding: '0.6rem', fontSize: '0.85rem' }} disabled={saving} onClick={() => void persist('approved')}>
-                    <CheckCircle size={16} /> Aprovar
-                  </button>
-                )}
+                  {user?.role === 'teacher' && doc.status !== 'approved' && (
+                    <button className="btn btn-primary btn-sm" style={{ flex: 1 }} disabled={saving} onClick={() => void persist('submitted')}>
+                      <Send size={16} /> {doc.status === 'submitted' ? 'Reenviar' : 'Enviar para coordenação'}
+                    </button>
+                  )}
+                  {(user?.role === 'admin' || user?.role === 'coordinator') && doc.status !== 'approved' && (
+                    <button className="btn btn-primary btn-sm" style={{ flex: 1 }} disabled={saving} onClick={() => void persist('approved')}>
+                      <CheckCircle size={16} /> Aprovar
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
             {error && (
-              <div style={{ color: '#991b1b', padding: '1rem', backgroundColor: '#fef2f2', borderRadius: 'var(--radius-sm)', marginTop: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start', fontSize: '0.9rem' }}>
-                <AlertCircle size={18} style={{ flexShrink: 0 }} /> {error}
+              <div className="callout callout-danger mt-4">
+                <AlertCircle size={18} /> {error}
               </div>
             )}
           </div>

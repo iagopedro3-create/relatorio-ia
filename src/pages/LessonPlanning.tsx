@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useConfirm } from '../components/ui';
 import { Save, Send, Plus, BookOpen, MessageSquare, Sparkles, Brain, Calendar, FileText, Target, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,10 +12,10 @@ import type { LessonPlan, DailyPlan, AISuggestion, DocumentStatus } from '../typ
 type Draft = Omit<LessonPlan, 'id' | 'school_id' | 'teacher_id' | 'created_at' | 'updated_at'> & { id?: string };
 
 const STATUS_STYLE: Record<DocumentStatus, { bg: string; color: string; label: string }> = {
-  draft: { bg: '#f1f5f9', color: '#64748b', label: 'RASCUNHO' },
-  submitted: { bg: '#fff7ed', color: '#c2410c', label: 'AGUARDANDO' },
-  approved: { bg: '#dcfce7', color: '#166534', label: 'APROVADO' },
-  returned: { bg: '#fee2e2', color: '#b91c1c', label: 'PEDIDO DE AJUSTE' },
+  draft: { bg: 'var(--color-border-soft)', color: 'var(--color-text-muted)', label: 'RASCUNHO' },
+  submitted: { bg: 'var(--color-warning-soft)', color: 'var(--color-warning-text)', label: 'AGUARDANDO' },
+  approved: { bg: 'var(--color-success-soft)', color: 'var(--color-success-text)', label: 'APROVADO' },
+  returned: { bg: 'var(--color-danger-soft)', color: 'var(--color-danger)', label: 'PEDIDO DE AJUSTE' },
 };
 
 function getDayOfWeek(dateStr: string) {
@@ -41,6 +42,7 @@ function isoDaysFromNow(n: number) {
 export function LessonPlanning() {
   const { user } = useAuth();
   const { school, classes, staff, refreshAiUsage } = useSchool();
+  const askConfirm = useConfirm();
   const [activeTab, setActiveTab] = useState<'list' | 'editor' | 'ideas'>('list');
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -145,7 +147,7 @@ export function LessonPlanning() {
   };
 
   const handleDelete = async (plan: LessonPlan) => {
-    if (!window.confirm('Excluir este planejamento?')) return;
+    if (!(await askConfirm({ title: 'Excluir este planejamento?', description: 'O plano e o feedback da coordenação serão apagados.', danger: true }))) return;
     try {
       await deleteLessonPlan(plan.id);
       await plansQ.reload();
@@ -173,7 +175,7 @@ export function LessonPlanning() {
           {plansQ.loading && <p className="text-muted col-span-full">Carregando...</p>}
           {!plansQ.loading && visiblePlans.length === 0 ? (
             <div className="card col-span-full p-12 text-center">
-              <FileText size={48} color="#cbd5e1" style={{ margin: '0 auto 1rem' }} />
+              <FileText size={48} color="var(--color-border-strong)" style={{ margin: '0 auto 1rem' }} />
               <h3 className="text-muted">Nenhum planejamento encontrado</h3>
               <p className="text-muted">{isManager ? 'Os planos enviados pelos professores aparecem aqui.' : 'Crie seu primeiro plano para começar.'}</p>
             </div>
@@ -189,16 +191,16 @@ export function LessonPlanning() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                         <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{plan.weekly_theme || '(sem tema)'}</h3>
-                        {isManager && <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', backgroundColor: '#f1f5f9', borderRadius: '4px', color: '#64748b' }}>Prof. {teacherName(plan.teacher_id)}</span>}
+                        {isManager && <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', backgroundColor: 'var(--color-border-soft)', borderRadius: '4px', color: 'var(--color-text-muted)' }}>Prof. {teacherName(plan.teacher_id)}</span>}
                       </div>
-                      <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+                      <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
                         {className(plan.class_id)} • {new Date(plan.start_date + 'T00:00:00').toLocaleDateString('pt-BR')} a {new Date(plan.end_date + 'T00:00:00').toLocaleDateString('pt-BR')}
                       </p>
                     </div>
                     <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
                       <span style={{ padding: '0.3rem 0.75rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, backgroundColor: st.bg, color: st.color }}>{st.label}</span>
                       {(plan.teacher_id === user?.id || isManager) && (
-                        <button onClick={e => { e.stopPropagation(); void handleDelete(plan); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }} title="Excluir"><Trash2 size={16} /></button>
+                        <button onClick={e => { e.stopPropagation(); void handleDelete(plan); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-subtle)' }} title="Excluir"><Trash2 size={16} /></button>
                       )}
                     </div>
                   </div>
@@ -276,23 +278,23 @@ export function LessonPlanning() {
               )}
 
               {isManager && !isOwner && (
-                <div className="mt-8 pt-8 border-t" style={{ backgroundColor: '#fff7ed', padding: '1.5rem', borderRadius: '12px', border: '1px solid #ffedd5' }}>
-                  <h4 className="flex items-center gap-2 mb-2" style={{ color: '#c2410c' }}><MessageSquare size={18} /> Devolutiva da Coordenação</h4>
-                  <p style={{ fontSize: '0.8rem', color: '#9a3412', marginBottom: '1rem' }}>
+                <div className="mt-8 pt-8 border-t" style={{ backgroundColor: 'var(--color-warning-soft)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-warning-soft)' }}>
+                  <h4 className="flex items-center gap-2 mb-2" style={{ color: 'var(--color-warning-text)' }}><MessageSquare size={18} /> Devolutiva da Coordenação</h4>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--color-warning-text)', marginBottom: '1rem' }}>
                     {formData.status === 'submitted' ? 'Este plano aguarda sua revisão. Escreva as orientações e escolha uma ação.' : `Status atual: ${STATUS_STYLE[formData.status].label}`}
                   </p>
-                  <textarea placeholder="Escreva suas orientações pedagógicas aqui..." name="coordinator_feedback" value={formData.coordinator_feedback ?? ''} onChange={handleInputChange} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid #fed7aa', marginBottom: '1rem', fontSize: '0.9rem' }} rows={4} />
+                  <textarea placeholder="Escreva suas orientações pedagógicas aqui..." name="coordinator_feedback" value={formData.coordinator_feedback ?? ''} onChange={handleInputChange} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--color-warning-border)', marginBottom: '1rem', fontSize: '0.9rem' }} rows={4} />
                   <div className="flex gap-4">
-                    <button className="btn btn-primary" style={{ flex: 1, backgroundColor: '#10b981', boxShadow: 'none' }} disabled={saving} onClick={() => void handleSave('approved')}>{formData.status === 'approved' ? 'Atualizar Feedback' : 'Aprovar Plano'}</button>
-                    <button className="btn btn-secondary" style={{ flex: 1, color: '#ef4444', border: '1px solid #fee2e2', background: 'white', boxShadow: 'none' }} disabled={saving} onClick={() => void handleSave('returned')}>Solicitar Ajustes</button>
+                    <button className="btn btn-primary" style={{ flex: 1, backgroundColor: 'var(--color-success)', boxShadow: 'none' }} disabled={saving} onClick={() => void handleSave('approved')}>{formData.status === 'approved' ? 'Atualizar Feedback' : 'Aprovar Plano'}</button>
+                    <button className="btn btn-secondary" style={{ flex: 1, color: 'var(--color-danger)', border: '1px solid var(--color-danger-soft)', background: 'white', boxShadow: 'none' }} disabled={saving} onClick={() => void handleSave('returned')}>Solicitar Ajustes</button>
                   </div>
                 </div>
               )}
 
               {formData.coordinator_feedback && isOwner && (
-                <div className="mt-8 pt-8 border-t" style={{ backgroundColor: '#f0f9ff', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e0f2fe' }}>
-                  <h4 className="flex items-center gap-2 mb-2" style={{ color: '#0369a1' }}><MessageSquare size={18} /> Comentários da Coordenação</h4>
-                  <p style={{ fontSize: '0.9rem', color: '#0c4a6e', margin: 0, whiteSpace: 'pre-wrap' }}>{formData.coordinator_feedback}</p>
+                <div className="mt-8 pt-8 border-t" style={{ backgroundColor: 'var(--color-primary-soft)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--color-primary-soft)' }}>
+                  <h4 className="flex items-center gap-2 mb-2" style={{ color: 'var(--color-primary-text)' }}><MessageSquare size={18} /> Comentários da Coordenação</h4>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--color-primary-text)', margin: 0, whiteSpace: 'pre-wrap' }}>{formData.coordinator_feedback}</p>
                 </div>
               )}
             </div>
@@ -329,7 +331,7 @@ export function LessonPlanning() {
               </div>
               <div className="space-y-4">
                 {formData.ai_suggestions.slice(0, 3).map((s) => (
-                  <div key={s.id} style={{ padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '10px', fontSize: '0.85rem', border: '1px solid #e2e8f0' }}>
+                  <div key={s.id} style={{ padding: '1rem', backgroundColor: 'var(--color-surface-2)', borderRadius: '10px', fontSize: '0.85rem', border: '1px solid var(--color-border)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: 'var(--color-primary)', fontWeight: 700 }}>
                       <Sparkles size={14} /> {s.type === 'ideas' ? 'Ideias' : s.type === 'improvement' ? 'Melhoria' : 'Adaptação'}
                     </div>
@@ -349,7 +351,7 @@ export function LessonPlanning() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {formData.ai_suggestions.map((s) => (
-              <div key={s.id} className="card p-6" style={{ border: '1px solid #e2e8f0' }}>
+              <div key={s.id} className="card p-6" style={{ border: '1px solid var(--color-border)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--color-primary)', fontWeight: 800 }}>
                   <Sparkles size={18} /> {s.type === 'ideas' ? 'Sugestão de Aula' : s.type === 'improvement' ? 'Melhoria Pedagógica' : 'Adaptação Curricular'}
                 </div>
@@ -371,7 +373,7 @@ export function LessonPlanning() {
 
       <style>{`
         .field-group { display: flex; flex-direction: column; gap: 0.5rem; }
-        .field-group label { font-weight: 700; font-size: 0.85rem; color: #475569; }
+        .field-group label { font-weight: 700; font-size: 0.85rem; color: var(--color-text-muted); }
         .btn-ai-sub { padding: 0.5rem; background-color: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 6px; font-size: 0.75rem; cursor: pointer; transition: all 0.2s; font-family: inherit; }
         .btn-ai-sub:hover { background-color: rgba(255,255,255,0.2); }
         .hover-card:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }

@@ -6,6 +6,8 @@ import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useSchool } from '../contexts/SchoolContext';
 import { useAsync } from '../lib/useAsync';
+import { Badge, DataTable, EmptyState, PageHeader, useConfirm } from '../components/ui';
+import type { Column } from '../components/ui';
 import { listStudents, listEnrollments, createStudent, updateStudent, deleteStudent, enrollStudent, importStudents } from '../data';
 import type { Student, ClassGroup } from '../types/db';
 import { formatDate, calcAge } from '../lib/format';
@@ -39,6 +41,7 @@ interface ImportRow { name: string; birth_date: string | null; guardian1: string
 export function StudentManagement() {
   const { user } = useAuth();
   const { school, classes, selectedYear, grading } = useSchool();
+  const askConfirm = useConfirm();
   const navigate = useNavigate();
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -173,7 +176,7 @@ export function StudentManagement() {
   };
 
   const handleDelete = async (s: Student) => {
-    if (!window.confirm(`Excluir ${s.name}? Frequência, notas e relatórios do aluno serão apagados.`)) return;
+    if (!(await askConfirm({ title: `Excluir ${s.name}?`, description: 'Frequência, notas e relatórios do aluno serão apagados. Isso não pode ser desfeito.', danger: true }))) return;
     try {
       await deleteStudent(s.id);
       await reloadAll();
@@ -285,54 +288,67 @@ export function StudentManagement() {
 
   const classOf = (s: Student): ClassGroup | undefined => classes.find(c => c.id === enrollmentByStudent.get(s.id));
 
+  const studentColumns: Column<Student>[] = [
+    { key: 'name', header: 'Aluno', render: s => (
+      <div className="flex items-center gap-3">
+        <div style={{ width: '34px', height: '34px', borderRadius: '50%', backgroundColor: 'var(--color-primary-soft)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '0.8rem', fontWeight: 700 }}>{s.name.charAt(0)}</div>
+        <span style={{ fontWeight: 600 }}>{s.name}</span>
+        {s.pei_consent_at && <ShieldCheck size={14} color="var(--color-success)" aria-label="Consentimento PEI registrado" />}
+      </div>
+    ) },
+    { key: 'birth', header: 'Nascimento', align: 'center', hideOnMobile: true, render: s => <span style={{ color: 'var(--color-text-muted)' }}>{formatDate(s.birth_date)}</span> },
+    { key: 'age', header: 'Idade', align: 'center', render: s => <Badge tone="neutral">{calcAge(s.birth_date)}</Badge> },
+    { key: 'guardians', header: 'Responsável(is)', hideOnMobile: true, render: s => <span style={{ color: 'var(--color-text-muted)' }}>{s.guardian1}{s.guardian2 && <><br />{s.guardian2}</>}</span> },
+    { key: 'class', header: 'Turma', render: s => { const cls = classOf(s); return cls ? <Badge tone={cls.level === 'infantil' ? 'secondary' : 'primary'}>{cls.name}</Badge> : <span className="text-muted" style={{ fontSize: '0.8rem' }}>Sem turma</span>; } },
+    { key: 'actions', header: '', align: 'right', render: s => (
+      <div className="flex justify-end gap-1">
+        <button onClick={() => navigate(`/students/${s.id}`)} className="btn btn-ghost" style={{ color: 'var(--color-primary)' }} title="Perfil"><User size={16} /></button>
+        <button onClick={() => handleEdit(s)} className="btn btn-ghost" title="Editar"><Edit2 size={16} /></button>
+        <button onClick={() => void handleDelete(s)} className="btn btn-ghost danger" title="Excluir"><Trash2 size={16} /></button>
+      </div>
+    ) },
+  ];
+
   return (
     <div>
       <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFileUpload} style={{ display: 'none' }} />
 
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 style={{ margin: 0 }}>Cadastro de Alunos</h2>
-          <p className="text-muted">{displayed.length} aluno{displayed.length !== 1 ? 's' : ''} · {selectedYear?.label ?? ''}</p>
-        </div>
-        <div className="flex gap-3">
-          <button className="btn btn-secondary" onClick={handleDownloadTemplate} title="Baixar modelo de planilha" style={{ width: '38px', height: '38px', padding: 0, border: '1px solid var(--color-border)', color: '#64748b', background: 'white', boxShadow: 'none' }}>
-            <Download size={18} />
-          </button>
-          <button className="btn btn-secondary" onClick={() => fileInputRef.current?.click()}>
-            <Upload size={18} /> Importar Planilha
-          </button>
-          <button className="btn btn-primary" onClick={openNew}>
-            <UserPlus size={18} /> Novo Aluno
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Alunos"
+        subtitle={studentsQ.loading ? 'Carregando…' : `${displayed.length} aluno${displayed.length !== 1 ? 's' : ''} · ${selectedYear?.label ?? ''}`}
+        actions={<>
+          <button className="btn btn-secondary" onClick={handleDownloadTemplate} title="Baixar modelo de planilha (.xlsx)"><Download size={18} /><span className="mobile-hide"> Modelo</span></button>
+          <button className="btn btn-secondary" onClick={() => fileInputRef.current?.click()}><Upload size={18} /><span className="mobile-hide"> Importar planilha</span></button>
+          <button className="btn btn-primary" onClick={openNew}><UserPlus size={18} /> Novo aluno</button>
+        </>}
+      />
 
       {isAdding && (
         <div className="card mb-6 p-6" style={{ borderTop: '4px solid var(--color-primary)' }}>
           <div className="flex justify-between items-center mb-6">
             <h3 style={{ margin: 0 }}>{editingId ? 'Editar Aluno' : 'Cadastrar Novo Aluno'}</h3>
-            <button onClick={() => { setIsAdding(false); setEditingId(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}><X size={20} /></button>
+            <button onClick={() => { setIsAdding(false); setEditingId(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-subtle)' }}><X size={20} /></button>
           </div>
 
           <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
             <div>
-              <label style={{ fontSize: '0.85rem' }}>Nome Completo <span style={{ color: '#ef4444' }}>*</span></label>
+              <label style={{ fontSize: '0.85rem' }}>Nome Completo <span style={{ color: 'var(--color-danger)' }}>*</span></label>
               <input type="text" placeholder="Ex: João da Silva" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
             </div>
             <div>
-              <label style={{ fontSize: '0.85rem' }}>Data de Nascimento <span style={{ color: '#ef4444' }}>*</span></label>
+              <label style={{ fontSize: '0.85rem' }}>Data de Nascimento <span style={{ color: 'var(--color-danger)' }}>*</span></label>
               <input type="text" placeholder="DD/MM/AAAA" value={dateInputText} onChange={e => handleBirthDateInput(e.target.value)} maxLength={10} />
             </div>
             <div>
-              <label style={{ fontSize: '0.85rem' }}>Responsável 1 <span style={{ color: '#ef4444' }}>*</span></label>
+              <label style={{ fontSize: '0.85rem' }}>Responsável 1 <span style={{ color: 'var(--color-danger)' }}>*</span></label>
               <input type="text" placeholder="Ex: Sra. Maria" value={form.guardian1} onChange={e => setForm(f => ({ ...f, guardian1: e.target.value }))} />
             </div>
             <div>
-              <label style={{ fontSize: '0.85rem' }}>Responsável 2 <span style={{ color: '#94a3b8', fontWeight: 400 }}>(opcional)</span></label>
+              <label style={{ fontSize: '0.85rem' }}>Responsável 2 <span style={{ color: 'var(--color-text-subtle)', fontWeight: 400 }}>(opcional)</span></label>
               <input type="text" placeholder="Ex: Sr. João" value={form.guardian2} onChange={e => setForm(f => ({ ...f, guardian2: e.target.value }))} />
             </div>
             <div>
-              <label style={{ fontSize: '0.85rem' }}>CPF <span style={{ color: '#94a3b8', fontWeight: 400 }}>(para o histórico escolar)</span></label>
+              <label style={{ fontSize: '0.85rem' }}>CPF <span style={{ color: 'var(--color-text-subtle)', fontWeight: 400 }}>(para o histórico escolar)</span></label>
               <input type="text" placeholder="000.000.000-00" value={form.cpf} onChange={e => setForm(f => ({ ...f, cpf: e.target.value }))} />
             </div>
             <div>
@@ -342,9 +358,9 @@ export function StudentManagement() {
           </div>
 
           {form.birth_date && suggestion && (
-            <div style={{ padding: '0.85rem 1.25rem', borderRadius: '10px', marginBottom: '1.25rem', backgroundColor: suggestedClass ? '#eff6ff' : '#fefce8', border: `1px solid ${suggestedClass ? '#bfdbfe' : '#fde68a'}`, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              {suggestedClass ? <CheckCircle2 size={18} color="#2563eb" /> : <AlertCircle size={18} color="#d97706" />}
-              <div style={{ fontSize: '0.85rem', color: suggestedClass ? '#1e40af' : '#92400e' }}>
+            <div style={{ padding: '0.85rem 1.25rem', borderRadius: '10px', marginBottom: '1.25rem', backgroundColor: suggestedClass ? 'var(--color-primary-soft)' : 'var(--color-warning-soft)', border: `1px solid ${suggestedClass ? 'var(--color-primary-border)' : 'var(--color-warning-border)'}`, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              {suggestedClass ? <CheckCircle2 size={18} color="var(--color-primary)" /> : <AlertCircle size={18} color="var(--color-warning)" />}
+              <div style={{ fontSize: '0.85rem', color: suggestedClass ? 'var(--color-primary-text)' : 'var(--color-warning-text)' }}>
                 <strong>Sugestão pela data de nascimento:</strong> {suggestion}
                 {suggestedClass ? ` → turma selecionada: ${suggestedClass.name}` : ' (sem turma nesta série)'}
               </div>
@@ -360,7 +376,7 @@ export function StudentManagement() {
           </div>
 
           {/* LGPD: consentimento para dado sensível (PEI) */}
-          <div style={{ marginTop: '1.25rem', padding: '1rem 1.25rem', borderRadius: '10px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+          <div style={{ marginTop: '1.25rem', padding: '1rem 1.25rem', borderRadius: '10px', backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border)' }}>
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 500 }}>
               <input type="checkbox" checked={form.pei_consent} onChange={e => setForm(f => ({ ...f, pei_consent: e.target.checked }))} style={{ marginTop: '0.2rem' }} />
               <span>
@@ -385,7 +401,7 @@ export function StudentManagement() {
 
       <div className="card mb-4 p-4" style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <div className="flex items-center gap-2" style={{ flex: 1, minWidth: '200px' }}>
-          <Search size={16} style={{ color: '#94a3b8', flexShrink: 0 }} />
+          <Search size={16} style={{ color: 'var(--color-text-subtle)', flexShrink: 0 }} />
           <input type="text" placeholder="Buscar por nome..." value={search} onChange={e => setSearch(e.target.value)} style={{ border: 'none', outline: 'none', background: 'transparent', width: '100%', fontFamily: 'inherit', fontSize: '0.9rem', padding: 0 }} />
         </div>
         <select value={filterClass} onChange={e => setFilterClass(e.target.value)} style={{ width: '200px', fontSize: '0.85rem' }}>
@@ -393,99 +409,44 @@ export function StudentManagement() {
           {managedClasses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         {(search || filterClass) && (
-          <button onClick={() => { setSearch(''); setFilterClass(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+          <button onClick={() => { setSearch(''); setFilterClass(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-subtle)', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
             <X size={14} /> Limpar
           </button>
         )}
       </div>
 
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid var(--color-border)' }}>
-                <th style={{ padding: '1rem', textAlign: 'left' }}>Aluno</th>
-                <th style={{ padding: '1rem', textAlign: 'center' }}>Nascimento</th>
-                <th style={{ padding: '1rem', textAlign: 'center' }}>Idade</th>
-                <th style={{ padding: '1rem', textAlign: 'left' }}>Responsável(is)</th>
-                <th style={{ padding: '1rem', textAlign: 'left' }}>Turma</th>
-                <th style={{ padding: '1rem', textAlign: 'right' }}>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {studentsQ.loading && (
-                <tr><td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>Carregando...</td></tr>
-              )}
-              {!studentsQ.loading && displayed.length === 0 && (
-                <tr>
-                  <td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
-                    <Baby size={40} style={{ margin: '0 auto 0.75rem', display: 'block', opacity: 0.3 }} />
-                    Nenhum aluno encontrado.
-                  </td>
-                </tr>
-              )}
-              {displayed.map((s, i) => {
-                const cls = classOf(s);
-                return (
-                  <tr key={s.id} style={{ borderBottom: '1px solid var(--color-border)', backgroundColor: i % 2 === 0 ? 'white' : '#fafafa' }}>
-                    <td style={{ padding: '1rem' }}>
-                      <div className="flex items-center gap-3">
-                        <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary)' }}>{s.name.charAt(0)}</span>
-                        </div>
-                        <span style={{ fontWeight: 600 }}>{s.name}</span>
-                        {s.pei_consent_at && <ShieldCheck size={14} color="#10b981" aria-label="Consentimento PEI registrado" />}
-                      </div>
-                    </td>
-                    <td style={{ padding: '1rem', textAlign: 'center', color: '#64748b', fontSize: '0.9rem' }}>{formatDate(s.birth_date)}</td>
-                    <td style={{ padding: '1rem', textAlign: 'center' }}>
-                      <span style={{ fontSize: '0.8rem', padding: '0.2rem 0.6rem', borderRadius: '20px', backgroundColor: '#f1f5f9', fontWeight: 600 }}>{calcAge(s.birth_date)}</span>
-                    </td>
-                    <td style={{ padding: '1rem', color: '#64748b', fontSize: '0.9rem' }}>
-                      {s.guardian1}{s.guardian2 && <span><br />{s.guardian2}</span>}
-                    </td>
-                    <td style={{ padding: '1rem' }}>
-                      {cls ? (
-                        <span style={{ fontSize: '0.8rem', padding: '0.25rem 0.7rem', borderRadius: '6px', fontWeight: 600, backgroundColor: cls.level === 'infantil' ? '#fdf4ff' : '#eff6ff', color: cls.level === 'infantil' ? '#7e22ce' : '#1d4ed8' }}>{cls.name}</span>
-                      ) : <span className="text-muted" style={{ fontSize: '0.8rem' }}>Sem turma</span>}
-                    </td>
-                    <td style={{ padding: '1rem', textAlign: 'right' }}>
-                      <div className="flex justify-end gap-2">
-                        <button onClick={() => navigate(`/students/${s.id}`)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)', padding: '0.4rem' }} title="Perfil"><User size={16} /></button>
-                        <button onClick={() => handleEdit(s)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: '0.4rem' }} title="Editar"><Edit2 size={16} /></button>
-                        <button onClick={() => void handleDelete(s)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '0.4rem' }} title="Excluir"><Trash2 size={16} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable
+        columns={studentColumns}
+        rows={displayed}
+        rowKey={s => s.id}
+        loading={studentsQ.loading}
+        empty={(search || filterClass)
+          ? <EmptyState icon={<Search size={36} />} title="Nenhum aluno com esse filtro" description="Tente outro nome ou limpe o filtro de turma." action={<button className="btn btn-secondary btn-sm" onClick={() => { setSearch(''); setFilterClass(''); }}>Limpar filtros</button>} />
+          : <EmptyState icon={<Baby size={36} />} title="Nenhum aluno cadastrado" description="Cadastre um a um ou importe a planilha da secretaria." action={<div className="flex gap-2 justify-center"><button className="btn btn-secondary btn-sm" onClick={() => fileInputRef.current?.click()}><Upload size={16} /> Importar planilha</button><button className="btn btn-primary btn-sm" onClick={openNew}><UserPlus size={16} /> Novo aluno</button></div>} />}
+      />
 
       {showImportModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
           <div style={{ backgroundColor: 'white', borderRadius: '16px', width: '100%', maxWidth: '850px', maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 60px rgba(0,0,0,0.3)' }}>
-            <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <div style={{ backgroundColor: 'rgba(0,0,0,0.05)', padding: '0.6rem', borderRadius: '10px' }}><FileSpreadsheet size={22} color="var(--color-primary)" /></div>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '1.15rem' }}>Importar Alunos via Planilha</h3>
-                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>{importPreview.length} aluno(s) encontrado(s) no arquivo</p>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{importPreview.length} aluno(s) encontrado(s) no arquivo</p>
                 </div>
               </div>
-              <button onClick={() => { setShowImportModal(false); setImportPreview([]); setImportErrors([]); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '0.5rem' }}><X size={20} /></button>
+              <button onClick={() => { setShowImportModal(false); setImportPreview([]); setImportErrors([]); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-subtle)', padding: '0.5rem' }}><X size={20} /></button>
             </div>
 
             <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem' }}>
               {importErrors.length > 0 && (
-                <div style={{ padding: '1rem 1.25rem', borderRadius: '10px', marginBottom: '1.25rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca' }}>
+                <div style={{ padding: '1rem 1.25rem', borderRadius: '10px', marginBottom: '1.25rem', backgroundColor: 'var(--color-danger-soft)', border: '1px solid var(--color-danger-border)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <AlertTriangle size={16} color="#dc2626" />
-                    <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#991b1b' }}>{importErrors.length} linha(s) ignorada(s):</span>
+                    <AlertTriangle size={16} color="var(--color-danger)" />
+                    <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--color-danger-text)' }}>{importErrors.length} linha(s) ignorada(s):</span>
                   </div>
-                  <ul style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.8rem', color: '#b91c1c' }}>{importErrors.map((err, i) => <li key={i}>{err}</li>)}</ul>
+                  <ul style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.8rem', color: 'var(--color-danger)' }}>{importErrors.map((err, i) => <li key={i}>{err}</li>)}</ul>
                 </div>
               )}
 
@@ -498,10 +459,10 @@ export function StudentManagement() {
               </div>
 
               {importPreview.length > 0 ? (
-                <div style={{ borderRadius: '10px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                <div style={{ borderRadius: '10px', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                     <thead>
-                      <tr style={{ backgroundColor: '#f8fafc' }}>
+                      <tr style={{ backgroundColor: 'var(--color-surface-2)' }}>
                         <th style={{ padding: '0.75rem 1rem', textAlign: 'left', width: '40px' }}>#</th>
                         <th style={{ padding: '0.75rem 1rem', textAlign: 'left' }}>Nome</th>
                         <th style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>Nascimento</th>
@@ -512,16 +473,16 @@ export function StudentManagement() {
                     </thead>
                     <tbody>
                       {importPreview.map((s, i) => (
-                        <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '0.6rem 1rem', color: '#94a3b8', fontWeight: 600 }}>{i + 1}</td>
+                        <tr key={i} style={{ borderBottom: '1px solid var(--color-border-soft)' }}>
+                          <td style={{ padding: '0.6rem 1rem', color: 'var(--color-text-subtle)', fontWeight: 600 }}>{i + 1}</td>
                           <td style={{ padding: '0.6rem 1rem', fontWeight: 600 }}>{s.name}</td>
-                          <td style={{ padding: '0.6rem 1rem', textAlign: 'center', color: '#64748b' }}>{formatDate(s.birth_date)}</td>
-                          <td style={{ padding: '0.6rem 1rem', color: '#64748b' }}>{s.guardian1}</td>
-                          <td style={{ padding: '0.6rem 1rem', color: '#94a3b8' }}>{s.guardian2 || '—'}</td>
+                          <td style={{ padding: '0.6rem 1rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>{formatDate(s.birth_date)}</td>
+                          <td style={{ padding: '0.6rem 1rem', color: 'var(--color-text-muted)' }}>{s.guardian1}</td>
+                          <td style={{ padding: '0.6rem 1rem', color: 'var(--color-text-subtle)' }}>{s.guardian2 || '—'}</td>
                           <td style={{ padding: '0.6rem 1rem', textAlign: 'center' }}>
                             {s.class_id
-                              ? <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.6rem', borderRadius: '20px', backgroundColor: '#dcfce7', color: '#166534', fontWeight: 700 }}>{managedClasses.find(c => c.id === s.class_id)?.name}</span>
-                              : <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.6rem', borderRadius: '20px', backgroundColor: '#fef3c7', color: '#92400e', fontWeight: 600 }}>turma padrão</span>}
+                              ? <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.6rem', borderRadius: '20px', backgroundColor: 'var(--color-success-soft)', color: 'var(--color-success-text)', fontWeight: 700 }}>{managedClasses.find(c => c.id === s.class_id)?.name}</span>
+                              : <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.6rem', borderRadius: '20px', backgroundColor: 'var(--color-warning-soft)', color: 'var(--color-warning-text)', fontWeight: 600 }}>turma padrão</span>}
                           </td>
                         </tr>
                       ))}
@@ -529,14 +490,14 @@ export function StudentManagement() {
                   </table>
                 </div>
               ) : (
-                <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
+                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-subtle)' }}>
                   <FileSpreadsheet size={40} style={{ margin: '0 auto 0.75rem', opacity: 0.3 }} />
                   <p>Nenhum aluno válido encontrado no arquivo.</p>
                 </div>
               )}
             </div>
 
-            <div style={{ padding: '1.25rem 2rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '1.25rem 2rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <button className="btn btn-secondary" onClick={() => fileInputRef.current?.click()} style={{ fontSize: '0.85rem' }}><Upload size={16} /> Outro Arquivo</button>
               <div className="flex gap-3">
                 <button className="btn btn-secondary" onClick={() => { setShowImportModal(false); setImportPreview([]); setImportErrors([]); }}>Cancelar</button>

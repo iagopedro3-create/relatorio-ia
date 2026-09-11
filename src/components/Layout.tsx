@@ -33,7 +33,7 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 const ROLE_CLASS: Record<string, string> = {
-  admin: 'bg-purple-600',
+  admin: 'bg-[var(--color-primary-text)]',
   coordinator: 'bg-[var(--color-primary)]',
   teacher: 'bg-[var(--color-secondary)]',
   guardian: 'bg-slate-500',
@@ -83,7 +83,7 @@ export function Layout() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[var(--color-bg)] p-6">
         <div className="card text-center max-w-md">
-          <AlertTriangle size={40} className="mx-auto mb-4" color="#f59e0b" />
+          <AlertTriangle size={40} className="mx-auto mb-4" color="var(--color-warning)" />
           <h2>Conta sem escola vinculada</h2>
           <p className="text-muted">Seu login existe, mas nenhuma escola te cadastrou como usuário. Peça à direção da sua escola para criar seu acesso.</p>
           <button onClick={() => { void signOut(); navigate('/login'); }} className="btn btn-primary mt-4"><LogOut size={16} /> Sair</button>
@@ -310,7 +310,7 @@ export function Layout() {
         )}
         {blockedWhenInactive ? (
           <div className="card text-center max-w-lg mx-auto">
-            <AlertTriangle size={40} className="mx-auto mb-4" color="#ef4444" />
+            <AlertTriangle size={40} className="mx-auto mb-4" color="var(--color-danger)" />
             <h2>Acesso indisponível</h2>
             <p className="text-muted">{subscriptionMessage}</p>
           </div>

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useConfirm } from '../components/ui';
 import { Brain, CheckCircle2, XCircle, ChevronRight, Printer, BarChart3, Users, Activity, Search, Sparkles, Loader2, AlertCircle, PieChart, FileText, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
@@ -14,6 +15,7 @@ type Step = 'select' | 'input' | 'dashboard';
 export function PedagogicalIntelligence() {
   const { user } = useAuth();
   const { school, classes, grading, refreshAiUsage } = useSchool();
+  const askConfirm = useConfirm();
   const [currentStep, setCurrentStep] = useState<Step>('select');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -67,7 +69,7 @@ export function PedagogicalIntelligence() {
   };
 
   const handleDelete = async (a: Assessment) => {
-    if (!window.confirm(`Excluir "${a.name}" e seus resultados?`)) return;
+    if (!(await askConfirm({ title: `Excluir "${a.name}"?`, description: 'As respostas registradas dos alunos também serão apagadas.', danger: true }))) return;
     try { await deleteAssessment(a.id); await assessmentsQ.reload(); } catch (e) { toast.error(e instanceof Error ? e.message : 'Falha.'); }
   };
 
@@ -133,7 +135,7 @@ export function PedagogicalIntelligence() {
     }
   };
 
-  const getLevel = (p: number) => p >= 90 ? { label: 'Excelente', color: '#10b981' } : p >= 70 ? { label: 'Bom', color: '#3b82f6' } : p >= 50 ? { label: 'Regular', color: '#f59e0b' } : { label: 'Crítico', color: '#ef4444' };
+  const getLevel = (p: number) => p >= 90 ? { label: 'Excelente', color: 'var(--color-success)' } : p >= 70 ? { label: 'Bom', color: 'var(--color-primary)' } : p >= 50 ? { label: 'Regular', color: 'var(--color-warning)' } : { label: 'Crítico', color: 'var(--color-danger)' };
 
   const renderSelectStep = () => (
     <div className="card p-8 animate-fade-in">
@@ -143,7 +145,7 @@ export function PedagogicalIntelligence() {
       </div>
 
       {showNew && (
-        <div style={{ padding: '1.25rem', border: '1px solid #e2e8f0', borderRadius: '12px', marginBottom: '1.5rem', backgroundColor: '#f8fafc' }}>
+        <div style={{ padding: '1.25rem', border: '1px solid var(--color-border)', borderRadius: '12px', marginBottom: '1.5rem', backgroundColor: 'var(--color-surface-2)' }}>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div><label style={{ fontSize: '0.8rem' }}>Nome</label><input type="text" value={newName} onChange={e => setNewName(e.target.value)} placeholder="Ex: Avaliação de Português" /></div>
             <div><label style={{ fontSize: '0.8rem' }}>Turma</label><select value={newClassId} onChange={e => setNewClassId(e.target.value)}><option value="">Selecione</option>{classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
@@ -156,7 +158,7 @@ export function PedagogicalIntelligence() {
               <span style={{ alignSelf: 'center', fontSize: '0.8rem', fontWeight: 700, width: '32px' }}>Q{i + 1}</span>
               <input type="text" value={q.theme} placeholder="Tema (ex: Interpretação de texto)" onChange={e => setNewQuestions(qs => qs.map((x, j) => j === i ? { ...x, theme: e.target.value } : x))} />
               <input type="text" value={q.skill} placeholder="Código BNCC (ex: EF35LP01)" onChange={e => setNewQuestions(qs => qs.map((x, j) => j === i ? { ...x, skill: e.target.value } : x))} style={{ maxWidth: '220px' }} />
-              <button onClick={() => setNewQuestions(qs => qs.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}><Trash2 size={16} /></button>
+              <button onClick={() => setNewQuestions(qs => qs.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-subtle)' }}><Trash2 size={16} /></button>
             </div>
           ))}
           <div className="flex justify-between mt-3">
@@ -176,11 +178,11 @@ export function PedagogicalIntelligence() {
             <div className="flex justify-between items-start mb-2">
               <div className="flex gap-2">
                 <span style={{ backgroundColor: 'var(--color-primary)', color: 'white', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.7rem' }}>{a.period}</span>
-                <span style={{ backgroundColor: '#e2e8f0', color: '#475569', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.7rem' }}>{classes.find(c => c.id === a.class_id)?.name ?? 'Turma'}</span>
+                <span style={{ backgroundColor: 'var(--color-border)', color: 'var(--color-text-muted)', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.7rem' }}>{classes.find(c => c.id === a.class_id)?.name ?? 'Turma'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-muted" style={{ fontSize: '0.8rem' }}>{grading.subjects.find(s => s.id === a.subject_id)?.name ?? a.subject_id}</span>
-                {(isManager || a.created_by === user?.id) && <button onClick={e => { e.stopPropagation(); void handleDelete(a); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1' }}><Trash2 size={14} /></button>}
+                {(isManager || a.created_by === user?.id) && <button onClick={e => { e.stopPropagation(); void handleDelete(a); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-border-strong)' }}><Trash2 size={14} /></button>}
               </div>
             </div>
             <h4 style={{ margin: 0, fontSize: '1.1rem' }}>{a.name}</h4>
@@ -202,7 +204,7 @@ export function PedagogicalIntelligence() {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid var(--color-border)' }}>
+              <tr style={{ backgroundColor: 'var(--color-surface-2)', borderBottom: '2px solid var(--color-border)' }}>
                 <th style={{ padding: '1rem', textAlign: 'left', minWidth: '200px' }}>Aluno</th>
                 {questions.map(q => (
                   <th key={q.id} style={{ padding: '1rem', textAlign: 'center' }} title={q.theme}>
@@ -210,7 +212,7 @@ export function PedagogicalIntelligence() {
                     <div>{q.id.toUpperCase()}</div>
                   </th>
                 ))}
-                <th style={{ padding: '1rem', textAlign: 'center', backgroundColor: '#eff6ff' }}>Acertos</th>
+                <th style={{ padding: '1rem', textAlign: 'center', backgroundColor: 'var(--color-primary-soft)' }}>Acertos</th>
               </tr>
             </thead>
             <tbody>
@@ -222,16 +224,16 @@ export function PedagogicalIntelligence() {
                     <td style={{ padding: '1rem', fontWeight: 600 }}>{student.name}</td>
                     {questions.map(q => (
                       <td key={q.id} style={{ padding: '0.5rem', textAlign: 'center' }}>
-                        <button onClick={() => toggleAnswer(student.id, q.id)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: a[q.id] ? 'var(--color-success)' : '#cbd5e1' }}>
+                        <button onClick={() => toggleAnswer(student.id, q.id)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: a[q.id] ? 'var(--color-success)' : 'var(--color-border-strong)' }}>
                           {a[q.id] ? <CheckCircle2 size={24} /> : <XCircle size={24} />}
                         </button>
                       </td>
                     ))}
-                    <td style={{ padding: '1rem', textAlign: 'center', fontWeight: 800, backgroundColor: '#f0fdf4' }}>{correctCount} / {questions.length}</td>
+                    <td style={{ padding: '1rem', textAlign: 'center', fontWeight: 800, backgroundColor: 'var(--color-success-soft)' }}>{correctCount} / {questions.length}</td>
                   </tr>
                 );
               })}
-              {students.length === 0 && <tr><td colSpan={questions.length + 2} style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>Nenhum aluno matriculado na turma desta avaliação.</td></tr>}
+              {students.length === 0 && <tr><td colSpan={questions.length + 2} style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-subtle)' }}>Nenhum aluno matriculado na turma desta avaliação.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -268,16 +270,16 @@ export function PedagogicalIntelligence() {
             <p className="text-muted mb-1" style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>Aproveitamento Médio</p>
             <h3 style={{ fontSize: '2rem', margin: 0 }}>{Math.round(stats.avg)}%</h3>
           </div>
-          <div className="card p-6" style={{ borderLeft: '4px solid #10b981' }}>
+          <div className="card p-6" style={{ borderLeft: '4px solid var(--color-success)' }}>
             <p className="text-muted mb-1" style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>Nível de Domínio</p>
             <h3 style={{ fontSize: '2rem', margin: 0 }}>{stats.level}</h3>
           </div>
-          <div className="card p-6" style={{ borderLeft: '4px solid #f59e0b' }}>
+          <div className="card p-6" style={{ borderLeft: '4px solid var(--color-warning)' }}>
             <p className="text-muted mb-1" style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>Habilidades Críticas</p>
             <h3 style={{ fontSize: '2rem', margin: 0 }}>{String(stats.critical.length).padStart(2, '0')}</h3>
             <p className="text-muted mt-1" style={{ fontSize: '0.8rem' }}>abaixo de 50% de acerto</p>
           </div>
-          <div className="card p-6" style={{ borderLeft: '4px solid #ef4444' }}>
+          <div className="card p-6" style={{ borderLeft: '4px solid var(--color-danger)' }}>
             <p className="text-muted mb-1" style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>Alunos em Alerta</p>
             <h3 style={{ fontSize: '2rem', margin: 0 }}>{String(stats.atRisk.length).padStart(2, '0')}</h3>
             <p className="text-muted mt-1" style={{ fontSize: '0.8rem' }}>abaixo de 50% de acertos</p>
@@ -290,13 +292,13 @@ export function PedagogicalIntelligence() {
           <div className="flex justify-between items-center mb-6">
             <h4 style={{ margin: 0 }}>Panorama Individual por Aluno</h4>
             <div style={{ position: 'relative' }}>
-              <Search size={18} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+              <Search size={18} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
               <input type="text" placeholder="Buscar aluno..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: '2.5rem', width: '250px', fontSize: '0.9rem' }} />
             </div>
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead><tr style={{ backgroundColor: '#f8fafc', textAlign: 'left' }}><th style={{ padding: '1rem' }}>Aluno</th><th style={{ padding: '1rem', textAlign: 'center' }}>Pontuação</th><th style={{ padding: '1rem', textAlign: 'center' }}>Desempenho</th></tr></thead>
+              <thead><tr style={{ backgroundColor: 'var(--color-surface-2)', textAlign: 'left' }}><th style={{ padding: '1rem' }}>Aluno</th><th style={{ padding: '1rem', textAlign: 'center' }}>Pontuação</th><th style={{ padding: '1rem', textAlign: 'center' }}>Desempenho</th></tr></thead>
               <tbody>
                 {students.filter(s => s.name.toLowerCase().includes(search.toLowerCase())).map(s => {
                   const correctCount = questions.filter(q => answers[s.id]?.[q.id]).length;
@@ -328,7 +330,7 @@ export function PedagogicalIntelligence() {
                     <div><div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)' }}>{q.skill || q.id.toUpperCase()}</div><div style={{ fontWeight: 600 }}>{q.theme}</div></div>
                     <div style={{ textAlign: 'right' }}><div style={{ fontSize: '1.2rem', fontWeight: 800 }}>{Math.round(pct)}%</div><div style={{ fontSize: '0.7rem', color: lv.color }}>{lv.label}</div></div>
                   </div>
-                  <div style={{ width: '100%', height: '8px', backgroundColor: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}><div style={{ width: `${pct}%`, height: '100%', backgroundColor: lv.color }}></div></div>
+                  <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--color-border)', borderRadius: '4px', overflow: 'hidden' }}><div style={{ width: `${pct}%`, height: '100%', backgroundColor: lv.color }}></div></div>
                 </div>
               );
             })}
@@ -339,7 +341,7 @@ export function PedagogicalIntelligence() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
         <div className="lg:col-span-2">
           {!result ? (
-            <div className="card p-12 text-center flex flex-col items-center justify-center" style={{ minHeight: '400px', backgroundColor: '#f8fafc', border: '2px dashed #cbd5e1' }}>
+            <div className="card p-12 text-center flex flex-col items-center justify-center" style={{ minHeight: '400px', backgroundColor: 'var(--color-surface-2)', border: '2px dashed var(--color-border-strong)' }}>
               <div style={{ backgroundColor: 'rgba(0,0,0,0.05)', padding: '2rem', borderRadius: '50%', marginBottom: '1.5rem' }}><Brain size={64} color="var(--color-primary)" /></div>
               <h3 className="mb-4">Análise Diagnóstica Profunda</h3>
               <p className="text-muted mb-8" style={{ maxWidth: '450px' }}>A Inteligência Pedagógica gera um relatório completo analisando o desempenho individual e sugerindo estratégias por habilidade da BNCC. Só o primeiro nome dos alunos é enviado.</p>
@@ -349,8 +351,8 @@ export function PedagogicalIntelligence() {
             </div>
           ) : (
             <div className="card p-8 animate-fade-in">
-              <div className="flex items-center gap-4 mb-6 pb-4" style={{ borderBottom: '1px solid #f1f5f9' }}><Brain size={32} color="var(--color-primary)" /><h3 style={{ margin: 0 }}>Diagnóstico da Inteligência Pedagógica</h3></div>
-              <div style={{ lineHeight: '1.7', color: '#334155' }}>{renderMarkdown(result)}</div>
+              <div className="flex items-center gap-4 mb-6 pb-4" style={{ borderBottom: '1px solid var(--color-border-soft)' }}><Brain size={32} color="var(--color-primary)" /><h3 style={{ margin: 0 }}>Diagnóstico da Inteligência Pedagógica</h3></div>
+              <div style={{ lineHeight: '1.7', color: 'var(--color-text)' }}>{renderMarkdown(result)}</div>
             </div>
           )}
         </div>
@@ -361,15 +363,15 @@ export function PedagogicalIntelligence() {
               {stats.bySkill.map(({ q, pct }) => (
                 <div key={q.id}>
                   <div className="flex justify-between mb-1" style={{ fontSize: '0.85rem' }}><span style={{ fontWeight: 600 }}>{q.theme}</span><span className="text-muted">{Math.round(pct)}%</span></div>
-                  <div style={{ width: '100%', height: '8px', backgroundColor: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}><div style={{ width: `${pct}%`, height: '100%', backgroundColor: 'var(--color-primary)' }}></div></div>
+                  <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--color-border-soft)', borderRadius: '4px', overflow: 'hidden' }}><div style={{ width: `${pct}%`, height: '100%', backgroundColor: 'var(--color-primary)' }}></div></div>
                 </div>
               ))}
             </div>
           </div>
           {stats.critical.length > 0 && (
-            <div className="card p-6" style={{ backgroundColor: '#fff7ed', border: '1px solid #ffedd5' }}>
-              <h4 className="mb-4 flex items-center gap-2" style={{ color: '#9a3412' }}><AlertCircle size={18} /> Alerta Pedagógico</h4>
-              <p style={{ fontSize: '0.9rem', color: '#c2410c' }}>
+            <div className="card p-6" style={{ backgroundColor: 'var(--color-warning-soft)', border: '1px solid var(--color-warning-soft)' }}>
+              <h4 className="mb-4 flex items-center gap-2" style={{ color: 'var(--color-warning-text)' }}><AlertCircle size={18} /> Alerta Pedagógico</h4>
+              <p style={{ fontSize: '0.9rem', color: 'var(--color-warning-text)' }}>
                 {stats.critical.map(c => <span key={c.q.id}><strong>{c.q.skill || c.q.id.toUpperCase()} ({c.q.theme})</strong> com {Math.round(c.pct)}% de acerto. </span>)}
                 Recomendamos retomar esses conteúdos com agrupamentos produtivos.
               </p>

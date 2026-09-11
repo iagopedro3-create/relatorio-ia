@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useConfirm } from '../components/ui';
 import { Plus, Edit2, Trash2, User as UserIcon, Check, X, KeyRound, Ban, CheckCircle2, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
@@ -23,15 +24,16 @@ interface FormState {
 const EMPTY: FormState = { name: '', email: '', password: '', role: 'teacher', managed_level: '', specialty: '', student_ids: [], class_ids: [] };
 
 const ROLE_BADGE: Record<UserRole, { label: string; color: string; bg: string }> = {
-  admin: { label: 'DIREÇÃO', color: '#9333ea', bg: '#f3e8ff' },
-  coordinator: { label: 'COORDENAÇÃO', color: 'var(--color-primary)', bg: '#eff6ff' },
-  teacher: { label: 'PROFESSOR', color: 'var(--color-secondary)', bg: '#f0fdf4' },
-  guardian: { label: 'RESPONSÁVEL', color: '#64748b', bg: '#f1f5f9' },
+  admin: { label: 'DIREÇÃO', color: 'var(--color-secondary)', bg: 'var(--color-secondary-soft)' },
+  coordinator: { label: 'COORDENAÇÃO', color: 'var(--color-primary)', bg: 'var(--color-primary-soft)' },
+  teacher: { label: 'PROFESSOR', color: 'var(--color-secondary)', bg: 'var(--color-success-soft)' },
+  guardian: { label: 'RESPONSÁVEL', color: 'var(--color-text-muted)', bg: 'var(--color-border-soft)' },
 };
 
 export function UserManagement() {
   const { user: currentUser } = useAuth();
   const { school, staff, classes, grading, refresh } = useSchool();
+  const askConfirm = useConfirm();
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormState>(EMPTY);
@@ -59,7 +61,7 @@ export function UserManagement() {
   if (!canView) {
     return (
       <div className="card p-12 text-center">
-        <X size={48} className="mb-4 mx-auto" color="#ef4444" />
+        <X size={48} className="mb-4 mx-auto" color="var(--color-danger)" />
         <h2>Acesso Restrito</h2>
         <p className="text-muted">Apenas a Direção ou Coordenação pode ver os usuários.</p>
       </div>
@@ -138,9 +140,9 @@ export function UserManagement() {
     }
   };
 
-  const handleDelete = (u: Profile) => {
+  const handleDelete = async (u: Profile) => {
     if (u.id === currentUser?.id) { toast.error('Você não pode excluir o próprio usuário.'); return; }
-    if (!window.confirm(`Excluir ${u.name}? O acesso será removido permanentemente.`)) return;
+    if (!(await askConfirm({ title: `Excluir ${u.name}?`, description: 'O acesso será removido permanentemente. Para afastar temporariamente, prefira desativar.', danger: true }))) return;
     void run('Usuário excluído.', () => userAction('delete', u.id));
   };
 
@@ -173,10 +175,10 @@ export function UserManagement() {
       </div>
 
       {revealed && (
-        <div className="card mb-6 p-5" style={{ borderLeft: '4px solid #10b981', backgroundColor: '#f0fdf4' }}>
+        <div className="card mb-6 p-5" style={{ borderLeft: '4px solid var(--color-success)', backgroundColor: 'var(--color-success-soft)' }}>
           <div className="flex justify-between items-start gap-4">
             <div>
-              <p style={{ margin: 0, fontWeight: 700, color: '#166534' }}>Senha inicial gerada — anote agora, ela não será exibida de novo.</p>
+              <p style={{ margin: 0, fontWeight: 700, color: 'var(--color-success-text)' }}>Senha inicial gerada — anote agora, ela não será exibida de novo.</p>
               <p style={{ margin: '0.5rem 0 0', fontFamily: 'monospace', fontSize: '1rem' }}>
                 {revealed.email} · <strong>{revealed.password}</strong>
               </p>
@@ -250,7 +252,7 @@ export function UserManagement() {
                   const on = formData.class_ids.includes(c.id);
                   return (
                     <button key={c.id} type="button" onClick={() => setFormData(f => ({ ...f, class_ids: on ? f.class_ids.filter(id => id !== c.id) : [...f.class_ids, c.id] }))}
-                      style={{ padding: '0.3rem 0.7rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', border: on ? '2px solid var(--color-primary)' : '2px solid #e2e8f0', backgroundColor: on ? '#eff6ff' : 'white', color: on ? 'var(--color-primary)' : '#64748b', fontFamily: 'inherit' }}>
+                      style={{ padding: '0.3rem 0.7rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', border: on ? '2px solid var(--color-primary)' : '2px solid var(--color-border)', backgroundColor: on ? 'var(--color-primary-soft)' : 'white', color: on ? 'var(--color-primary)' : 'var(--color-text-muted)', fontFamily: 'inherit' }}>
                       {c.name}
                     </button>
                   );
@@ -269,7 +271,7 @@ export function UserManagement() {
                   const on = formData.student_ids.includes(s.id);
                   return (
                     <button key={s.id} type="button" onClick={() => setFormData(f => ({ ...f, student_ids: on ? f.student_ids.filter(id => id !== s.id) : [...f.student_ids, s.id] }))}
-                      style={{ padding: '0.3rem 0.7rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', border: on ? '2px solid var(--color-primary)' : '2px solid #e2e8f0', backgroundColor: on ? '#eff6ff' : 'white', color: on ? 'var(--color-primary)' : '#64748b', fontFamily: 'inherit' }}>
+                      style={{ padding: '0.3rem 0.7rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', border: on ? '2px solid var(--color-primary)' : '2px solid var(--color-border)', backgroundColor: on ? 'var(--color-primary-soft)' : 'white', color: on ? 'var(--color-primary)' : 'var(--color-text-muted)', fontFamily: 'inherit' }}>
                       {s.name}
                     </button>
                   );
@@ -291,7 +293,7 @@ export function UserManagement() {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid var(--color-border)' }}>
+              <tr style={{ backgroundColor: 'var(--color-surface-2)', borderBottom: '2px solid var(--color-border)' }}>
                 <th style={{ padding: '1rem', textAlign: 'left' }}>Usuário</th>
                 <th style={{ padding: '1rem', textAlign: 'left' }}>E-mail</th>
                 <th style={{ padding: '1rem', textAlign: 'center' }}>Papel</th>
@@ -311,15 +313,15 @@ export function UserManagement() {
                         </div>
                         <div>
                           <span style={{ fontWeight: 600 }}>{u.name}</span>
-                          {!u.active && <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', color: '#991b1b', fontWeight: 700 }}>INATIVO</span>}
+                          {!u.active && <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', color: 'var(--color-danger-text)', fontWeight: 700 }}>INATIVO</span>}
                         </div>
                       </div>
                     </td>
-                    <td style={{ padding: '1rem', color: '#64748b', fontSize: '0.85rem', fontFamily: 'monospace' }}>{u.email}</td>
+                    <td style={{ padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.85rem', fontFamily: 'monospace' }}>{u.email}</td>
                     <td style={{ padding: '1rem', textAlign: 'center' }}>
                       <span style={{ padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700, backgroundColor: role.bg, color: role.color }}>{role.label}</span>
                     </td>
-                    <td style={{ padding: '1rem', color: '#64748b', fontSize: '0.9rem' }}>{scopeLabel(u)}</td>
+                    <td style={{ padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>{scopeLabel(u)}</td>
                     {isAdmin && (
                       <td style={{ padding: '1rem', textAlign: 'right' }}>
                         <div className="flex justify-end gap-1">
@@ -330,7 +332,7 @@ export function UserManagement() {
                               ? <button className="icon-btn" title="Desativar acesso" onClick={() => void run('Acesso desativado.', () => userAction('deactivate', u.id))}><Ban size={17} /></button>
                               : <button className="icon-btn" title="Reativar acesso" onClick={() => void run('Acesso reativado.', () => userAction('activate', u.id))}><CheckCircle2 size={17} /></button>
                           )}
-                          <button className="icon-btn text-error" title="Excluir" onClick={() => handleDelete(u)}><Trash2 size={17} /></button>
+                          <button className="icon-btn text-error" title="Excluir" onClick={() => void handleDelete(u)}><Trash2 size={17} /></button>
                         </div>
                       </td>
                     )}
@@ -343,9 +345,9 @@ export function UserManagement() {
       </div>
 
       <style>{`
-        .icon-btn { background: transparent; border: none; padding: 0.5rem; cursor: pointer; color: #64748b; border-radius: 8px; transition: all 0.2s; }
-        .icon-btn:hover { background: #f1f5f9; color: var(--color-primary); }
-        .icon-btn.text-error:hover { background: #fef2f2; color: #ef4444; }
+        .icon-btn { background: transparent; border: none; padding: 0.5rem; cursor: pointer; color: var(--color-text-muted); border-radius: 8px; transition: all 0.2s; }
+        .icon-btn:hover { background: var(--color-border-soft); color: var(--color-primary); }
+        .icon-btn.text-error:hover { background: var(--color-danger-soft); color: var(--color-danger); }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fadeIn 0.3s ease-out; }
       `}</style>

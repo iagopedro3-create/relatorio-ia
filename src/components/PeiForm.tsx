@@ -125,12 +125,12 @@ export function PeiForm({ students, onSubmit, isLoading }: PeiFormProps) {
       </div>
 
       {selected && (
-        <div style={{ padding: '0.85rem 1.25rem', borderRadius: '10px', marginBottom: '1.25rem', backgroundColor: hasConsent ? '#f0fdf4' : '#fef2f2', border: `1px solid ${hasConsent ? '#bbf7d0' : '#fecaca'}`, display: 'flex', gap: '0.75rem', alignItems: 'flex-start', fontSize: '0.85rem' }}>
-          {hasConsent ? <ShieldCheck size={18} color="#16a34a" /> : <ShieldAlert size={18} color="#dc2626" />}
-          <div style={{ color: hasConsent ? '#14532d' : '#7f1d1d' }}>
+        <div style={{ padding: '0.85rem 1.25rem', borderRadius: '10px', marginBottom: '1.25rem', backgroundColor: hasConsent ? 'var(--color-success-soft)' : 'var(--color-danger-soft)', border: `1px solid ${hasConsent ? 'var(--color-success-border)' : 'var(--color-danger-border)'}`, display: 'flex', gap: '0.75rem', alignItems: 'flex-start', fontSize: '0.85rem' }}>
+          {hasConsent ? <ShieldCheck size={18} color="var(--color-success)" /> : <ShieldAlert size={18} color="var(--color-danger)" />}
+          <div style={{ color: hasConsent ? 'var(--color-success-text)' : 'var(--color-danger-text)' }}>
             {hasConsent
               ? <>Consentimento LGPD registrado em {new Date(selected.student.pei_consent_at!).toLocaleDateString('pt-BR')}. O diagnóstico é dado sensível: só o primeiro nome, idade e turma vão para a IA.</>
-              : <><strong>PEI bloqueado:</strong> não há consentimento do responsável para tratar dados de saúde desta criança. <Link to="/students" style={{ color: '#b91c1c', fontWeight: 700 }}>Registre no cadastro do aluno</Link> antes de continuar.</>}
+              : <><strong>PEI bloqueado:</strong> não há consentimento do responsável para tratar dados de saúde desta criança. <Link to="/students" style={{ color: 'var(--color-danger)', fontWeight: 700 }}>Registre no cadastro do aluno</Link> antes de continuar.</>}
           </div>
         </div>
       )}

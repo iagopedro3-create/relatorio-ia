@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useConfirm } from '../components/ui';
 import { Plus, Edit2, Trash2, GraduationCap, Check, X, Layers, BarChart, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,6 +20,7 @@ interface FormState {
 export function ClassManagement() {
   const { user } = useAuth();
   const { school, classes, selectedYear, staff, grading, refreshClasses } = useSchool();
+  const askConfirm = useConfirm();
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -50,7 +52,7 @@ export function ClassManagement() {
   if (!canManage) {
     return (
       <div className="card p-12 text-center">
-        <X size={48} className="mb-4 mx-auto" color="#ef4444" />
+        <X size={48} className="mb-4 mx-auto" color="var(--color-danger)" />
         <h2>Acesso Negado</h2>
         <p className="text-muted">Você não tem permissão para gerenciar turmas.</p>
       </div>
@@ -104,7 +106,7 @@ export function ClassManagement() {
   };
 
   const handleDelete = async (c: ClassGroup) => {
-    if (!window.confirm(`Excluir a turma ${c.name}? As matrículas, frequências e notas dela serão apagadas.`)) return;
+    if (!(await askConfirm({ title: `Excluir a turma ${c.name}?`, description: 'As matrículas, frequências e notas dela serão apagadas. Isso não pode ser desfeito.', danger: true }))) return;
     try {
       await deleteClass(c.id);
       refreshClasses();
@@ -197,7 +199,7 @@ export function ClassManagement() {
             <div key={c.id} className="card p-6 hover-scale transition-all">
               <div className="flex justify-between items-start mb-4">
                 <div style={{ backgroundColor: c.level === 'infantil' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(0,0,0,0.05)', padding: '0.75rem', borderRadius: '12px' }}>
-                  {c.level === 'infantil' ? <Layers size={24} color="#10b981" /> : <GraduationCap size={24} color="var(--color-primary)" />}
+                  {c.level === 'infantil' ? <Layers size={24} color="var(--color-success)" /> : <GraduationCap size={24} color="var(--color-primary)" />}
                 </div>
                 <div className="flex gap-2">
                   <button className="icon-btn" onClick={() => handleEdit(c)}><Edit2 size={18} /></button>
@@ -211,8 +213,8 @@ export function ClassManagement() {
                 <div className="flex items-center gap-2 text-muted" style={{ fontSize: '0.85rem' }}>
                   <span style={{
                     padding: '0.2rem 0.6rem', borderRadius: '4px',
-                    backgroundColor: c.level === 'infantil' ? '#C6EFCE' : '#D0E1FD',
-                    color: c.level === 'infantil' ? '#166534' : '#084298',
+                    backgroundColor: c.level === 'infantil' ? 'var(--color-success-soft)' : 'var(--color-primary-soft)',
+                    color: c.level === 'infantil' ? 'var(--color-success-text)' : 'var(--color-primary-text)',
                     fontSize: '0.7rem', fontWeight: 700,
                   }}>
                     {c.level === 'infantil' ? 'INFANTIL' : 'FUNDAMENTAL'}
@@ -231,7 +233,7 @@ export function ClassManagement() {
               </div>
 
               <div className="mt-6 pt-4 border-t border-slate-200 flex justify-between items-center">
-                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Ano {selectedYear.label}</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Ano {selectedYear.label}</span>
                 <div onClick={() => handleEdit(c)} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-primary)', cursor: 'pointer' }}>
                   {classTeacher ? 'Alterar Professor' : 'Vincular Professor'} <Plus size={14} />
                 </div>
@@ -243,9 +245,9 @@ export function ClassManagement() {
 
       <style>{`
         .hover-scale:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
-        .icon-btn { background: transparent; border: none; padding: 0.5rem; cursor: pointer; color: #64748b; border-radius: 8px; transition: all 0.2s; }
-        .icon-btn:hover { background: #f1f5f9; color: var(--color-primary); }
-        .icon-btn.text-error:hover { background: #fef2f2; color: #ef4444; }
+        .icon-btn { background: transparent; border: none; padding: 0.5rem; cursor: pointer; color: var(--color-text-muted); border-radius: 8px; transition: all 0.2s; }
+        .icon-btn:hover { background: var(--color-border-soft); color: var(--color-primary); }
+        .icon-btn.text-error:hover { background: var(--color-danger-soft); color: var(--color-danger); }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fadeIn 0.3s ease-out; }
       `}</style>

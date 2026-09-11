@@ -3,6 +3,7 @@ import { Toaster } from 'sonner';
 import { AuthProvider } from './contexts/AuthContext';
 import { SchoolProvider } from './contexts/SchoolContext';
 import { Layout } from './components/Layout';
+import { ConfirmProvider } from './components/ui';
 import { Login } from './pages/Login';
 import { LessonPlanning } from './pages/LessonPlanning';
 import { Home } from './pages/Home';
@@ -29,6 +30,7 @@ export function App() {
     <AuthProvider>
       <SchoolProvider>
         <Toaster position="top-right" richColors />
+        <ConfirmProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
@@ -56,6 +58,7 @@ export function App() {
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </BrowserRouter>
+        </ConfirmProvider>
       </SchoolProvider>
     </AuthProvider>
   );

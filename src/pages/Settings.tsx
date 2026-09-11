@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Building2, Palette, CalendarRange, Sliders, Save, Upload, CreditCard, Sparkles, Plus, Check } from 'lucide-react';
+import { PageHeader, SkeletonCard } from '../components/ui';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useSchool } from '../contexts/SchoolContext';
@@ -29,7 +31,12 @@ export function Settings() {
 
 function SettingsForm({ school, grading }: { school: School; grading: GradingConfig }) {
   const { plan, years, aiUsage, refresh } = useSchool();
-  const [tab, setTab] = useState<Tab>('school');
+  // A aba pode vir da URL (?tab=years) — o checklist de primeiros passos manda para cá.
+  const [params, setParams] = useSearchParams();
+  const TABS: Tab[] = ['school', 'brand', 'years', 'grading', 'plan'];
+  const fromUrl = params.get('tab') as Tab | null;
+  const tab: Tab = fromUrl && TABS.includes(fromUrl) ? fromUrl : 'school';
+  const setTab = (t: Tab) => setParams(t === 'school' ? {} : { tab: t }, { replace: true });
   const [saving, setSaving] = useState(false);
 
   // Escola
@@ -138,11 +145,11 @@ function SettingsForm({ school, grading }: { school: School; grading: GradingCon
 
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-      <h2 className="mb-4">Configurações da Escola</h2>
+      <PageHeader title="Configurações da escola" subtitle="Dados cadastrais, marca, anos letivos, política de avaliação e plano." />
 
       <div className="flex gap-2 mb-6" style={{ flexWrap: 'wrap' }}>
         {tabs.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} className="btn" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', backgroundColor: tab === t.id ? 'var(--color-primary)' : 'white', color: tab === t.id ? 'white' : '#475569', border: '1px solid #e2e8f0', boxShadow: 'none' }}>
+          <button key={t.id} onClick={() => setTab(t.id)} className={`btn btn-sm ${tab === t.id ? 'btn-primary' : 'btn-secondary'}`}>
             {t.icon} {t.label}
           </button>
         ))}
@@ -171,7 +178,7 @@ function SettingsForm({ school, grading }: { school: School; grading: GradingCon
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label>Logo</label>
-              <div style={{ padding: '1rem', border: '1px dashed #cbd5e1', borderRadius: '10px', textAlign: 'center', marginBottom: '0.75rem', backgroundColor: '#f8fafc' }}>
+              <div style={{ padding: '1rem', border: '1px dashed var(--color-border-strong)', borderRadius: '10px', textAlign: 'center', marginBottom: '0.75rem', backgroundColor: 'var(--color-surface-2)' }}>
                 <img src={logoFile ? URL.createObjectURL(logoFile) : logoUrl(school)} alt="Logo" style={{ maxHeight: '80px', maxWidth: '220px', margin: '0 auto' }} />
               </div>
               <label className="btn btn-secondary" style={{ cursor: 'pointer', fontSize: '0.85rem', padding: '0.5rem 1rem' }}>
@@ -183,9 +190,9 @@ function SettingsForm({ school, grading }: { school: School; grading: GradingCon
               <label>Cores</label>
               {([['primary', 'Principal (botões, links)'], ['secondary', 'Secundária (destaques)'], ['accent', 'Realce'], ['bg', 'Fundo das telas']] as const).map(([k, label]) => (
                 <div key={k} className="flex items-center gap-3 mb-3">
-                  <input type="color" value={colors[k]} onChange={e => previewColors({ ...colors, [k]: e.target.value })} style={{ width: '44px', height: '36px', padding: 0, border: '1px solid #e2e8f0', borderRadius: '6px' }} />
+                  <input type="color" value={colors[k]} onChange={e => previewColors({ ...colors, [k]: e.target.value })} style={{ width: '44px', height: '36px', padding: 0, border: '1px solid var(--color-border)', borderRadius: '6px' }} />
                   <span style={{ fontSize: '0.85rem', flex: 1 }}>{label}</span>
-                  <code style={{ fontSize: '0.75rem', color: '#64748b' }}>{colors[k]}</code>
+                  <code style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{colors[k]}</code>
                 </div>
               ))}
               <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }} onClick={() => previewColors({ ...DEFAULT_COLORS })}>Restaurar padrão</button>
@@ -201,8 +208,8 @@ function SettingsForm({ school, grading }: { school: School; grading: GradingCon
           <h3 className="mb-4">Anos letivos</h3>
           <div className="flex flex-col gap-2 mb-6">
             {years.map(y => (
-              <div key={y.id} className="flex items-center justify-between" style={{ padding: '0.75rem 1rem', border: '1px solid #e2e8f0', borderRadius: '8px', backgroundColor: y.active ? '#f0fdf4' : 'white' }}>
-                <span style={{ fontWeight: 700 }}>{y.label} {y.active && <span style={{ fontSize: '0.7rem', color: '#166534', marginLeft: '0.5rem' }}>ATIVO</span>}</span>
+              <div key={y.id} className="flex items-center justify-between" style={{ padding: '0.75rem 1rem', border: '1px solid var(--color-border)', borderRadius: '8px', backgroundColor: y.active ? 'var(--color-success-soft)' : 'white' }}>
+                <span style={{ fontWeight: 700 }}>{y.label} {y.active && <span style={{ fontSize: '0.7rem', color: 'var(--color-success-text)', marginLeft: '0.5rem' }}>ATIVO</span>}</span>
                 {!y.active && <button className="btn btn-secondary" style={{ padding: '0.3rem 0.7rem', fontSize: '0.75rem' }} onClick={() => void activateYear(y.id)}><Check size={14} /> Tornar ativo</button>}
               </div>
             ))}
@@ -250,15 +257,15 @@ function SettingsForm({ school, grading }: { school: School; grading: GradingCon
               <label style={{ fontSize: '0.85rem' }}>Disciplinas</label>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                  <thead><tr style={{ backgroundColor: '#f8fafc' }}><th style={{ padding: '0.5rem', textAlign: 'left' }}>Nome</th><th style={{ padding: '0.5rem', textAlign: 'left' }}>Nome oficial</th><th style={{ padding: '0.5rem' }}>Avaliação</th><th style={{ padding: '0.5rem' }}>Quem lança</th><th style={{ padding: '0.5rem', textAlign: 'left' }}>Componentes (id:máx)</th><th style={{ padding: '0.5rem' }}>Prova</th></tr></thead>
+                  <thead><tr style={{ backgroundColor: 'var(--color-surface-2)' }}><th style={{ padding: '0.5rem', textAlign: 'left' }}>Nome</th><th style={{ padding: '0.5rem', textAlign: 'left' }}>Nome oficial</th><th style={{ padding: '0.5rem' }}>Avaliação</th><th style={{ padding: '0.5rem' }}>Quem lança</th><th style={{ padding: '0.5rem', textAlign: 'left' }}>Componentes (id:máx)</th><th style={{ padding: '0.5rem' }}>Prova</th></tr></thead>
                   <tbody>
                     {cfg.subjects.map((s, i) => (
-                      <tr key={s.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <tr key={s.id} style={{ borderBottom: '1px solid var(--color-border-soft)' }}>
                         <td style={{ padding: '0.4rem' }}><input type="text" value={s.name} onChange={e => setCfg(c => ({ ...c, subjects: c.subjects.map((x, j) => j === i ? { ...x, name: e.target.value } : x) }))} style={{ padding: '0.3rem', fontSize: '0.85rem' }} /></td>
                         <td style={{ padding: '0.4rem' }}><input type="text" value={s.officialName} onChange={e => setCfg(c => ({ ...c, subjects: c.subjects.map((x, j) => j === i ? { ...x, officialName: e.target.value } : x) }))} style={{ padding: '0.3rem', fontSize: '0.85rem' }} /></td>
                         <td style={{ padding: '0.4rem', textAlign: 'center' }}>{s.evaluation === 'grade' ? 'Nota' : 'Relatório'}</td>
                         <td style={{ padding: '0.4rem', textAlign: 'center' }}>{s.taughtBy === 'regente' ? 'Regente' : s.taughtBy === 'english' ? 'Inglês' : 'Ed. Física'}</td>
-                        <td style={{ padding: '0.4rem', color: '#64748b' }}>{s.scheme ? s.scheme.components.map(c => `${c.label}:${c.max}`).join(', ') : '—'}</td>
+                        <td style={{ padding: '0.4rem', color: 'var(--color-text-muted)' }}>{s.scheme ? s.scheme.components.map(c => `${c.label}:${c.max}`).join(', ') : '—'}</td>
                         <td style={{ padding: '0.4rem', textAlign: 'center' }}>{s.scheme?.exam ? s.scheme.exam.max : '—'}</td>
                       </tr>
                     ))}
@@ -283,16 +290,16 @@ function SettingsForm({ school, grading }: { school: School; grading: GradingCon
         <div className="card">
           <h3 className="mb-4 flex items-center gap-2"><CreditCard size={20} /> Plano e uso</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+            <div style={{ padding: '1rem', border: '1px solid var(--color-border)', borderRadius: '10px' }}>
               <p className="text-muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 700, margin: 0 }}>Plano</p>
               <h3 style={{ margin: '0.25rem 0' }}>{plan?.name ?? 'Sem plano'}</h3>
               <p style={{ margin: 0, fontSize: '0.85rem' }}>Status: <strong>{school.status}</strong>{school.trial_ends_at && school.status === 'trial' ? ` · até ${new Date(school.trial_ends_at).toLocaleDateString('pt-BR')}` : ''}</p>
             </div>
-            <div style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+            <div style={{ padding: '1rem', border: '1px solid var(--color-border)', borderRadius: '10px' }}>
               <p className="text-muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 700, margin: 0 }}>Limites</p>
               <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem' }}>Alunos: {plan?.max_students ?? '∞'}<br />Usuários: {plan?.max_users ?? '∞'}</p>
             </div>
-            <div style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+            <div style={{ padding: '1rem', border: '1px solid var(--color-border)', borderRadius: '10px' }}>
               <p className="text-muted" style={{ fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 700, margin: 0 }}><Sparkles size={12} style={{ display: 'inline' }} /> IA este mês</p>
               <h3 style={{ margin: '0.25rem 0' }}>{aiUsage.used}{aiUsage.limit !== null ? ` / ${aiUsage.limit}` : ''}</h3>
               <p style={{ margin: 0, fontSize: '0.85rem' }}>gerações (relatórios, PEI, análises, copiloto)</p>
@@ -300,13 +307,14 @@ function SettingsForm({ school, grading }: { school: School; grading: GradingCon
           </div>
           <h4 className="mb-3">Planos disponíveis</h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {plansQ.loading && <SkeletonCard lines={3} />}
             {plansQ.data.filter(p => p.price_cents > 0).map(p => (
-              <div key={p.id} style={{ padding: '1rem', border: `2px solid ${p.id === school.plan_id ? 'var(--color-primary)' : '#e2e8f0'}`, borderRadius: '10px' }}>
+              <div key={p.id} style={{ padding: '1rem', border: `2px solid ${p.id === school.plan_id ? 'var(--color-primary)' : 'var(--color-border)'}`, borderRadius: '10px' }}>
                 <h4 style={{ margin: 0 }}>{p.name}</h4>
                 <p style={{ margin: '0.25rem 0', fontSize: '1.3rem', fontWeight: 800 }}>R$ {(p.price_cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<span style={{ fontSize: '0.75rem', fontWeight: 400 }}>/mês</span></p>
                 <p className="text-muted" style={{ fontSize: '0.8rem', margin: '0 0 0.75rem' }}>até {p.max_students ?? '∞'} alunos · {p.ai_monthly_credits ?? '∞'} gerações de IA/mês</p>
                 {p.id === school.plan_id && school.status === 'active'
-                  ? <span style={{ fontSize: '0.8rem', color: '#166534', fontWeight: 700 }}>Plano atual</span>
+                  ? <span style={{ fontSize: '0.8rem', color: 'var(--color-success-text)', fontWeight: 700 }}>Plano atual</span>
                   : <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} disabled={saving} onClick={() => void subscribe(p.id)}>Assinar</button>}
               </div>
             ))}
@@ -315,8 +323,8 @@ function SettingsForm({ school, grading }: { school: School; grading: GradingCon
             Para ampliar limites, planos de rede ou faturamento por boleto, fale com o suporte da plataforma. A chave de IA é da plataforma — a escola não precisa configurar nada.
           </p>
           {school.dpa_signed_at
-            ? <p style={{ fontSize: '0.85rem', color: '#166534' }}>Contrato de tratamento de dados (LGPD) assinado em {new Date(school.dpa_signed_at).toLocaleDateString('pt-BR')}.</p>
-            : <p style={{ fontSize: '0.85rem', color: '#92400e' }}>Contrato de tratamento de dados (LGPD) ainda não registrado. Veja docs/lgpd no repositório do produto.</p>}
+            ? <p style={{ fontSize: '0.85rem', color: 'var(--color-success-text)' }}>Contrato de tratamento de dados (LGPD) assinado em {new Date(school.dpa_signed_at).toLocaleDateString('pt-BR')}.</p>
+            : <p style={{ fontSize: '0.85rem', color: 'var(--color-warning-text)' }}>Contrato de tratamento de dados (LGPD) ainda não registrado. Veja docs/lgpd no repositório do produto.</p>}
         </div>
       )}
     </div>

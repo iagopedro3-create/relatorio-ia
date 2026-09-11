@@ -5,6 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useAsync } from '../lib/useAsync';
 import { callApi } from '../lib/supabase';
 import type { Plan, School, SchoolStatus } from '../types/db';
+import { Badge, DataTable, EmptyState, PageHeader } from '../components/ui';
+import type { Column } from '../components/ui';
 
 type Row = School & { students_count: number; users_count: number; ai_month: number };
 interface ListResponse { schools: Row[]; plans: Plan[] }
@@ -62,26 +64,50 @@ export function PlatformAdmin() {
     }
   };
 
+  const STATUS_TONE: Record<SchoolStatus, 'success' | 'warning' | 'danger' | 'neutral' | 'primary'> = { trial: 'primary', active: 'success', past_due: 'warning', suspended: 'danger', canceled: 'neutral' };
+  const smallInput = { padding: '0.3rem 0.5rem', fontSize: '0.8rem', width: 'auto' } as const;
+  const schoolColumns: Column<Row>[] = [
+    { key: 'school', header: 'Escola', render: s => <div><div style={{ fontWeight: 700 }}>{s.name}</div><div style={{ fontSize: '0.75rem', color: 'var(--color-text-subtle)' }}>{s.slug} · {new Date(s.created_at).toLocaleDateString('pt-BR')}</div></div> },
+    { key: 'plan', header: 'Plano', render: s => (
+      <select value={s.plan_id ?? ''} onChange={e => void patch(s.id, { plan_id: e.target.value || null })} style={smallInput}>
+        <option value="">—</option>{listQ.data.plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+      </select>
+    ) },
+    { key: 'status', header: 'Status', render: s => (
+      <div className="flex items-center gap-2">
+        <Badge tone={STATUS_TONE[s.status]}>{s.status}</Badge>
+        <select value={s.status} onChange={e => void patch(s.id, { status: e.target.value })} style={smallInput} aria-label="Alterar status">
+          {STATUS.map(st => <option key={st} value={st}>{st}</option>)}
+        </select>
+      </div>
+    ) },
+    { key: 'trial', header: 'Trial até', render: s => <input type="date" value={s.trial_ends_at ? s.trial_ends_at.slice(0, 10) : ''} onChange={e => void patch(s.id, { trial_ends_at: e.target.value ? new Date(e.target.value + 'T23:59:59').toISOString() : null })} style={smallInput} /> },
+    { key: 'students', header: 'Alunos', align: 'center', render: s => s.students_count },
+    { key: 'users', header: 'Usuários', align: 'center', render: s => s.users_count },
+    { key: 'ai', header: 'IA/mês', align: 'center', render: s => s.ai_month },
+    { key: 'dpa', header: 'DPA', render: s => s.dpa_signed_at ? <Badge tone="success">Assinado</Badge> : <button className="btn btn-secondary btn-sm" onClick={() => void patch(s.id, { dpa_signed_at: new Date().toISOString() })}>Marcar assinado</button> },
+    { key: 'usage', header: '', align: 'right', render: s => <button className="btn btn-secondary btn-sm" onClick={() => void openUsage(s)}><BarChart3 size={14} /> Uso</button> },
+  ];
+
   const slugify = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Building2 size={24} /> Backoffice · Escolas</h2>
-          <p className="text-muted">{listQ.data.schools.length} escola(s) na plataforma</p>
-        </div>
-        <div className="flex gap-2">
-          <button className="btn btn-secondary" onClick={() => void listQ.reload()}><RefreshCw size={16} /></button>
+      <PageHeader
+        icon={<Building2 size={22} />}
+        title="Backoffice · Escolas"
+        subtitle={listQ.loading ? 'Carregando…' : `${listQ.data.schools.length} escola(s) na plataforma`}
+        actions={<>
+          <button className="btn btn-secondary" onClick={() => void listQ.reload()} title="Atualizar"><RefreshCw size={16} /></button>
           <button className="btn btn-primary" onClick={() => setShowNew(v => !v)}><Plus size={18} /> Nova escola</button>
-        </div>
-      </div>
+        </>}
+      />
 
       {created && (
-        <div className="card mb-6 p-5" style={{ borderLeft: '4px solid #10b981', backgroundColor: '#f0fdf4' }}>
+        <div className="card mb-6 p-5" style={{ borderLeft: '4px solid var(--color-success)', backgroundColor: 'var(--color-success-soft)' }}>
           <div className="flex justify-between items-start gap-4">
             <div>
-              <p style={{ margin: 0, fontWeight: 700, color: '#166534' }}>Acesso do primeiro admin — repasse à escola. A senha não será exibida de novo.</p>
+              <p style={{ margin: 0, fontWeight: 700, color: 'var(--color-success-text)' }}>Acesso do primeiro admin — repasse à escola. A senha não será exibida de novo.</p>
               <p style={{ margin: '0.5rem 0 0', fontFamily: 'monospace' }}>{created.email} · <strong>{created.password}</strong></p>
             </div>
             <div className="flex gap-2">
@@ -111,45 +137,14 @@ export function PlatformAdmin() {
         </div>
       )}
 
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                {['Escola', 'Plano', 'Status', 'Trial até', 'Alunos', 'Usuários', 'IA/mês', 'DPA', ''].map(h => <th key={h} style={{ padding: '0.75rem 1rem', textAlign: 'left' }}>{h}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {listQ.data.schools.map(s => (
-                <tr key={s.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: '0.75rem 1rem' }}><div style={{ fontWeight: 700 }}>{s.name}</div><div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{s.slug} · {new Date(s.created_at).toLocaleDateString('pt-BR')}</div></td>
-                  <td style={{ padding: '0.75rem 1rem' }}>
-                    <select value={s.plan_id ?? ''} onChange={e => void patch(s.id, { plan_id: e.target.value || null })} style={{ padding: '0.3rem', fontSize: '0.8rem', width: 'auto' }}>
-                      <option value="">—</option>{listQ.data.plans.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
-                  </td>
-                  <td style={{ padding: '0.75rem 1rem' }}>
-                    <select value={s.status} onChange={e => void patch(s.id, { status: e.target.value })} style={{ padding: '0.3rem', fontSize: '0.8rem', width: 'auto' }}>
-                      {STATUS.map(st => <option key={st} value={st}>{st}</option>)}
-                    </select>
-                  </td>
-                  <td style={{ padding: '0.75rem 1rem' }}>
-                    <input type="date" value={s.trial_ends_at ? s.trial_ends_at.slice(0, 10) : ''} onChange={e => void patch(s.id, { trial_ends_at: e.target.value ? new Date(e.target.value + 'T23:59:59').toISOString() : null })} style={{ padding: '0.3rem', fontSize: '0.8rem', width: 'auto' }} />
-                  </td>
-                  <td style={{ padding: '0.75rem 1rem' }}>{s.students_count}</td>
-                  <td style={{ padding: '0.75rem 1rem' }}>{s.users_count}</td>
-                  <td style={{ padding: '0.75rem 1rem' }}>{s.ai_month}</td>
-                  <td style={{ padding: '0.75rem 1rem' }}>
-                    {s.dpa_signed_at ? <span style={{ color: '#166534', fontSize: '0.75rem', fontWeight: 700 }}>OK</span> : <button className="btn btn-secondary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem' }} onClick={() => void patch(s.id, { dpa_signed_at: new Date().toISOString() })}>Marcar assinado</button>}
-                  </td>
-                  <td style={{ padding: '0.75rem 1rem' }}><button className="btn btn-secondary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }} onClick={() => void openUsage(s)}><BarChart3 size={14} /> Uso</button></td>
-                </tr>
-              ))}
-              {listQ.data.schools.length === 0 && !listQ.loading && <tr><td colSpan={9} style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>Nenhuma escola ainda.</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable
+        compact
+        columns={schoolColumns}
+        rows={listQ.data.schools}
+        rowKey={s => s.id}
+        loading={listQ.loading}
+        empty={<EmptyState icon={<Building2 size={36} />} title="Nenhuma escola ainda" description="Provisione a primeira escola com o botão acima." />}
+      />
 
       {usageFor && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }} onClick={() => setUsageFor(null)}>
@@ -162,10 +157,10 @@ export function PlatformAdmin() {
               {usage.length} chamadas · {usage.filter(u => !u.ok).length} falhas · {usage.reduce((a, u) => a + (u.input_tokens ?? 0), 0).toLocaleString('pt-BR')} tokens de entrada · {usage.reduce((a, u) => a + (u.output_tokens ?? 0), 0).toLocaleString('pt-BR')} de saída
             </p>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-              <thead><tr style={{ backgroundColor: '#f8fafc' }}>{['Quando', 'Recurso', 'Modelo', 'Tokens', 'ms', 'OK'].map(h => <th key={h} style={{ padding: '0.5rem', textAlign: 'left' }}>{h}</th>)}</tr></thead>
+              <thead><tr style={{ backgroundColor: 'var(--color-surface-2)' }}>{['Quando', 'Recurso', 'Modelo', 'Tokens', 'ms', 'OK'].map(h => <th key={h} style={{ padding: '0.5rem', textAlign: 'left' }}>{h}</th>)}</tr></thead>
               <tbody>
                 {usage.map((u, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <tr key={i} style={{ borderBottom: '1px solid var(--color-border-soft)' }}>
                     <td style={{ padding: '0.5rem' }}>{new Date(u.created_at).toLocaleString('pt-BR')}</td>
                     <td style={{ padding: '0.5rem' }}>{u.feature}</td>
                     <td style={{ padding: '0.5rem' }}>{u.model}</td>

@@ -82,3 +82,9 @@ provisionar a primeira escola.
   muda de escola para escola.
 - **Marca é dado.** `schools.branding` vira CSS vars em runtime
   (`lib/branding.ts`); nenhuma cor ou nome de escola no código.
+- **Cor é token, não hex.** Telas usam `var(--color-*)` de `src/index.css`:
+  marca (`primary/secondary/accent/bg` + derivadas `*-soft/*-border/*-text`
+  via `color-mix`) e semânticas (`success/warning/danger`, neutros). Hex só
+  em `PrintPreview`/exportação. Componentes base em `src/components/ui`
+  (`PageHeader`, `Badge`, `EmptyState`, `Skeleton*`, `ConfirmDialog`,
+  `DataTable`) — tela nova começa por eles; `window.confirm` não se usa.

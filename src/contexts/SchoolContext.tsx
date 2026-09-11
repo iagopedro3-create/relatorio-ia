@@ -27,6 +27,8 @@ interface SchoolContextType {
   setYear: (id: string) => void;
   /** Turmas do ano selecionado, já filtradas pela RLS (o professor só vê as dele). */
   classes: ClassGroup[];
+  /** Turmas do ano ainda não chegaram — as telas mostram esqueleto em vez de "0 turmas". */
+  classesLoading: boolean;
   /** Equipe da escola (todos os perfis). */
   staff: Profile[];
   aiUsage: { used: number; limit: number | null };
@@ -84,6 +86,8 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
   const [years, setYears] = useState<SchoolYear[]>([]);
   const [selectedYearId, setSelectedYearId] = useState<string | null>(null);
   const [classes, setClasses] = useState<ClassGroup[]>([]);
+  // Chave (ano + versão) que produziu `classes`; derivar o loading disso evita setState síncrono no efeito.
+  const [classesKey, setClassesKey] = useState<string | null>(null);
   const [staff, setStaff] = useState<Profile[]>([]);
   const [aiUsed, setAiUsed] = useState(0);
   const [classesVersion, setClassesVersion] = useState(0);
@@ -130,11 +134,15 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
   useEffect(() => { void refresh(); }, [refresh]);
 
   // Turmas do ano selecionado.
+  const wantedClassesKey = selectedYearId ? `${selectedYearId}#${classesVersion}` : null;
   useEffect(() => {
     if (!selectedYearId) return;
     let active = true;
+    const key = `${selectedYearId}#${classesVersion}`;
     supabase.from('classes').select('*').eq('year_id', selectedYearId).order('name').then(({ data }) => {
-      if (active) setClasses((data as ClassGroup[] | null) ?? []);
+      if (!active) return;
+      setClasses((data as ClassGroup[] | null) ?? []);
+      setClassesKey(key);
     });
     return () => { active = false; };
   }, [selectedYearId, classesVersion]);
@@ -168,6 +176,7 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
     selectedYear: years.find(y => y.id === selectedYearId) ?? null,
     setYear: setSelectedYearId,
     classes: selectedYearId ? classes : [],
+    classesLoading: loading || (wantedClassesKey !== null && classesKey !== wantedClassesKey),
     staff,
     aiUsage: { used: aiUsed, limit: plan?.ai_monthly_credits ?? null },
     loading,

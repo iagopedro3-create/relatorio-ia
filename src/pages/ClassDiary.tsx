@@ -3,8 +3,9 @@ import { Printer, BookOpen, Users, FileText } from 'lucide-react';
 import { useSchool } from '../contexts/SchoolContext';
 import { useAsync } from '../lib/useAsync';
 import { listClassRoster, listAttendance, listLessons, listEvents } from '../data';
-import { MONTHS } from '../lib/format';
+import { MONTHS, currentPeriodIndex } from '../lib/format';
 import { PRODUCT_NAME } from '../lib/branding';
+import { EmptyState, PageHeader, SkeletonCard } from '../components/ui';
 
 /** Meses (0-based) de cada período — aproximação: fev-abr, mai-jul, ago-set, out-dez. */
 const PERIOD_MONTHS: number[][] = [[1, 2, 3], [4, 5, 6], [7, 8], [9, 10, 11]];
@@ -12,7 +13,7 @@ const PERIOD_MONTHS: number[][] = [[1, 2, 3], [4, 5, 6], [7, 8], [9, 10, 11]];
 export function ClassDiary() {
   const { school, classes, staff, grading, selectedYear } = useSchool();
   const [chosenClassId, setSelectedClassId] = useState('');
-  const [periodIdx, setPeriodIdx] = useState(0);
+  const [periodIdx, setPeriodIdx] = useState(() => Math.min(currentPeriodIndex(grading.periods.length), PERIOD_MONTHS.length - 1));
   const year = selectedYear ? parseInt(selectedYear.label, 10) || new Date().getFullYear() : new Date().getFullYear();
   const selectedClassId = classes.some(c => c.id === chosenClassId) ? chosenClassId : (classes[0]?.id ?? '');
 
@@ -68,14 +69,18 @@ export function ClassDiary() {
         .attendance-table th:first-child, .attendance-table td:first-child { text-align: left; padding-left: 8px; min-width: 150px; }
         .lesson-log-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
         .lesson-log-table th, .lesson-log-table td { border: 1px solid #333; padding: 8px; text-align: left; font-size: 12px; }
-        .lesson-log-table th { background-color: #f5f5f5; }
+        .lesson-log-table th { background-color: var(--color-surface-2); }
       `}</style>
 
-      <div className="no-print card mb-6" style={{ padding: '1.5rem' }}>
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="flex items-center gap-2"><BookOpen size={24} color="var(--color-primary)" /> Gerador de Diário Escolar</h2>
-          <button onClick={() => window.print()} className="btn btn-primary" disabled={!currentClass}><Printer size={18} /> Imprimir Diário Completo</button>
-        </div>
+      <div className="no-print">
+        <PageHeader
+          icon={<BookOpen size={22} />}
+          title="Diário de classe"
+          subtitle="Frequência mensal e registro de conteúdos, prontos para imprimir em paisagem."
+          actions={<button onClick={() => window.print()} className="btn btn-primary" disabled={!currentClass || rosterQ.loading}><Printer size={18} /> Imprimir diário</button>}
+        />
+      </div>
+      <div className="no-print card mb-6">
         <div className="grid grid-cols-2 gap-4">
           <div className="form-group">
             <label>Turma</label>
@@ -90,16 +95,15 @@ export function ClassDiary() {
             </select>
           </div>
         </div>
-        <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100 flex items-start gap-3">
-          <FileText size={20} color="var(--color-primary)" className="mt-1" />
-          <div>
-            <p className="text-sm font-semibold text-blue-900" style={{ margin: 0 }}>Nota para Impressão</p>
-            <p className="text-xs text-blue-700" style={{ margin: 0 }}>Formato paisagem, com a frequência mensal e o registro de conteúdos do período selecionado.</p>
-          </div>
+        <div className="callout callout-info mt-2">
+          <FileText size={18} />
+          <span>Feriados cadastrados na Agenda aparecem marcados; fins de semana ficam em cinza.</span>
         </div>
       </div>
 
-      {currentClass && (
+      {!currentClass && !rosterQ.loading && <div className="card no-print"><EmptyState icon={<BookOpen size={36} />} title="Nenhuma turma disponível" description="Cadastre turmas no ano letivo para gerar o diário." /></div>}
+      {currentClass && rosterQ.loading && <div className="no-print"><SkeletonCard lines={10} /></div>}
+      {currentClass && !rosterQ.loading && (
         <div className="diary-print-container bg-white p-8 rounded-lg shadow-sm border border-slate-200">
           <div className="text-center mb-8 border-b-2 border-black pb-4">
             <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 800, color: '#000' }}>{(school?.legal_name || school?.name || '').toUpperCase()}</h1>
@@ -127,13 +131,13 @@ export function ClassDiary() {
                   <div style={{ overflowX: 'auto' }}>
                     <table className="attendance-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
-                        <tr style={{ backgroundColor: '#f9fafb' }}>
+                        <tr style={{ backgroundColor: 'var(--color-surface-2)' }}>
                           <th style={{ width: '200px' }}>Alunos</th>
                           {days.map(d => {
                             const key = `${year}-${pad(monthIdx + 1)}-${pad(d)}`;
                             const holiday = holidays[key];
                             const weekend = isWeekend(monthIdx, d);
-                            return <th key={d} style={{ backgroundColor: holiday ? '#fef3c7' : weekend ? '#f3f4f6' : 'transparent', fontSize: '9px' }}>{d}</th>;
+                            return <th key={d} style={{ backgroundColor: holiday ? 'var(--color-warning-soft)' : weekend ? 'var(--color-surface-2)' : 'transparent', fontSize: '9px' }}>{d}</th>;
                           })}
                         </tr>
                       </thead>
@@ -147,14 +151,14 @@ export function ClassDiary() {
                               const weekend = isWeekend(monthIdx, d);
                               const status = attMap.get(`${enrollment.id}|${key}`) ?? '.';
                               return (
-                                <td key={d} style={{ backgroundColor: holiday ? '#fef3c7' : weekend ? '#f3f4f6' : 'transparent', color: holiday ? '#92400e' : status === 'F' ? '#991b1b' : 'inherit', fontSize: '10px', fontWeight: status !== '.' ? 700 : 400 }}>
+                                <td key={d} style={{ backgroundColor: holiday ? 'var(--color-warning-soft)' : weekend ? 'var(--color-surface-2)' : 'transparent', color: holiday ? 'var(--color-warning-text)' : status === 'F' ? 'var(--color-danger-text)' : 'inherit', fontSize: '10px', fontWeight: status !== '.' ? 700 : 400 }}>
                                   {holiday ? 'FER' : weekend ? '-' : status}
                                 </td>
                               );
                             })}
                           </tr>
                         ))}
-                        {rosterQ.data.length === 0 && <tr><td colSpan={daysInMonth + 1} style={{ padding: '1rem', color: '#94a3b8' }}>Nenhum aluno matriculado.</td></tr>}
+                        {rosterQ.data.length === 0 && <tr><td colSpan={daysInMonth + 1} style={{ padding: '1rem', color: 'var(--color-text-subtle)' }}>Nenhum aluno matriculado.</td></tr>}
                       </tbody>
                     </table>
                   </div>
@@ -185,7 +189,7 @@ export function ClassDiary() {
                     <td style={{ fontSize: '11px', color: '#666' }}>{lesson.observations || '-'}</td>
                   </tr>
                 ))}
-                {relevantLessons.length === 0 && <tr><td colSpan={4} style={{ color: '#94a3b8' }}>Nenhum conteúdo registrado neste período.</td></tr>}
+                {relevantLessons.length === 0 && <tr><td colSpan={4} style={{ color: 'var(--color-text-subtle)' }}>Nenhum conteúdo registrado neste período.</td></tr>}
               </tbody>
             </table>
           </div>

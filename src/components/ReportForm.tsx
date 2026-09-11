@@ -148,7 +148,7 @@ export function ReportForm({ students, onSubmit, isLoading, onStudentChange }: R
     return (
       <div className="form-group mb-8" style={{ borderLeft: '4px solid var(--color-primary)', paddingLeft: '1.5rem' }}>
         <label style={{ fontSize: '1.1rem', color: 'var(--color-primary)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>{title}</label>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.5rem', backgroundColor: '#fdfdfd', padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.5rem', backgroundColor: 'var(--color-surface-2)', padding: '1.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
           {items.map(item => {
             const status = statusMap[item] || 'none';
             const bg = status === 'developing' ? 'rgba(255, 203, 100, 0.2)' : status === 'consolidated' ? 'rgba(16, 185, 129, 0.15)' : 'transparent';
@@ -157,7 +157,7 @@ export function ReportForm({ students, onSubmit, isLoading, onStudentChange }: R
             return (
               <div key={item} onClick={() => handleCycleStatus(mapField, item)} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: '0.75rem', borderRadius: 'var(--radius-sm)', border: `1px solid ${border}`, backgroundColor: bg, cursor: 'pointer', transition: 'all 0.2s', userSelect: 'none' }}>
                 <div style={{ fontSize: '0.85rem', fontWeight: 500 }}>{item}</div>
-                <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 700, color: status === 'none' ? 'var(--color-text-muted)' : status === 'developing' ? '#b45309' : '#047857' }}>{label}</div>
+                <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 700, color: status === 'none' ? 'var(--color-text-muted)' : status === 'developing' ? 'var(--color-warning-text)' : 'var(--color-success)' }}>{label}</div>
               </div>
             );
           })}

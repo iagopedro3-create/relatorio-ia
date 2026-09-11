@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useConfirm } from '../components/ui';
 import { BookOpen, Plus, Calendar, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,6 +11,7 @@ import { subjectsFor } from '../store/gradingConfig';
 export function Lessons() {
   const { user } = useAuth();
   const { school, classes, grading } = useSchool();
+  const askConfirm = useConfirm();
   const [chosenClassId, setSelectedClassId] = useState('');
   const [saving, setSaving] = useState(false);
   const selectedClassId = classes.some(c => c.id === chosenClassId) ? chosenClassId : (classes[0]?.id ?? '');
@@ -54,7 +56,7 @@ export function Lessons() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Excluir este registro?')) return;
+    if (!(await askConfirm({ title: 'Excluir este registro de conteúdo?', danger: true }))) return;
     try {
       await deleteLesson(id);
       await lessonsQ.reload();
@@ -123,7 +125,7 @@ export function Lessons() {
                       <div className="flex items-center gap-2">
                         <Calendar size={18} className="text-muted" />
                         {(lesson.created_by === user?.id || user?.role !== 'teacher') && (
-                          <button onClick={() => void handleDelete(lesson.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }} title="Excluir"><Trash2 size={16} /></button>
+                          <button onClick={() => void handleDelete(lesson.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger)' }} title="Excluir"><Trash2 size={16} /></button>
                         )}
                       </div>
                     </div>

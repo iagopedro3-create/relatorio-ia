@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useSchool } from '../contexts/SchoolContext';
 import { useAsync } from '../lib/useAsync';
+import { EmptyState, PageHeader, SkeletonCard, useConfirm } from '../components/ui';
 import { listMessages, createMessage, deleteMessage, listReplies, createReply, listAllReads, listMyReads, markRead, listEvents, createEvent, deleteEvent, listStudents } from '../data';
 import { CATEGORY_LABELS, EVENT_TYPES, timeAgo } from '../store/agendaMeta';
 import type { AgendaCategory, AgendaEventType, AgendaMessage, AgendaTarget, Student } from '../types/db';
@@ -13,6 +14,7 @@ const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Jul
 export function Agenda() {
   const { user } = useAuth();
   const { school, classes, staff } = useSchool();
+  const askConfirm = useConfirm();
   const isGuardian = user?.role === 'guardian';
   const isManager = user?.role === 'admin' || user?.role === 'coordinator';
 
@@ -131,7 +133,7 @@ export function Agenda() {
   };
 
   const handleDeleteMessage = async (m: AgendaMessage) => {
-    if (!window.confirm('Excluir esta mensagem?')) return;
+    if (!(await askConfirm({ title: 'Excluir esta mensagem?', description: 'Ela some do feed de todos os destinatários.', danger: true }))) return;
     try { await deleteMessage(m.id); await messagesQ.reload(); } catch (e) { toast.error(e instanceof Error ? e.message : 'Falha.'); }
   };
 
@@ -149,20 +151,20 @@ export function Agenda() {
   };
 
   const handleDeleteEvent = async (id: string) => {
-    if (!window.confirm('Excluir este evento?')) return;
+    if (!(await askConfirm({ title: 'Excluir este evento?', danger: true }))) return;
     try { await deleteEvent(id); await eventsQ.reload(); } catch (e) { toast.error(e instanceof Error ? e.message : 'Falha.'); }
   };
 
   const tabStyle = (id: string): React.CSSProperties => ({
     padding: '0.75rem 1.5rem', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.9rem',
     fontWeight: activeTab === id ? 700 : 500, display: 'flex', alignItems: 'center', gap: '0.5rem',
-    color: activeTab === id ? 'var(--color-primary)' : '#64748b', borderBottom: activeTab === id ? '3px solid var(--color-primary)' : '3px solid transparent',
+    color: activeTab === id ? 'var(--color-primary)' : 'var(--color-text-muted)', borderBottom: activeTab === id ? '3px solid var(--color-primary)' : '3px solid transparent',
     backgroundColor: 'transparent', transition: 'all 0.2s',
   });
 
   const chip = (on: boolean): React.CSSProperties => ({
     padding: '0.3rem 0.7rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer',
-    border: on ? '2px solid var(--color-primary)' : '2px solid #e2e8f0', backgroundColor: on ? '#eff6ff' : 'white', color: on ? 'var(--color-primary)' : '#64748b', fontFamily: 'inherit',
+    border: on ? '2px solid var(--color-primary)' : '2px solid var(--color-border)', backgroundColor: on ? 'var(--color-primary-soft)' : 'white', color: on ? 'var(--color-primary)' : 'var(--color-text-muted)', fontFamily: 'inherit',
   });
 
   const TABS = [
@@ -173,39 +175,38 @@ export function Agenda() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <div className="mobile-hide">
-          <h2 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 800 }}>Agenda Digital</h2>
-          <p className="text-muted">Comunicação, eventos e acompanhamento escolar</p>
-        </div>
-        <button className="btn btn-primary" onClick={() => setActiveTab('compose')}><Plus size={18} /> <span className="mobile-hide">Nova Mensagem</span><span className="mobile-only">Nova</span></button>
-      </div>
+      <PageHeader
+        title="Agenda digital"
+        subtitle={isGuardian ? 'Comunicados da escola, calendário e canal com a equipe.' : 'Comunicados, eventos e relatório do dia para as famílias.'}
+        actions={<button className="btn btn-primary" onClick={() => setActiveTab('compose')}><Plus size={18} /> Nova mensagem</button>}
+      />
 
-      <div className="agenda-tabs" style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: '1.5rem', backgroundColor: 'white', borderRadius: '12px 12px 0 0', padding: '0 0.5rem', overflowX: 'auto', whiteSpace: 'nowrap' }}>
+      <div className="agenda-tabs" style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', marginBottom: '1.5rem', backgroundColor: 'white', borderRadius: '12px 12px 0 0', padding: '0 0.5rem', overflowX: 'auto', whiteSpace: 'nowrap' }}>
         {TABS.map(t => <button key={t.id} onClick={() => setActiveTab(t.id)} style={tabStyle(t.id)}>{t.icon} {t.label}</button>)}
       </div>
 
       {activeTab === 'feed' && (
         <div>
           <div className="card" style={{ padding: '0.75rem 1rem', display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1rem' }}>
-            <Search size={18} color="#94a3b8" />
+            <Search size={18} color="var(--color-text-subtle)" />
             <input type="text" placeholder="Buscar mensagens..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ border: 'none', outline: 'none', flex: 1, fontFamily: 'inherit', fontSize: '0.9rem', background: 'transparent', padding: 0 }} />
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              <Filter size={16} color="#94a3b8" />
+              <Filter size={16} color="var(--color-text-subtle)" />
               <select value={filterCat} onChange={e => setFilterCat(e.target.value)} style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem', width: 'auto' }}>
                 <option value="">Todas</option>
                 {Object.entries(CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
               </select>
-              {(searchTerm || filterCat) && <button onClick={() => { setSearchTerm(''); setFilterCat(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={16} color="#94a3b8" /></button>}
+              {(searchTerm || filterCat) && <button onClick={() => { setSearchTerm(''); setFilterCat(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={16} color="var(--color-text-subtle)" /></button>}
             </div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {messagesQ.loading && <p className="text-muted text-center">Carregando...</p>}
+            {messagesQ.loading && <><SkeletonCard lines={2} /><SkeletonCard lines={3} /></>}
             {!messagesQ.loading && filteredMessages.length === 0 && (
-              <div className="card" style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
-                <MessageSquare size={40} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
-                <p>Nenhuma mensagem encontrada.</p>
+              <div className="card">
+                {(searchTerm || filterCat)
+                  ? <EmptyState icon={<Search size={36} />} title="Nada com esse filtro" description="Tente outra palavra ou limpe a busca." action={<button className="btn btn-secondary btn-sm" onClick={() => { setSearchTerm(''); setFilterCat(''); }}>Limpar filtros</button>} />
+                  : <EmptyState icon={<MessageSquare size={36} />} title="Nenhum comunicado ainda" description={isGuardian ? 'Quando a escola publicar algo, aparece aqui.' : 'Publique o primeiro comunicado para as famílias.'} action={!isGuardian ? <button className="btn btn-primary btn-sm" onClick={() => setActiveTab('compose')}><Plus size={16} /> Nova mensagem</button> : undefined} />}
               </div>
             )}
             {filteredMessages.map(msg => {
@@ -217,52 +218,52 @@ export function Agenda() {
                   <div style={{ padding: '1rem 1.25rem 0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
-                        {msg.pinned && <Pin size={14} color="#f59e0b" style={{ transform: 'rotate(45deg)' }} />}
+                        {msg.pinned && <Pin size={14} color="var(--color-warning)" style={{ transform: 'rotate(45deg)' }} />}
                         <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: 700, backgroundColor: cat.bg, color: cat.color, textTransform: 'uppercase' }}>{cat.label}</span>
-                        <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>•</span>
-                        <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>{authorName(msg.author_id)}</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-subtle)' }}>•</span>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{authorName(msg.author_id)}</span>
                       </div>
-                      <h4 style={{ margin: '0 0 0.25rem', fontSize: '1.05rem', color: '#0f172a' }}>{msg.subject}</h4>
+                      <h4 style={{ margin: '0 0 0.25rem', fontSize: '1.05rem', color: 'var(--color-text)' }}>{msg.subject}</h4>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-                      <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>{timeAgo(msg.created_at)}</span>
-                      {(isManager || msg.author_id === user?.id) && <button onClick={() => void handleDeleteMessage(msg)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1' }}><Trash2 size={14} /></button>}
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-subtle)', fontWeight: 500 }}>{timeAgo(msg.created_at)}</span>
+                      {(isManager || msg.author_id === user?.id) && <button onClick={() => void handleDeleteMessage(msg)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-border-strong)' }}><Trash2 size={14} /></button>}
                     </div>
                   </div>
                   <div style={{ padding: '0 1.25rem 1rem' }}>
-                    <p style={{ margin: 0, fontSize: '0.9rem', color: '#475569', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{msg.content}</p>
+                    <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{msg.content}</p>
                   </div>
-                  <div style={{ padding: '0.6rem 1.25rem', backgroundColor: '#f8fafc', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <div style={{ display: 'flex', gap: '1rem', color: '#94a3b8', alignItems: 'center' }}>
+                  <div style={{ padding: '0.6rem 1.25rem', backgroundColor: 'var(--color-surface-2)', borderTop: '1px solid var(--color-border-soft)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', gap: '1rem', color: 'var(--color-text-subtle)', alignItems: 'center' }}>
                       <span>{msg.target_type === 'all' ? '🏫 Toda a escola' : msg.target_type === 'class' ? `📚 ${msg.target_class_ids.map(id => classes.find(c => c.id === id)?.name ?? '').filter(Boolean).join(', ') || 'turma(s)'}` : msg.target_type === 'student' ? '👤 Aluno específico' : '🏢 Equipe'}</span>
                       <button onClick={() => setReplyingToId(replyingToId === msg.id ? null : msg.id)} style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontFamily: 'inherit' }}>
                         <Reply size={12} /> Responder
                       </button>
                     </div>
                     {(isManager || msg.author_id === user?.id) && (
-                      <div style={{ display: 'flex', gap: '0.75rem', color: '#64748b', fontWeight: 600 }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Eye size={12} color="#10b981" /> {reads} lido(s)</span>
+                      <div style={{ display: 'flex', gap: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Eye size={12} color="var(--color-success)" /> {reads} lido(s)</span>
                       </div>
                     )}
                   </div>
 
                   {(replies.length > 0 || replyingToId === msg.id) && (
-                    <div style={{ backgroundColor: '#f1f5f9', padding: '1rem 1.25rem', borderTop: '1px solid #e2e8f0' }}>
+                    <div style={{ backgroundColor: 'var(--color-border-soft)', padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)' }}>
                       {replies.map(rep => (
                         <div key={rep.id} style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                          <CornerDownRight size={16} color="#94a3b8" style={{ marginTop: '0.25rem' }} />
+                          <CornerDownRight size={16} color="var(--color-text-subtle)" style={{ marginTop: '0.25rem' }} />
                           <div style={{ backgroundColor: 'white', padding: '0.6rem 0.85rem', borderRadius: '12px', flex: 1 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
                               <span style={{ fontSize: '0.75rem', fontWeight: 700 }}>{authorName(rep.author_id)}</span>
-                              <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{timeAgo(rep.created_at)}</span>
+                              <span style={{ fontSize: '0.7rem', color: 'var(--color-text-subtle)' }}>{timeAgo(rep.created_at)}</span>
                             </div>
-                            <p style={{ margin: 0, fontSize: '0.85rem', color: '#475569', lineHeight: 1.5 }}>{rep.content}</p>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>{rep.content}</p>
                           </div>
                         </div>
                       ))}
                       {replyingToId === msg.id && (
                         <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}>
-                          <CornerDownRight size={16} color="#94a3b8" style={{ marginTop: '0.75rem' }} />
+                          <CornerDownRight size={16} color="var(--color-text-subtle)" style={{ marginTop: '0.75rem' }} />
                           <div style={{ flex: 1, display: 'flex', gap: '0.5rem' }}>
                             <input type="text" placeholder="Escreva sua resposta..." value={replyText} onChange={e => setReplyText(e.target.value)} onKeyDown={e => e.key === 'Enter' && void handleReply(msg.id)} style={{ flex: 1, padding: '0.5rem 0.85rem', borderRadius: '8px', fontSize: '0.85rem' }} autoFocus />
                             <button onClick={() => void handleReply(msg.id)} className="btn btn-primary" style={{ padding: '0.5rem' }}><Send size={16} /></button>
@@ -280,17 +281,17 @@ export function Agenda() {
 
       {activeTab === 'calendar' && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-            <button onClick={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(calYear - 1); } else setCalMonth(calMonth - 1); }} style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.4rem', cursor: 'pointer' }}><ChevronLeft size={18} color="#64748b" /></button>
+          <div style={{ padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--color-surface-2)', borderBottom: '1px solid var(--color-border)' }}>
+            <button onClick={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(calYear - 1); } else setCalMonth(calMonth - 1); }} style={{ background: 'none', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '0.4rem', cursor: 'pointer' }}><ChevronLeft size={18} color="var(--color-text-muted)" /></button>
             <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>{MONTHS[calMonth]} {calYear}</h3>
             <div className="flex items-center gap-2">
               {!isGuardian && <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => setShowEventForm(v => !v)}><Plus size={14} /> Evento</button>}
-              <button onClick={() => { if (calMonth === 11) { setCalMonth(0); setCalYear(calYear + 1); } else setCalMonth(calMonth + 1); }} style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.4rem', cursor: 'pointer' }}><ChevronRight size={18} color="#64748b" /></button>
+              <button onClick={() => { if (calMonth === 11) { setCalMonth(0); setCalYear(calYear + 1); } else setCalMonth(calMonth + 1); }} style={{ background: 'none', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '0.4rem', cursor: 'pointer' }}><ChevronRight size={18} color="var(--color-text-muted)" /></button>
             </div>
           </div>
 
           {showEventForm && !isGuardian && (
-            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', backgroundColor: '#fffbeb' }}>
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border)', backgroundColor: 'var(--color-warning-soft)' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
                 <input type="text" placeholder="Título" value={evTitle} onChange={e => setEvTitle(e.target.value)} />
                 <input type="date" value={evDate} onChange={e => setEvDate(e.target.value)} />
@@ -301,7 +302,7 @@ export function Agenda() {
               </div>
               <input type="text" placeholder="Descrição (opcional)" value={evDesc} onChange={e => setEvDesc(e.target.value)} style={{ marginTop: '0.75rem' }} />
               <div className="flex flex-wrap gap-2 mt-3">
-                <span style={{ fontSize: '0.8rem', color: '#64748b', alignSelf: 'center' }}>Turmas (vazio = toda a escola):</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', alignSelf: 'center' }}>Turmas (vazio = toda a escola):</span>
                 {classes.map(c => <button key={c.id} type="button" onClick={() => setEvClassIds(prev => prev.includes(c.id) ? prev.filter(id => id !== c.id) : [...prev, c.id])} style={chip(evClassIds.includes(c.id))}>{c.name}</button>)}
               </div>
               <div className="flex justify-end gap-2 mt-3">
@@ -315,7 +316,7 @@ export function Agenda() {
           <div style={{ padding: '1rem', overflowX: 'auto' }}>
             <div style={{ minWidth: '320px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', marginBottom: '0.5rem' }}>
-                {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => <div key={d} style={{ textAlign: 'center', fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', padding: '0.5rem', textTransform: 'uppercase' }}>{d}</div>)}
+                {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => <div key={d} style={{ textAlign: 'center', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-subtle)', padding: '0.5rem', textTransform: 'uppercase' }}>{d}</div>)}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
                 {Array.from({ length: firstDayOfWeek }).map((_, i) => <div key={`e${i}`} />)}
@@ -324,8 +325,8 @@ export function Agenda() {
                   const dayEvents = eventsInMonth.filter(e => e.date === dateStr);
                   const isToday = new Date().toISOString().split('T')[0] === dateStr;
                   return (
-                    <div key={day} style={{ minHeight: '70px', padding: '0.35rem', borderRadius: '8px', border: isToday ? '2px solid var(--color-primary)' : '1px solid #f1f5f9', backgroundColor: isToday ? '#eff6ff' : 'white' }}>
-                      <div style={{ fontSize: '0.8rem', fontWeight: isToday ? 800 : 600, color: isToday ? 'var(--color-primary)' : '#334155', marginBottom: '0.2rem' }}>{day}</div>
+                    <div key={day} style={{ minHeight: '70px', padding: '0.35rem', borderRadius: '8px', border: isToday ? '2px solid var(--color-primary)' : '1px solid var(--color-border-soft)', backgroundColor: isToday ? 'var(--color-primary-soft)' : 'white' }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: isToday ? 800 : 600, color: isToday ? 'var(--color-primary)' : 'var(--color-text)', marginBottom: '0.2rem' }}>{day}</div>
                       {dayEvents.map(ev => {
                         const t = EVENT_TYPES[ev.type] ?? EVENT_TYPES.evento;
                         return <div key={ev.id} style={{ fontSize: '0.65rem', padding: '0.15rem 0.3rem', borderRadius: '4px', marginBottom: '2px', backgroundColor: `${t.color}15`, color: t.color, fontWeight: 600, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }} title={ev.title}>{t.icon} {ev.title}</div>;
@@ -337,23 +338,23 @@ export function Agenda() {
             </div>
           </div>
 
-          <div style={{ borderTop: '1px solid #e2e8f0', padding: '1.25rem 1.5rem' }}>
+          <div style={{ borderTop: '1px solid var(--color-border)', padding: '1.25rem 1.5rem' }}>
             <h4 style={{ margin: '0 0 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Bell size={16} color="var(--color-primary)" /> Próximos Eventos</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
               {eventsQ.data.filter(e => e.date >= new Date().toISOString().slice(0, 10)).slice(0, 6).map(ev => {
                 const t = EVENT_TYPES[ev.type] ?? EVENT_TYPES.evento;
                 return (
-                  <div key={ev.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', borderRadius: '10px', backgroundColor: '#f8fafc', border: '1px solid #f1f5f9' }}>
+                  <div key={ev.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', borderRadius: '10px', backgroundColor: 'var(--color-surface-2)', border: '1px solid var(--color-border-soft)' }}>
                     <div style={{ width: '42px', height: '42px', borderRadius: '10px', backgroundColor: `${t.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', flexShrink: 0 }}>{t.icon}</div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#1e293b' }}>{ev.title}</div>
-                      <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{ev.description}</div>
+                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>{ev.title}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{ev.description}</div>
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
                       <div style={{ fontSize: '0.85rem', fontWeight: 700, color: t.color }}>{new Date(ev.date + 'T00:00:00').toLocaleDateString('pt-BR')}</div>
-                      {ev.time && <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{ev.time}</div>}
+                      {ev.time && <div style={{ fontSize: '0.75rem', color: 'var(--color-text-subtle)' }}>{ev.time}</div>}
                     </div>
-                    {!isGuardian && <button onClick={() => void handleDeleteEvent(ev.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#cbd5e1' }}><Trash2 size={14} /></button>}
+                    {!isGuardian && <button onClick={() => void handleDeleteEvent(ev.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-border-strong)' }}><Trash2 size={14} /></button>}
                   </div>
                 );
               })}
@@ -415,10 +416,10 @@ export function Agenda() {
           )}
 
           {isDailyReport && (
-            <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-              <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
+            <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'var(--color-surface-2)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+              <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '1rem' }}>
                 {(['fundamental', 'infantil'] as const).map(t => (
-                  <button key={t} onClick={() => setReportType(t)} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', backgroundColor: reportType === t ? 'var(--color-primary)' : 'transparent', color: reportType === t ? 'white' : '#64748b', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{t === 'fundamental' ? 'Ensino Fundamental' : 'Educação Infantil'}</button>
+                  <button key={t} onClick={() => setReportType(t)} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', backgroundColor: reportType === t ? 'var(--color-primary)' : 'transparent', color: reportType === t ? 'white' : 'var(--color-text-muted)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{t === 'fundamental' ? 'Ensino Fundamental' : 'Educação Infantil'}</button>
                 ))}
               </div>
               {reportType === 'fundamental' ? (
@@ -427,7 +428,7 @@ export function Agenda() {
                     <label style={{ fontSize: '0.85rem', fontWeight: 700 }}>📌 AULA DE HOJE</label>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.5rem' }}>
                       {['Português', 'Matemática', 'História', 'Geografia', 'Ciências', 'Artes', 'Leitura', 'Ed. Física', 'Inglês'].map(sub => (
-                        <label key={sub} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', cursor: 'pointer', padding: '0.4rem', backgroundColor: 'white', borderRadius: '6px', border: '1px solid #e2e8f0', fontWeight: 400 }}>
+                        <label key={sub} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', cursor: 'pointer', padding: '0.4rem', backgroundColor: 'white', borderRadius: '6px', border: '1px solid var(--color-border)', fontWeight: 400 }}>
                           <input type="checkbox" checked={reportSubjects.includes(sub)} onChange={() => setReportSubjects(prev => prev.includes(sub) ? prev.filter(s => s !== sub) : [...prev, sub])} />{sub}
                         </label>
                       ))}
@@ -437,7 +438,7 @@ export function Agenda() {
                     <label style={{ fontSize: '0.85rem', fontWeight: 700 }}>🎭 PARTICIPAÇÃO</label>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.5rem' }}>
                       {['Muito participativo(a) 🤩', 'Interessado(a) 🧐', 'Pouco participativo 🥱', 'Desinteressado 😴'].map(opt => (
-                        <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', cursor: 'pointer', padding: '0.4rem', backgroundColor: 'white', borderRadius: '6px', border: '1px solid #e2e8f0', fontWeight: 400 }}>
+                        <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', cursor: 'pointer', padding: '0.4rem', backgroundColor: 'white', borderRadius: '6px', border: '1px solid var(--color-border)', fontWeight: 400 }}>
                           <input type="radio" name="participation" checked={reportParticipation === opt} onChange={() => setReportParticipation(opt)} />{opt}
                         </label>
                       ))}
@@ -447,7 +448,7 @@ export function Agenda() {
                     <label style={{ fontSize: '0.85rem', fontWeight: 700 }}>📝 ATIVIDADE DE CASA</label>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                       {['Hoje tem atividade no livro 📚', 'Hoje tem atividade em folha 📄', 'Hoje tem atividade no caderno 📒', 'Hoje não tem atividade ❌'].map(opt => (
-                        <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', padding: '0.5rem 0.75rem', backgroundColor: 'white', borderRadius: '8px', border: '1px solid #e2e8f0', fontWeight: 400 }}>
+                        <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', padding: '0.5rem 0.75rem', backgroundColor: 'white', borderRadius: '8px', border: '1px solid var(--color-border)', fontWeight: 400 }}>
                           <input type="radio" name="homework" checked={reportHomework === opt} onChange={() => setReportHomework(opt)} />{opt}
                         </label>
                       ))}
@@ -465,7 +466,7 @@ export function Agenda() {
                       <label style={{ fontSize: '0.85rem', fontWeight: 700 }}>{title as string}</label>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
                         {(opts as string[]).map(opt => (
-                          <label key={opt} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', cursor: 'pointer', padding: '0.5rem', backgroundColor: 'white', borderRadius: '6px', border: '1px solid #e2e8f0', fontWeight: 400 }}>
+                          <label key={opt} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', cursor: 'pointer', padding: '0.5rem', backgroundColor: 'white', borderRadius: '6px', border: '1px solid var(--color-border)', fontWeight: 400 }}>
                             <input type="radio" name={name as string} checked={val === opt} onChange={() => (set as (v: string) => void)(opt)} />{opt}
                           </label>
                         ))}
@@ -485,12 +486,12 @@ export function Agenda() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               {!isGuardian && (
-                <button type="button" onClick={() => setIsDailyReport(!isDailyReport)} style={{ background: isDailyReport ? 'var(--color-primary)' : 'none', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.5rem 0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: isDailyReport ? 'white' : '#64748b', fontWeight: 600, fontFamily: 'inherit' }}>
+                <button type="button" onClick={() => setIsDailyReport(!isDailyReport)} style={{ background: isDailyReport ? 'var(--color-primary)' : 'none', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '0.5rem 0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: isDailyReport ? 'white' : 'var(--color-text-muted)', fontWeight: 600, fontFamily: 'inherit' }}>
                   <FileText size={16} /> Relatório Diário
                 </button>
               )}
               {!isGuardian && (
-                <button type="button" onClick={() => setCompPinned(!compPinned)} style={{ background: compPinned ? '#fffbeb' : 'none', border: compPinned ? '1px solid #fde68a' : '1px solid #e2e8f0', borderRadius: '8px', padding: '0.5rem 0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: compPinned ? '#d97706' : '#64748b', fontFamily: 'inherit' }}>
+                <button type="button" onClick={() => setCompPinned(!compPinned)} style={{ background: compPinned ? 'var(--color-warning-soft)' : 'none', border: compPinned ? '1px solid var(--color-warning-border)' : '1px solid var(--color-border)', borderRadius: '8px', padding: '0.5rem 0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: compPinned ? 'var(--color-warning)' : 'var(--color-text-muted)', fontFamily: 'inherit' }}>
                   <Pin size={16} style={{ transform: 'rotate(45deg)' }} /> {compPinned ? 'Fixada' : 'Fixar'}
                 </button>
               )}
@@ -499,10 +500,7 @@ export function Agenda() {
           </div>
         </div>
       )}
-      <style>{`
-        .agenda-tabs::-webkit-scrollbar { display: none; }
-        @media (max-width: 768px) { .mobile-hide { display: none !important; } .mobile-only { display: block !important; } }
-      `}</style>
+      <style>{`.agenda-tabs::-webkit-scrollbar { display: none; }`}</style>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { exportPeiToDocx } from '../lib/exportDocx';
 import { useAuth } from '../contexts/AuthContext';
 import { useSchool } from '../contexts/SchoolContext';
 import { useAsync } from '../lib/useAsync';
+import { PageHeader, SkeletonCard, StatusBadge } from '../components/ui';
 import { listEnrollments, listStudents, createDocument, updateDocument } from '../data';
 import type { Student, StudentDocument } from '../types/db';
 
@@ -27,6 +28,7 @@ export function PeiGenerator() {
   const classIds = useMemo(() => classes.map(c => c.id), [classes]);
   const enrollQ = useAsync(() => listEnrollments(classIds), [classIds.join(',')], []);
   const studentsQ = useAsync(() => school ? listStudents(school.id) : Promise.resolve([] as Student[]), [school?.id], [] as Student[]);
+  const rosterLoading = enrollQ.loading || studentsQ.loading;
   const roster = useMemo<RosterStudent[]>(() => enrollQ.data
     .map(e => ({ student: studentsQ.data.find(s => s.id === e.student_id), cls: classes.find(c => c.id === e.class_id) }))
     .filter((r): r is RosterStudent => Boolean(r.student && r.cls))
@@ -105,27 +107,26 @@ export function PeiGenerator() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 style={{ margin: 0 }}>Gestão de Educação Inclusiva</h2>
-          <p className="text-muted">Planos Educacionais Individualizados (PEI) baseados em evidências</p>
-        </div>
-      </div>
+      <PageHeader
+        icon={<Brain size={22} />}
+        title="PEI — Plano Educacional Individualizado"
+        subtitle={rosterLoading ? 'Carregando alunos…' : 'Educação inclusiva: só para alunos com consentimento LGPD registrado no cadastro.'}
+      />
 
       <div className="grid grid-cols-2" style={{ gridTemplateColumns: 'minmax(0, 1.3fr) minmax(0, 0.7fr)', gap: '2rem' }}>
         <div className="left-panel">
-          <PeiForm students={roster} onSubmit={handleGeneratePei} isLoading={isLoading} />
+          {rosterLoading ? <SkeletonCard lines={8} /> : <PeiForm students={roster} onSubmit={handleGeneratePei} isLoading={isLoading} />}
         </div>
 
         <div className="right-panel">
           <div className="card result-card" style={{ minHeight: '600px', maxHeight: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column', position: 'sticky', top: '2rem', boxShadow: 'var(--shadow-lg)' }}>
             <div className="flex justify-between items-center mb-4" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
-              <h2 style={{ marginBottom: 0, color: 'var(--color-secondary)', fontSize: '1.2rem' }} className="flex items-center gap-2"><Brain size={20} /> Plano Elaborado</h2>
+              <h2 style={{ marginBottom: 0, color: 'var(--color-text)', fontSize: '1.1rem' }} className="flex items-center gap-2"><Brain size={20} color="var(--color-secondary)" /> Plano elaborado {doc && <StatusBadge status={doc.status} />}</h2>
               {peiResult && (
                 <div className="flex gap-2">
-                  <button onClick={() => setShowPrintPreview(true)} className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}><Printer size={14} /> PDF</button>
-                  <button onClick={handleDownloadDoc} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}><FileText size={14} /> Word</button>
-                  <button onClick={handleCopy} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>{copied ? <CheckCircle size={14} /> : <Copy size={14} />}</button>
+                  <button onClick={() => setShowPrintPreview(true)} className="btn btn-primary btn-sm"><Printer size={14} /> PDF</button>
+                  <button onClick={handleDownloadDoc} className="btn btn-secondary btn-sm"><FileText size={14} /> Word</button>
+                  <button onClick={handleCopy} className="btn btn-secondary btn-sm" title="Copiar texto">{copied ? <CheckCircle size={14} /> : <Copy size={14} />}</button>
                 </div>
               )}
             </div>
@@ -148,9 +149,9 @@ export function PeiGenerator() {
               )}
             </div>
             {doc && peiResult && (
-              <button className="btn btn-secondary mt-4" style={{ padding: '0.6rem', fontSize: '0.85rem' }} disabled={saving} onClick={() => void persist()}><Save size={16} /> Salvar edições</button>
+              <button className="btn btn-secondary btn-sm mt-4" disabled={saving} onClick={() => void persist()}><Save size={16} /> Salvar edições</button>
             )}
-            {error && <div style={{ color: '#991b1b', padding: '1rem', backgroundColor: '#fef2f2', borderRadius: 'var(--radius-sm)', marginTop: '1rem', fontSize: '0.9rem' }}>{error}</div>}
+            {error && <div className="callout callout-danger mt-4">{error}</div>}
           </div>
         </div>
       </div>

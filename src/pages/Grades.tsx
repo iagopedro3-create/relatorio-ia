@@ -147,18 +147,18 @@ export function Grades() {
           </select>
         </div>
         {currentClass && (
-          <span style={{ marginLeft: 'auto', padding: '0.3rem 0.8rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, backgroundColor: '#eff6ff', color: 'var(--color-primary)' }}>
+          <span style={{ marginLeft: 'auto', padding: '0.3rem 0.8rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, backgroundColor: 'var(--color-primary-soft)', color: 'var(--color-primary)' }}>
             {rosterQ.data.length} aluno{rosterQ.data.length !== 1 ? 's' : ''} • {currentClass.series} {currentClass.letter}
           </span>
         )}
       </div>
 
       {reportClasses.length > 0 && (
-        <div className="card mb-4" style={{ padding: '0.9rem 1.25rem', backgroundColor: '#fffbeb', borderLeft: '4px solid #f59e0b', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <BookOpen size={18} color="#d97706" />
-          <p style={{ margin: 0, fontSize: '0.85rem', color: '#92400e' }}>
+        <div className="card mb-4" style={{ padding: '0.9rem 1.25rem', backgroundColor: 'var(--color-warning-soft)', borderLeft: '4px solid var(--color-warning)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <BookOpen size={18} color="var(--color-warning)" />
+          <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-warning-text)' }}>
             <strong>{reportClasses.map(c => c.name).join(', ')}</strong> {reportClasses.length > 1 ? 'utilizam' : 'utiliza'} Relatórios Descritivos.{' '}
-            <Link to="/reports" style={{ color: '#d97706', fontWeight: 700 }}>Gerar Relatório IA →</Link>
+            <Link to="/reports" style={{ color: 'var(--color-warning)', fontWeight: 700 }}>Gerar Relatório IA →</Link>
           </p>
         </div>
       )}
@@ -183,10 +183,10 @@ export function Grades() {
               {isFinal ? (
                 <>
                   <thead>
-                    <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid var(--color-border)' }}>
+                    <tr style={{ backgroundColor: 'var(--color-surface-2)', borderBottom: '2px solid var(--color-border)' }}>
                       <th style={{ padding: '1rem', textAlign: 'left' }}>Aluno</th>
                       <th style={{ padding: '1rem', textAlign: 'center' }}>Média Anual</th>
-                      <th style={{ padding: '1rem', textAlign: 'center' }}>Recup. Final<br /><span style={{ fontSize: '0.7rem', fontWeight: 400, color: '#64748b' }}>(máx. {policy.scale.max})</span></th>
+                      <th style={{ padding: '1rem', textAlign: 'center' }}>Recup. Final<br /><span style={{ fontSize: '0.7rem', fontWeight: 400, color: 'var(--color-text-muted)' }}>(máx. {policy.scale.max})</span></th>
                       <th style={{ padding: '1rem', textAlign: 'center' }}>Resultado Final</th>
                       <th style={{ padding: '1rem', textAlign: 'center' }}>Situação</th>
                     </tr>
@@ -203,12 +203,12 @@ export function Grades() {
                             <input type="number" min={policy.scale.min} max={policy.scale.max} step="0.1" placeholder={canRecover ? '---' : 'n/a'} disabled={!canRecover}
                               value={valueOf(enrollment.id, FINAL_RECOVERY_PERIOD, FINAL_RECOVERY_COMPONENT) ?? ''}
                               onChange={e => handleChange(enrollment.id, FINAL_RECOVERY_PERIOD, FINAL_RECOVERY_COMPONENT, e.target.value, policy.scale.max)}
-                              style={{ ...inputStyle, border: '2px solid #6366f1', borderRadius: '4px', width: '80px' }} />
+                              style={{ ...inputStyle, border: '2px solid var(--color-secondary)', borderRadius: '4px', width: '80px' }} />
                           </td>
                           <td style={{ padding: '1rem', textAlign: 'center', fontWeight: 800 }}>{fmt(result.final)}</td>
                           <td style={{ padding: '1rem', textAlign: 'center' }}>
-                            {result.passed === null ? <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>Ano em aberto</span> : (
-                              <span style={{ padding: '0.4rem 1rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, backgroundColor: result.passed ? '#C6EFCE' : '#FFC7CE', color: result.passed ? '#166534' : '#991b1b' }}>
+                            {result.passed === null ? <span style={{ color: 'var(--color-text-subtle)', fontSize: '0.8rem' }}>Ano em aberto</span> : (
+                              <span style={{ padding: '0.4rem 1rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 700, backgroundColor: result.passed ? 'var(--color-success-soft)' : 'var(--color-danger-soft)', color: result.passed ? 'var(--color-success-text)' : 'var(--color-danger-text)' }}>
                                 {result.passed ? 'APROVADO' : 'REPROVADO'}
                               </span>
                             )}
@@ -221,23 +221,23 @@ export function Grades() {
               ) : (
                 <>
                   <thead>
-                    <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid var(--color-border)' }}>
+                    <tr style={{ backgroundColor: 'var(--color-surface-2)', borderBottom: '2px solid var(--color-border)' }}>
                       <th style={{ padding: '1rem', textAlign: 'left' }}>Aluno</th>
                       {scheme.components.map(c => (
-                        <th key={c.id} style={{ padding: '1rem', textAlign: 'center' }}>{c.label}<br /><span style={{ fontSize: '0.7rem', fontWeight: 400, color: '#64748b' }}>(máx. {c.max})</span></th>
+                        <th key={c.id} style={{ padding: '1rem', textAlign: 'center' }}>{c.label}<br /><span style={{ fontSize: '0.7rem', fontWeight: 400, color: 'var(--color-text-muted)' }}>(máx. {c.max})</span></th>
                       ))}
                       {scheme.exam && (
                         <>
-                          <th style={{ padding: '1rem', textAlign: 'center', backgroundColor: '#f3f4f6' }}>N1<br /><span style={{ fontSize: '0.7rem', fontWeight: 400, color: '#64748b' }}>(máx. {policy.scale.max})</span></th>
-                          <th style={{ padding: '1rem', textAlign: 'center' }}>{scheme.exam.label}<br /><span style={{ fontSize: '0.7rem', fontWeight: 400, color: '#64748b' }}>(máx. {scheme.exam.max})</span></th>
+                          <th style={{ padding: '1rem', textAlign: 'center', backgroundColor: 'var(--color-surface-2)' }}>N1<br /><span style={{ fontSize: '0.7rem', fontWeight: 400, color: 'var(--color-text-muted)' }}>(máx. {policy.scale.max})</span></th>
+                          <th style={{ padding: '1rem', textAlign: 'center' }}>{scheme.exam.label}<br /><span style={{ fontSize: '0.7rem', fontWeight: 400, color: 'var(--color-text-muted)' }}>(máx. {scheme.exam.max})</span></th>
                         </>
                       )}
-                      <th style={{ padding: '1rem', textAlign: 'center', backgroundColor: '#f3f4f6' }}>Média Bim.</th>
+                      <th style={{ padding: '1rem', textAlign: 'center', backgroundColor: 'var(--color-surface-2)' }}>Média Bim.</th>
                       {isRecoveryPeriod && (
                         <>
-                          <th style={{ padding: '1rem', textAlign: 'center', backgroundColor: '#eef2ff' }}>Média Sem.</th>
-                          <th style={{ padding: '1rem', textAlign: 'center', backgroundColor: '#eef2ff' }}>Recup.<br /><span style={{ fontSize: '0.7rem', fontWeight: 400, color: '#64748b' }}>(máx. {policy.scale.max})</span></th>
-                          <th style={{ padding: '1rem', textAlign: 'center', backgroundColor: '#eef2ff' }}>Final Sem.</th>
+                          <th style={{ padding: '1rem', textAlign: 'center', backgroundColor: 'var(--color-primary-soft)' }}>Média Sem.</th>
+                          <th style={{ padding: '1rem', textAlign: 'center', backgroundColor: 'var(--color-primary-soft)' }}>Recup.<br /><span style={{ fontSize: '0.7rem', fontWeight: 400, color: 'var(--color-text-muted)' }}>(máx. {policy.scale.max})</span></th>
+                          <th style={{ padding: '1rem', textAlign: 'center', backgroundColor: 'var(--color-primary-soft)' }}>Final Sem.</th>
                         </>
                       )}
                     </tr>
@@ -247,14 +247,14 @@ export function Grades() {
                       const result = calcSubject(buildGradeBook(entriesFor(enrollment.id), subject.id), subject, policy);
                       const bim = result.bimesters[selectedPeriod - 1];
                       const sem = result[semesterOf(selectedPeriod)];
-                      const mediaBg = bim.media === null ? '#f9fafb' : bim.media >= policy.passingGrade ? '#C6EFCE' : '#FFC7CE';
+                      const mediaBg = bim.media === null ? 'var(--color-surface-2)' : bim.media >= policy.passingGrade ? 'var(--color-success-soft)' : 'var(--color-danger-soft)';
                       return (
                         <tr key={enrollment.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
                           <td style={{ padding: '1rem', fontWeight: 600, whiteSpace: 'nowrap' }}>{student.name}</td>
                           {schemeFields(scheme).map((f, idx) => (
                             <Fragment key={f.id}>
                               {scheme.exam && idx === scheme.components.length && (
-                                <td style={{ padding: '1rem', textAlign: 'center', fontWeight: 700, backgroundColor: '#f9fafb' }}>{fmt(bim.n1)}</td>
+                                <td style={{ padding: '1rem', textAlign: 'center', fontWeight: 700, backgroundColor: 'var(--color-surface-2)' }}>{fmt(bim.n1)}</td>
                               )}
                               <td style={{ padding: '0.5rem', textAlign: 'center' }}>
                                 <input type="number" min={policy.scale.min} max={f.max} step="0.1" placeholder="—"
@@ -267,14 +267,14 @@ export function Grades() {
                           <td style={{ padding: '1rem', textAlign: 'center', fontWeight: 800, backgroundColor: mediaBg }}>{fmt(bim.media)}</td>
                           {isRecoveryPeriod && (
                             <>
-                              <td style={{ padding: '1rem', textAlign: 'center', backgroundColor: '#f5f7ff' }}>{fmt(sem.media)}</td>
-                              <td style={{ padding: '0.5rem', backgroundColor: '#f5f7ff', textAlign: 'center' }}>
+                              <td style={{ padding: '1rem', textAlign: 'center', backgroundColor: 'var(--color-primary-soft)' }}>{fmt(sem.media)}</td>
+                              <td style={{ padding: '0.5rem', backgroundColor: 'var(--color-primary-soft)', textAlign: 'center' }}>
                                 <input type="number" min={policy.scale.min} max={policy.scale.max} step="0.1" placeholder={sem.needsRecovery ? '---' : 'n/a'} disabled={!sem.needsRecovery}
                                   value={valueOf(enrollment.id, selectedPeriod, RECOVERY_COMPONENT) ?? ''}
                                   onChange={e => handleChange(enrollment.id, selectedPeriod, RECOVERY_COMPONENT, e.target.value, policy.scale.max)}
                                   style={inputStyle} />
                               </td>
-                              <td style={{ padding: '1rem', textAlign: 'center', fontWeight: 800, backgroundColor: sem.final === null ? '#f5f7ff' : sem.final >= policy.passingGrade ? '#C6EFCE' : '#FFC7CE' }}>{fmt(sem.final)}</td>
+                              <td style={{ padding: '1rem', textAlign: 'center', fontWeight: 800, backgroundColor: sem.final === null ? 'var(--color-primary-soft)' : sem.final >= policy.passingGrade ? 'var(--color-success-soft)' : 'var(--color-danger-soft)' }}>{fmt(sem.final)}</td>
                             </>
                           )}
                         </tr>

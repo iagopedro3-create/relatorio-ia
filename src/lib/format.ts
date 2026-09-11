@@ -24,3 +24,14 @@ export function calcAge(birthDate: string | null | undefined): string {
   const age = calcAgeYears(birthDate);
   return `${age} ano${age !== 1 ? 's' : ''}`;
 }
+
+/**
+ * Índice do período letivo corrente pela data (fev–dez divididos igualmente
+ * entre os períodos). Serve como padrão de seleção; a escola sempre pode trocar.
+ */
+export function currentPeriodIndex(periodCount: number, today = new Date()): number {
+  if (periodCount <= 0) return 0;
+  const month = today.getMonth(); // 0 = jan
+  const pos = Math.max(0, Math.min(10, month - 1)); // fev..dez -> 0..10
+  return Math.min(periodCount - 1, Math.floor((pos / 11) * periodCount));
+}

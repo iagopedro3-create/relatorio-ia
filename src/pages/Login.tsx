@@ -53,7 +53,7 @@ export function Login() {
   const inputStyle = (hasError: boolean): React.CSSProperties => ({
     width: '100%',
     padding: '0.75rem 1rem',
-    border: `2px solid ${hasError ? '#ef4444' : '#e2e8f0'}`,
+    border: `2px solid ${hasError ? 'var(--color-danger)' : 'var(--color-border)'}`,
     borderRadius: '10px',
     fontSize: '0.95rem',
     outline: 'none',
@@ -62,11 +62,11 @@ export function Login() {
   });
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', background: 'linear-gradient(135deg, #f0f7ff 0%, #fafafa 100%)' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', background: 'linear-gradient(135deg, var(--color-primary-soft) 0%, var(--color-surface-2) 100%)' }}>
       <div
         style={{
           flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          padding: '3rem', background: 'linear-gradient(160deg, var(--color-primary) 0%, #4f46e5 100%)', color: 'white', minWidth: '340px',
+          padding: '3rem', background: 'linear-gradient(160deg, var(--color-primary) 0%, var(--color-primary-hover) 100%)', color: 'white', minWidth: '340px',
         }}
         className="no-mobile"
       >
@@ -96,7 +96,7 @@ export function Login() {
           <img src="/logo.svg" alt={PRODUCT_NAME} style={{ maxWidth: '180px', marginBottom: '2rem', display: 'block' }} />
 
           <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.6rem', fontWeight: 800 }}>{forgot ? 'Recuperar senha' : 'Entrar no sistema'}</h2>
-          <p style={{ margin: '0 0 2rem', color: '#64748b', fontSize: '0.95rem' }}>
+          <p style={{ margin: '0 0 2rem', color: 'var(--color-text-muted)', fontSize: '0.95rem' }}>
             {forgot ? 'Informe o e-mail cadastrado e enviaremos o link.' : 'Use o e-mail e a senha criados pela direção da sua escola.'}
           </p>
 
@@ -112,7 +112,7 @@ export function Login() {
                 onChange={e => setEmail(e.target.value)}
                 style={inputStyle(Boolean(error))}
                 onFocus={e => { e.target.style.borderColor = 'var(--color-primary)'; setError(''); }}
-                onBlur={e => { if (!error) e.target.style.borderColor = '#e2e8f0'; }}
+                onBlur={e => { if (!error) e.target.style.borderColor = 'var(--color-border)'; }}
               />
             </div>
 
@@ -129,12 +129,12 @@ export function Login() {
                     onChange={e => setPassword(e.target.value)}
                     style={{ ...inputStyle(Boolean(error)), padding: '0.75rem 3rem 0.75rem 1rem' }}
                     onFocus={e => { e.target.style.borderColor = 'var(--color-primary)'; setError(''); }}
-                    onBlur={e => { if (!error) e.target.style.borderColor = '#e2e8f0'; }}
+                    onBlur={e => { if (!error) e.target.style.borderColor = 'var(--color-border)'; }}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPwd(!showPwd)}
-                    style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '0.25rem' }}
+                    style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-subtle)', padding: '0.25rem' }}
                   >
                     {showPwd ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -143,7 +143,7 @@ export function Login() {
             )}
 
             {error && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#991b1b', fontSize: '0.85rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1rem', backgroundColor: 'var(--color-danger-soft)', border: '1px solid var(--color-danger-border)', borderRadius: '8px', color: 'var(--color-danger-text)', fontSize: '0.85rem' }}>
                 <AlertCircle size={16} style={{ flexShrink: 0 }} />
                 {error}
               </div>

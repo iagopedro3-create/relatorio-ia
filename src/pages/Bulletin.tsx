@@ -56,7 +56,7 @@ export function Bulletin() {
   const freqAnual = outcome.attendance;
   const fmt = (v: number | null) => v === null ? '—' : roundGrade(v, policy).toFixed(policy.decimals);
   const pct = (v: number | null) => v === null ? '—' : `${v.toFixed(1)}%`;
-  const color = (v: number | null): React.CSSProperties => v === null ? { color: '#94a3b8' } : v >= policy.passingGrade ? { color: '#166534', fontWeight: 800 } : { color: '#991b1b', fontWeight: 800 };
+  const color = (v: number | null): React.CSSProperties => v === null ? { color: 'var(--color-text-subtle)' } : v >= policy.passingGrade ? { color: 'var(--color-success-text)', fontWeight: 800 } : { color: 'var(--color-danger-text)', fontWeight: 800 };
   const subjectName = (r: SubjectResult) => subjects.find(s => s.id === r.subjectId)?.name ?? r.subjectId;
 
   const statusLabel = STATUS_LABEL[outcome.status];
@@ -117,7 +117,7 @@ export function Bulletin() {
                 <p style={{ margin: 0, fontWeight: 600 }}>{policy.passingGrade} · freq. mín. {policy.minAttendance}%</p>
               </div>
               <div className="md:text-right">
-                <span style={{ padding: '0.4rem 1.2rem', borderRadius: '20px', fontWeight: 700, fontSize: '0.85rem', backgroundColor: isApproved ? '#dcfce7' : isOpen ? '#f1f5f9' : '#fee2e2', color: isApproved ? '#166534' : isOpen ? '#475569' : '#991b1b' }}>
+                <span style={{ padding: '0.4rem 1.2rem', borderRadius: '20px', fontWeight: 700, fontSize: '0.85rem', backgroundColor: isApproved ? 'var(--color-success-soft)' : isOpen ? 'var(--color-border-soft)' : 'var(--color-danger-soft)', color: isApproved ? 'var(--color-success-text)' : isOpen ? 'var(--color-text-muted)' : 'var(--color-danger-text)' }}>
                   {isOpen ? <TrendingUp size={14} style={{ display: 'inline', marginRight: 4 }} /> : isApproved ? <CheckCircle2 size={14} style={{ display: 'inline', marginRight: 4 }} /> : <AlertTriangle size={14} style={{ display: 'inline', marginRight: 4 }} />}
                   {statusLabel.toUpperCase()}
                 </span>
@@ -129,54 +129,54 @@ export function Bulletin() {
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
-                      <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid var(--color-border)' }}>
+                      <tr style={{ backgroundColor: 'var(--color-surface-2)', borderBottom: '2px solid var(--color-border)' }}>
                         <th style={{ padding: '1rem 1.25rem', textAlign: 'left' }}>Disciplina</th>
                         <th style={{ padding: '1rem', textAlign: 'center' }}>{periods[0]}</th>
                         <th style={{ padding: '1rem', textAlign: 'center' }}>{periods[1]}</th>
-                        <th style={{ padding: '1rem', textAlign: 'center', color: '#1e3a8a', backgroundColor: '#eff6ff' }}>1º Sem</th>
-                        <th style={{ padding: '1rem', textAlign: 'center', color: '#991b1b', backgroundColor: '#fef2f2' }}>Rec. 1</th>
+                        <th style={{ padding: '1rem', textAlign: 'center', color: 'var(--color-primary-text)', backgroundColor: 'var(--color-primary-soft)' }}>1º Sem</th>
+                        <th style={{ padding: '1rem', textAlign: 'center', color: 'var(--color-danger-text)', backgroundColor: 'var(--color-danger-soft)' }}>Rec. 1</th>
                         <th style={{ padding: '1rem', textAlign: 'center' }}>{periods[2]}</th>
                         <th style={{ padding: '1rem', textAlign: 'center' }}>{periods[3]}</th>
-                        <th style={{ padding: '1rem', textAlign: 'center', color: '#1e3a8a', backgroundColor: '#eff6ff' }}>2º Sem</th>
-                        <th style={{ padding: '1rem', textAlign: 'center', color: '#991b1b', backgroundColor: '#fef2f2' }}>Rec. 2</th>
-                        <th style={{ padding: '1rem', textAlign: 'center', backgroundColor: '#f1f5f9' }}>Média Final</th>
+                        <th style={{ padding: '1rem', textAlign: 'center', color: 'var(--color-primary-text)', backgroundColor: 'var(--color-primary-soft)' }}>2º Sem</th>
+                        <th style={{ padding: '1rem', textAlign: 'center', color: 'var(--color-danger-text)', backgroundColor: 'var(--color-danger-soft)' }}>Rec. 2</th>
+                        <th style={{ padding: '1rem', textAlign: 'center', backgroundColor: 'var(--color-border-soft)' }}>Média Final</th>
                         <th style={{ padding: '1rem', textAlign: 'center' }}>Situação</th>
                       </tr>
                     </thead>
                     <tbody>
                       {outcome.subjects.map((r, i) => (
-                        <tr key={r.subjectId} style={{ borderBottom: '1px solid var(--color-border)', backgroundColor: i % 2 === 0 ? 'white' : '#fafafa' }}>
+                        <tr key={r.subjectId} style={{ borderBottom: '1px solid var(--color-border)', backgroundColor: i % 2 === 0 ? 'white' : 'var(--color-surface-2)' }}>
                           <td style={{ padding: '0.85rem 1.25rem', fontWeight: 600 }}>{subjectName(r)}</td>
                           <td style={{ padding: '0.85rem', textAlign: 'center', ...color(r.bimesters[0].media) }}>{fmt(r.bimesters[0].media)}</td>
                           <td style={{ padding: '0.85rem', textAlign: 'center', ...color(r.bimesters[1].media) }}>{fmt(r.bimesters[1].media)}</td>
-                          <td style={{ padding: '0.85rem', textAlign: 'center', backgroundColor: '#eff6ff', ...color(r.s1.media) }}>{fmt(r.s1.media)}</td>
-                          <td style={{ padding: '0.85rem', textAlign: 'center', backgroundColor: '#fef2f2', ...color(r.s1.recovery) }}>{fmt(r.s1.recovery)}</td>
+                          <td style={{ padding: '0.85rem', textAlign: 'center', backgroundColor: 'var(--color-primary-soft)', ...color(r.s1.media) }}>{fmt(r.s1.media)}</td>
+                          <td style={{ padding: '0.85rem', textAlign: 'center', backgroundColor: 'var(--color-danger-soft)', ...color(r.s1.recovery) }}>{fmt(r.s1.recovery)}</td>
                           <td style={{ padding: '0.85rem', textAlign: 'center', ...color(r.bimesters[2].media) }}>{fmt(r.bimesters[2].media)}</td>
                           <td style={{ padding: '0.85rem', textAlign: 'center', ...color(r.bimesters[3].media) }}>{fmt(r.bimesters[3].media)}</td>
-                          <td style={{ padding: '0.85rem', textAlign: 'center', backgroundColor: '#eff6ff', ...color(r.s2.media) }}>{fmt(r.s2.media)}</td>
-                          <td style={{ padding: '0.85rem', textAlign: 'center', backgroundColor: '#fef2f2', ...color(r.s2.recovery) }}>{fmt(r.s2.recovery)}</td>
-                          <td style={{ padding: '0.85rem', textAlign: 'center', backgroundColor: '#f1f5f9', ...color(r.final) }}>{fmt(r.final)}</td>
+                          <td style={{ padding: '0.85rem', textAlign: 'center', backgroundColor: 'var(--color-primary-soft)', ...color(r.s2.media) }}>{fmt(r.s2.media)}</td>
+                          <td style={{ padding: '0.85rem', textAlign: 'center', backgroundColor: 'var(--color-danger-soft)', ...color(r.s2.recovery) }}>{fmt(r.s2.recovery)}</td>
+                          <td style={{ padding: '0.85rem', textAlign: 'center', backgroundColor: 'var(--color-border-soft)', ...color(r.final) }}>{fmt(r.final)}</td>
                           <td style={{ padding: '0.85rem', textAlign: 'center' }}>
-                            {r.passed === null ? <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>—</span> : (
-                              <span style={{ padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 700, backgroundColor: r.passed ? '#dcfce7' : '#fee2e2', color: r.passed ? '#166534' : '#991b1b' }}>
+                            {r.passed === null ? <span style={{ fontSize: '0.75rem', color: 'var(--color-text-subtle)' }}>—</span> : (
+                              <span style={{ padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 700, backgroundColor: r.passed ? 'var(--color-success-soft)' : 'var(--color-danger-soft)', color: r.passed ? 'var(--color-success-text)' : 'var(--color-danger-text)' }}>
                                 {r.passed ? 'APROVADO' : 'ABAIXO DA MÉDIA'}
                               </span>
                             )}
                           </td>
                         </tr>
                       ))}
-                      <tr style={{ backgroundColor: '#f8fafc', borderTop: '2px solid #cbd5e1' }}>
+                      <tr style={{ backgroundColor: 'var(--color-surface-2)', borderTop: '2px solid var(--color-border-strong)' }}>
                         <td style={{ padding: '0.85rem 1.25rem', fontWeight: 800 }}>Frequência (%)</td>
                         <td style={{ padding: '0.85rem', textAlign: 'center', fontWeight: 700 }}>{pct(attendanceByPeriod[0])}</td>
                         <td style={{ padding: '0.85rem', textAlign: 'center', fontWeight: 700 }}>{pct(attendanceByPeriod[1])}</td>
-                        <td style={{ padding: '0.85rem', textAlign: 'center', backgroundColor: '#eff6ff' }}>—</td>
-                        <td style={{ padding: '0.85rem', textAlign: 'center', backgroundColor: '#fef2f2' }}>—</td>
+                        <td style={{ padding: '0.85rem', textAlign: 'center', backgroundColor: 'var(--color-primary-soft)' }}>—</td>
+                        <td style={{ padding: '0.85rem', textAlign: 'center', backgroundColor: 'var(--color-danger-soft)' }}>—</td>
                         <td style={{ padding: '0.85rem', textAlign: 'center', fontWeight: 700 }}>{pct(attendanceByPeriod[2])}</td>
                         <td style={{ padding: '0.85rem', textAlign: 'center', fontWeight: 700 }}>{pct(attendanceByPeriod[3])}</td>
-                        <td style={{ padding: '0.85rem', textAlign: 'center', backgroundColor: '#eff6ff' }}>—</td>
-                        <td style={{ padding: '0.85rem', textAlign: 'center', backgroundColor: '#fef2f2' }}>—</td>
-                        <td style={{ padding: '0.85rem', textAlign: 'center', backgroundColor: '#e2e8f0', fontWeight: 800 }}>{pct(freqAnual)}</td>
-                        <td style={{ padding: '0.85rem', textAlign: 'center', fontWeight: 800, color: freqAnual === null ? '#475569' : freqAnual >= policy.minAttendance ? '#166534' : '#991b1b' }}>
+                        <td style={{ padding: '0.85rem', textAlign: 'center', backgroundColor: 'var(--color-primary-soft)' }}>—</td>
+                        <td style={{ padding: '0.85rem', textAlign: 'center', backgroundColor: 'var(--color-danger-soft)' }}>—</td>
+                        <td style={{ padding: '0.85rem', textAlign: 'center', backgroundColor: 'var(--color-border)', fontWeight: 800 }}>{pct(freqAnual)}</td>
+                        <td style={{ padding: '0.85rem', textAlign: 'center', fontWeight: 800, color: freqAnual === null ? 'var(--color-text-muted)' : freqAnual >= policy.minAttendance ? 'var(--color-success-text)' : 'var(--color-danger-text)' }}>
                           {freqAnual === null ? '—' : freqAnual >= policy.minAttendance ? 'Suficiente' : 'Insuficiente'}
                         </td>
                       </tr>
@@ -186,7 +186,7 @@ export function Bulletin() {
               </div>
 
               <div className="xl:col-span-1 flex flex-col gap-6">
-                <div className="card p-5" style={{ background: mediaGeral === null ? 'linear-gradient(135deg, #f1f5f9, #e2e8f0)' : isApproved || isOpen ? 'linear-gradient(135deg, #dcfce7, #bbf7d0)' : 'linear-gradient(135deg, #fee2e2, #fecaca)', border: 'none', color: mediaGeral === null ? '#475569' : isApproved || isOpen ? '#14532d' : '#7f1d1d' }}>
+                <div className="card p-5" style={{ background: mediaGeral === null ? 'linear-gradient(135deg, var(--color-border-soft), var(--color-border))' : isApproved || isOpen ? 'linear-gradient(135deg, var(--color-success-soft), var(--color-success-border))' : 'linear-gradient(135deg, var(--color-danger-soft), var(--color-danger-border))', border: 'none', color: mediaGeral === null ? 'var(--color-text-muted)' : isApproved || isOpen ? 'var(--color-success-text)' : 'var(--color-danger-text)' }}>
                   <p style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', opacity: 0.7, margin: 0 }}>Média Geral</p>
                   <h1 style={{ fontSize: '3rem', margin: '0.25rem 0', fontWeight: 900, color: 'inherit' }}>{fmt(mediaGeral)}</h1>
                   <p style={{ margin: 0, fontWeight: 700 }}>{statusLabel}</p>
@@ -194,34 +194,34 @@ export function Bulletin() {
 
                 <div className="card p-5">
                   <h4 className="mb-4">Frequência Geral</h4>
-                  <div style={{ fontSize: '2rem', fontWeight: 800, color: freqAnual === null || freqAnual >= policy.minAttendance ? 'var(--color-primary)' : '#ef4444' }}>{pct(freqAnual)}</div>
+                  <div style={{ fontSize: '2rem', fontWeight: 800, color: freqAnual === null || freqAnual >= policy.minAttendance ? 'var(--color-primary)' : 'var(--color-danger)' }}>{pct(freqAnual)}</div>
                   <p className="text-muted" style={{ fontSize: '0.8rem' }}>Mínimo exigido: {policy.minAttendance}%</p>
                   {freqAnual !== null && (
-                    <div style={{ height: '8px', backgroundColor: '#e2e8f0', borderRadius: '4px', marginTop: '0.75rem', overflow: 'hidden' }}>
-                      <div style={{ width: `${freqAnual}%`, height: '100%', backgroundColor: freqAnual >= policy.minAttendance ? 'var(--color-primary)' : '#ef4444' }} />
+                    <div style={{ height: '8px', backgroundColor: 'var(--color-border)', borderRadius: '4px', marginTop: '0.75rem', overflow: 'hidden' }}>
+                      <div style={{ width: `${freqAnual}%`, height: '100%', backgroundColor: freqAnual >= policy.minAttendance ? 'var(--color-primary)' : 'var(--color-danger)' }} />
                     </div>
                   )}
                 </div>
 
                 {recS1.length > 0 && (
-                  <div className="card p-5" style={{ borderTop: '4px solid #f59e0b', backgroundColor: '#fffbeb' }}>
-                    <h4 className="mb-3 flex items-center gap-2" style={{ color: '#b45309' }}><AlertTriangle size={16} /> Recup. 1º Semestre</h4>
+                  <div className="card p-5" style={{ borderTop: '4px solid var(--color-warning)', backgroundColor: 'var(--color-warning-soft)' }}>
+                    <h4 className="mb-3 flex items-center gap-2" style={{ color: 'var(--color-warning-text)' }}><AlertTriangle size={16} /> Recup. 1º Semestre</h4>
                     <div className="flex flex-col gap-2">
-                      {recS1.map(r => <div key={r.subjectId} style={{ fontSize: '0.85rem', padding: '0.4rem 0.75rem', backgroundColor: '#fef3c7', borderRadius: '4px', color: '#b45309', fontWeight: 600 }}>{subjectName(r)} — {fmt(r.s1.media)}</div>)}
+                      {recS1.map(r => <div key={r.subjectId} style={{ fontSize: '0.85rem', padding: '0.4rem 0.75rem', backgroundColor: 'var(--color-warning-soft)', borderRadius: '4px', color: 'var(--color-warning-text)', fontWeight: 600 }}>{subjectName(r)} — {fmt(r.s1.media)}</div>)}
                     </div>
                   </div>
                 )}
                 {recS2.length > 0 && (
-                  <div className="card p-5" style={{ borderTop: '4px solid #f59e0b', backgroundColor: '#fffbeb' }}>
-                    <h4 className="mb-3 flex items-center gap-2" style={{ color: '#b45309' }}><AlertTriangle size={16} /> Recup. 2º Semestre</h4>
+                  <div className="card p-5" style={{ borderTop: '4px solid var(--color-warning)', backgroundColor: 'var(--color-warning-soft)' }}>
+                    <h4 className="mb-3 flex items-center gap-2" style={{ color: 'var(--color-warning-text)' }}><AlertTriangle size={16} /> Recup. 2º Semestre</h4>
                     <div className="flex flex-col gap-2">
-                      {recS2.map(r => <div key={r.subjectId} style={{ fontSize: '0.85rem', padding: '0.4rem 0.75rem', backgroundColor: '#fef3c7', borderRadius: '4px', color: '#b45309', fontWeight: 600 }}>{subjectName(r)} — {fmt(r.s2.media)}</div>)}
+                      {recS2.map(r => <div key={r.subjectId} style={{ fontSize: '0.85rem', padding: '0.4rem 0.75rem', backgroundColor: 'var(--color-warning-soft)', borderRadius: '4px', color: 'var(--color-warning-text)', fontWeight: 600 }}>{subjectName(r)} — {fmt(r.s2.media)}</div>)}
                     </div>
                   </div>
                 )}
                 {isApproved && (
-                  <div className="card p-5" style={{ borderTop: '4px solid #10b981' }}>
-                    <p style={{ margin: 0, fontWeight: 600, color: '#166534', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}><CheckCircle2 size={18} /> Aprovado no Ano Letivo!</p>
+                  <div className="card p-5" style={{ borderTop: '4px solid var(--color-success)' }}>
+                    <p style={{ margin: 0, fontWeight: 600, color: 'var(--color-success-text)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}><CheckCircle2 size={18} /> Aprovado no Ano Letivo!</p>
                   </div>
                 )}
               </div>
@@ -248,7 +248,7 @@ export function Bulletin() {
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse', border: '2px solid #000', fontSize: '11px', marginBottom: '2rem' }}>
             <thead>
-              <tr style={{ backgroundColor: '#f0f0f0' }}>
+              <tr style={{ backgroundColor: 'var(--color-surface-2)' }}>
                 {['Componente Curricular', periods[0], periods[1], '1º Sem', 'Rec. 1', periods[2], periods[3], '2º Sem', 'Rec. 2', 'Média Final', 'Situação'].map((h, i) => (
                   <th key={h} style={{ border: '1px solid #000', padding: '0.4rem', textAlign: i === 0 ? 'left' : 'center', width: i === 0 ? '25%' : undefined }}>{h}</th>
                 ))}
@@ -264,7 +264,7 @@ export function Bulletin() {
                   <td style={{ border: '1px solid #000', padding: '0.4rem', textAlign: 'center' }}>{r.passed === null ? '—' : r.passed ? 'Aprovado' : 'Abaixo da média'}</td>
                 </tr>
               ))}
-              <tr style={{ backgroundColor: '#f8fafc', borderTop: '2px solid #000' }}>
+              <tr style={{ backgroundColor: 'var(--color-surface-2)', borderTop: '2px solid #000' }}>
                 <td style={{ border: '1px solid #000', padding: '0.4rem', fontWeight: 'bold' }}>Frequência (%)</td>
                 {[attendanceByPeriod[0], attendanceByPeriod[1], null, null, attendanceByPeriod[2], attendanceByPeriod[3], null, null, freqAnual].map((v, i) => (
                   <td key={i} style={{ border: '1px solid #000', padding: '0.4rem', textAlign: 'center', fontWeight: 'bold' }}>{[2, 3, 6, 7].includes(i) ? '—' : pct(v)}</td>

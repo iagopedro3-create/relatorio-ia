@@ -127,7 +127,7 @@ export function Attendance() {
           .attendance-card { padding: 1rem !important; }
         }
         .desktop-grid::-webkit-scrollbar { height: 8px; }
-        .desktop-grid::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .desktop-grid::-webkit-scrollbar-thumb { background: var(--color-border-strong); border-radius: 4px; }
       `}</style>
 
       <div className="flex justify-between items-center mb-6">
@@ -167,9 +167,9 @@ export function Attendance() {
         <div className="card attendance-card" style={{ padding: '1.5rem' }}>
           <div className="flex items-center gap-4 mb-6">
             <div className="flex gap-4 ml-auto no-mobile">
-              <div className="flex items-center gap-2"><div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#fef3c7' }}></div><span style={{ fontSize: '0.8rem' }}>Feriado</span></div>
-              <div className="flex items-center gap-2"><div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#C6EFCE' }}></div><span style={{ fontSize: '0.8rem' }}>P</span></div>
-              <div className="flex items-center gap-2"><div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#FFC7CE' }}></div><span style={{ fontSize: '0.8rem' }}>F</span></div>
+              <div className="flex items-center gap-2"><div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'var(--color-warning-soft)' }}></div><span style={{ fontSize: '0.8rem' }}>Feriado</span></div>
+              <div className="flex items-center gap-2"><div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'var(--color-success-soft)' }}></div><span style={{ fontSize: '0.8rem' }}>P</span></div>
+              <div className="flex items-center gap-2"><div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'var(--color-danger-soft)' }}></div><span style={{ fontSize: '0.8rem' }}>F</span></div>
             </div>
           </div>
 
@@ -177,8 +177,8 @@ export function Attendance() {
 
           <div className="mobile-list" style={{ display: 'none' }}>
             {getHoliday(selectedDay) || isWeekend(selectedDay) ? (
-              <div style={{ padding: '2rem', textAlign: 'center', backgroundColor: '#f9fafb', borderRadius: 'var(--radius-md)', border: '1px dashed #ddd' }}>
-                <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#92400e' }}>{getHoliday(selectedDay) || 'Final de Semana'}</div>
+              <div style={{ padding: '2rem', textAlign: 'center', backgroundColor: 'var(--color-surface-2)', borderRadius: 'var(--radius-md)', border: '1px dashed #ddd' }}>
+                <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--color-warning-text)' }}>{getHoliday(selectedDay) || 'Final de Semana'}</div>
                 <p className="text-muted" style={{ marginTop: '0.5rem' }}>Sem aulas previstas para este dia.</p>
               </div>
             ) : students.length === 0 ? (
@@ -190,8 +190,8 @@ export function Attendance() {
                   <div key={enrollment.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', backgroundColor: 'var(--color-bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
                     <span style={{ fontWeight: 600 }}>{student.name}</span>
                     <div className="flex gap-2">
-                      <button onClick={() => toggleStatus(enrollment.id, selectedDay, 'P')} style={{ padding: '0.5rem 1.5rem', borderRadius: 'var(--radius-sm)', border: '2px solid #C6EFCE', backgroundColor: status === 'P' ? '#C6EFCE' : 'white', fontWeight: 800, color: status === 'P' ? '#166534' : '#666' }}>P</button>
-                      <button onClick={() => toggleStatus(enrollment.id, selectedDay, 'F')} style={{ padding: '0.5rem 1.5rem', borderRadius: 'var(--radius-sm)', border: '2px solid #FFC7CE', backgroundColor: status === 'F' ? '#FFC7CE' : 'white', fontWeight: 800, color: status === 'F' ? '#991b1b' : '#666' }}>F</button>
+                      <button onClick={() => toggleStatus(enrollment.id, selectedDay, 'P')} style={{ padding: '0.5rem 1.5rem', borderRadius: 'var(--radius-sm)', border: '2px solid var(--color-success-soft)', backgroundColor: status === 'P' ? 'var(--color-success-soft)' : 'white', fontWeight: 800, color: status === 'P' ? 'var(--color-success-text)' : '#666' }}>P</button>
+                      <button onClick={() => toggleStatus(enrollment.id, selectedDay, 'F')} style={{ padding: '0.5rem 1.5rem', borderRadius: 'var(--radius-sm)', border: '2px solid var(--color-danger-soft)', backgroundColor: status === 'F' ? 'var(--color-danger-soft)' : 'white', fontWeight: 800, color: status === 'F' ? 'var(--color-danger-text)' : '#666' }}>F</button>
                     </div>
                   </div>
                 );
@@ -213,12 +213,12 @@ export function Attendance() {
                       const holiday = getHoliday(day);
                       const weekend = isWeekend(day);
                       return (
-                        <th key={day} title={holiday} style={{ padding: '0.25rem', borderBottom: '2px solid var(--color-border)', minWidth: '30px', backgroundColor: holiday ? '#fef3c7' : weekend ? '#f3f4f6' : 'transparent', color: holiday ? '#92400e' : 'inherit', fontSize: '0.75rem' }}>{day}</th>
+                        <th key={day} title={holiday} style={{ padding: '0.25rem', borderBottom: '2px solid var(--color-border)', minWidth: '30px', backgroundColor: holiday ? 'var(--color-warning-soft)' : weekend ? 'var(--color-surface-2)' : 'transparent', color: holiday ? 'var(--color-warning-text)' : 'inherit', fontSize: '0.75rem' }}>{day}</th>
                       );
                     })}
-                    <th style={{ padding: '0.25rem', borderBottom: '2px solid var(--color-border)', backgroundColor: '#f0fdf4', color: '#166534', minWidth: '35px' }}>P</th>
-                    <th style={{ padding: '0.25rem', borderBottom: '2px solid var(--color-border)', backgroundColor: '#fef2f2', color: '#991b1b', minWidth: '35px' }}>F</th>
-                    <th style={{ padding: '0.25rem', borderBottom: '2px solid var(--color-border)', backgroundColor: '#eff6ff', color: '#1e40af', minWidth: '45px' }}>%</th>
+                    <th style={{ padding: '0.25rem', borderBottom: '2px solid var(--color-border)', backgroundColor: 'var(--color-success-soft)', color: 'var(--color-success-text)', minWidth: '35px' }}>P</th>
+                    <th style={{ padding: '0.25rem', borderBottom: '2px solid var(--color-border)', backgroundColor: 'var(--color-danger-soft)', color: 'var(--color-danger-text)', minWidth: '35px' }}>F</th>
+                    <th style={{ padding: '0.25rem', borderBottom: '2px solid var(--color-border)', backgroundColor: 'var(--color-primary-soft)', color: 'var(--color-primary-text)', minWidth: '45px' }}>%</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -246,13 +246,13 @@ export function Attendance() {
                               key={day}
                               onClick={() => !blocked && toggleStatus(enrollment.id, day)}
                               title={holiday}
-                              style={{ textAlign: 'center', cursor: blocked ? 'not-allowed' : 'pointer', backgroundColor: holiday ? '#fef3c7' : weekend ? '#f9fafb' : status === 'P' ? '#C6EFCE' : status === 'F' ? '#FFC7CE' : 'transparent', opacity: blocked ? 0.6 : 1, fontSize: '0.65rem', borderLeft: '1px solid #f1f5f9', height: '32px' }}
+                              style={{ textAlign: 'center', cursor: blocked ? 'not-allowed' : 'pointer', backgroundColor: holiday ? 'var(--color-warning-soft)' : weekend ? 'var(--color-surface-2)' : status === 'P' ? 'var(--color-success-soft)' : status === 'F' ? 'var(--color-danger-soft)' : 'transparent', opacity: blocked ? 0.6 : 1, fontSize: '0.65rem', borderLeft: '1px solid var(--color-border-soft)', height: '32px' }}
                             >{holiday ? 'FER' : weekend ? '-' : status}</td>
                           );
                         })}
-                        <td style={{ textAlign: 'center', fontWeight: 700, color: '#166534', backgroundColor: '#f0fdf4', borderLeft: '1px solid #C6EFCE' }}>{presencas || ''}</td>
-                        <td style={{ textAlign: 'center', fontWeight: 700, color: '#991b1b', backgroundColor: '#fef2f2', borderLeft: '1px solid #FFC7CE' }}>{faltas || ''}</td>
-                        <td style={{ textAlign: 'center', fontWeight: 800, color: '#1e40af', backgroundColor: '#eff6ff', borderLeft: '1px solid #bfdbfe' }}>
+                        <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--color-success-text)', backgroundColor: 'var(--color-success-soft)', borderLeft: '1px solid var(--color-success-soft)' }}>{presencas || ''}</td>
+                        <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--color-danger-text)', backgroundColor: 'var(--color-danger-soft)', borderLeft: '1px solid var(--color-danger-soft)' }}>{faltas || ''}</td>
+                        <td style={{ textAlign: 'center', fontWeight: 800, color: 'var(--color-primary-text)', backgroundColor: 'var(--color-primary-soft)', borderLeft: '1px solid var(--color-primary-border)' }}>
                           {registrados > 0 ? `${Math.round((presencas / registrados) * 100)}%` : '---'}
                         </td>
                       </tr>

@@ -31,7 +31,7 @@ Prioridades: **P0** bloqueia demo/venda · **P1** primeira escola sente na prime
 | U4 | Selector de ano letivo fica no rodapé da sidebar; trocar de ano recarrega tudo sem indicar que o contexto mudou. | P2 |
 | U5 | Configuração de avaliação: modo visual só edita disciplinas e séries; **pesos, componentes e recuperação exigem editar JSON** (`Settings.tsx:268-271`). Nenhuma diretora vai fazer isso. | P1 |
 | U6 | Stripe: botão "Assinar" chama `/api/billing/checkout`, mas nunca foi testado com chaves reais; sem `STRIPE_*` o botão dá erro genérico em vez de "fale com a plataforma". | P1 |
-| U7 | Backoffice `/admin` cria escola mas **não cria o primeiro admin da escola** — depende de `scripts/seed-demo.ts` ou de inserir à mão. Provisionar uma escola nova hoje é operação técnica. | P0 |
+| U7 | ~~Backoffice não cria o primeiro admin~~ **Correção (revisão do código):** `/admin` cria escola + ano letivo + primeiro admin num só formulário e mostra a senha inicial uma vez (`api/platform/schools.ts:856-900`). O que falta é o convite por e-mail em vez de senha repassada à mão (ver F12). | P1 |
 
 ### Professor
 | # | Achado | Prior. |
@@ -83,12 +83,15 @@ Prioridades: **P0** bloqueia demo/venda · **P1** primeira escola sente na prime
 
 ## 5. O que fazer, em ordem
 
-### Sprint 0 — antes de mostrar a qualquer escola (P0)
-1. **Estados de carregamento** em todas as telas com `useAsync`: skeleton padrão (um componente) + desabilitar ações até carregar. (S1)
-2. **Provisionamento completo no backoffice**: criar escola + admin inicial + e-mail de acesso num só formulário. (U7/F14)
-3. **Onboarding guiado** na Home do admin enquanto faltar ano/turma/aluno/usuário: checklist de 4 passos com links. (U1)
-4. **Tokens de cor de verdade**: trocar os hex fixos por `var(--color-*)`/classes Tailwind com tema; garantir que a marca da escola cobre 100 % das telas. (D2)
-5. Extrair 6 componentes base (`PageHeader`, `Card`, `Badge`, `EmptyState`, `ConfirmDialog`, `DataTable`) e migrar as telas que o vendedor mostra primeiro: Home, Relatório IA, Agenda, Alunos. (D1, S2, S4)
+### Sprint 0 — antes de mostrar a qualquer escola (P0) — **FEITO em 11/09/2026**
+1. ✅ **Estados de carregamento**: `Skeleton*` em `src/components/ui`; Home (3 perfis), Painel, Relatório IA, PEI, Diário, Histórico, Configurações, Backoffice, Agenda e Alunos mostram esqueleto; `SchoolContext.classesLoading` evita o "0 turmas" que piscava antes das turmas chegarem. (S1)
+2. ✅ Provisionamento já existia (ver U7 corrigido). Convite por e-mail fica para o Sprint 1. (F12)
+3. ✅ **Onboarding guiado**: `OnboardingChecklist` na Home da direção — ano → turmas → alunos → equipe → marca, com links (`/settings?tab=…`); some quando completo. (U1)
+4. ✅ **Tokens de cor**: 584 hex substituídos por `var(--color-*)`; novas variáveis semânticas (success/warning/danger + soft/text/border), neutras e derivadas da marca por `color-mix` (`--color-primary-soft/border/text`, `--color-secondary-soft/text`). Sobraram só `#fff`/`#000` de impressão e o `PrintPreview`. (D2)
+5. ✅ **Componentes base** em `src/components/ui`: `PageHeader`, `Badge`/`StatusBadge`, `EmptyState`, `Skeleton*`, `ConfirmDialog` (+`useConfirm`, substituiu os 8 `window.confirm`), `DataTable`. `.card` ficou neutro (sem barra colorida nem hover que levanta), `.btn-secondary` virou neutro (marca só na ação principal), `.btn-sm/.btn-ghost/.btn-outline/.btn-danger`, `.callout-*`, `.table`. Migradas: Home, Painel, Relatório IA, PEI, Agenda, Alunos, Diário, Histórico, Configurações, Backoffice. (D1, D7, S2, S4)
+6. ✅ Extras baratos que entraram: período corrente por data na Home e no Diário (U12); seletor de filho para responsável com mais de um aluno (U14); legenda do ciclo de vida do relatório (rascunho/enviado/devolvido/aprovado) na tela do professor; KPIs do painel linkam para a ação (F9); estados vazios com ação (S4).
+
+Ainda não migradas para os componentes (usam tokens, mas layout próprio): Frequência, Notas, Boletim, Conteúdos, Turmas, Usuários, Planejamento, Inteligência, Perfil do aluno, Login. `style={{}}` inline caiu de 1 213 para 1 091 — o que resta é layout, não cor.
 
 ### Sprint 1 — primeira escola piloto (P1)
 6. Ciclo de vida do PEI igual ao do relatório (enviar/aprovar/devolver) → pai passa a ver. (F3)

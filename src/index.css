@@ -9,14 +9,15 @@
 :root {
   --font-sans: 'Inter', sans-serif;
   
-  /* School Identity Colors */
-  --color-bg: #f6f3dd; /* Cream/Light Beige */
+  /* Cores do produto (neutras). A marca da escola sobrescreve estas vars em
+     runtime via lib/branding.ts — nunca chumbar cor de escola aqui. */
+  --color-bg: #f4f6fb;
   --color-surface: #ffffff;
-  --color-primary: #0a73ff; /* Blue */
+  --color-primary: #0a73ff;
   --color-primary-hover: #085bcc;
-  --color-secondary: #fd852d; /* Orange/Red */
+  --color-secondary: #fd852d;
   --color-secondary-hover: #e06c1c;
-  --color-accent: #ffcb64; /* Yellow/Orange */
+  --color-accent: #ffcb64;
   
   --color-text: #1e293b;
   --color-text-muted: #475569;
@@ -33,7 +34,7 @@
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
-  --shadow-glow: 0 0 20px rgba(10, 115, 255, 0.2);
+  --shadow-glow: 0 0 20px color-mix(in srgb, var(--color-primary) 20%, transparent);
   
   /* Radii */
   --radius-sm: 0.5rem;
@@ -63,11 +64,9 @@ body {
   color: var(--color-text);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  /* Playful background pattern based on school colors */
-  background-image: 
-    radial-gradient(circle at 10% 20%, rgba(10, 115, 255, 0.06) 0%, transparent 40%),
-    radial-gradient(circle at 90% 80%, rgba(253, 133, 45, 0.06) 0%, transparent 40%),
-    radial-gradient(circle at 80% 10%, rgba(255, 203, 100, 0.08) 0%, transparent 30%);
+  background-image:
+    radial-gradient(circle at 10% 20%, color-mix(in srgb, var(--color-primary) 6%, transparent) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, color-mix(in srgb, var(--color-secondary) 6%, transparent) 0%, transparent 40%);
   background-attachment: fixed;
   min-height: 100vh;
 }
@@ -187,7 +186,7 @@ select:focus,
 textarea:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 4px rgba(10, 115, 255, 0.15);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 15%, transparent);
 }
 
 textarea {
@@ -214,11 +213,11 @@ textarea {
 .btn-primary {
   background: var(--gradient-primary);
   color: white;
-  box-shadow: 0 4px 10px rgba(10, 115, 255, 0.3);
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--color-primary) 30%, transparent);
 }
 
 .btn-primary:hover {
-  box-shadow: 0 6px 15px rgba(10, 115, 255, 0.4);
+  box-shadow: 0 6px 15px color-mix(in srgb, var(--color-primary) 40%, transparent);
   transform: translateY(-2px);
 }
 
@@ -229,11 +228,11 @@ textarea {
 .btn-secondary {
   background: var(--gradient-secondary);
   color: white;
-  box-shadow: 0 4px 10px rgba(253, 133, 45, 0.3);
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--color-secondary) 30%, transparent);
 }
 
 .btn-secondary:hover {
-  box-shadow: 0 6px 15px rgba(253, 133, 45, 0.4);
+  box-shadow: 0 6px 15px color-mix(in srgb, var(--color-secondary) 40%, transparent);
   transform: translateY(-2px);
 }
 
@@ -545,4 +544,11 @@ header {
     padding: 0.6rem 1rem;
     font-size: 0.85rem;
   }
+}
+
+/* Helpers responsivos usados pelas telas (o par mobile-only / mobile-hide / no-mobile). */
+.mobile-only { display: none; }
+@media (max-width: 768px) {
+  .mobile-only { display: inline; }
+  .mobile-hide, .no-mobile { display: none !important; }
 }

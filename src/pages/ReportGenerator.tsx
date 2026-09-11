@@ -1,80 +1,139 @@
-import { useState, useRef } from 'react';
-import { Sparkles, Copy, CheckCircle, FileText, Search, Printer, AlertCircle } from 'lucide-react';
-import { ReportForm, type StudentData } from '../components/ReportForm';
+import { useState, useMemo } from 'react';
+import { Sparkles, Copy, CheckCircle, FileText, Printer, AlertCircle, Send, Save, History } from 'lucide-react';
+import { toast } from 'sonner';
+import { ReportForm, type StudentData, type RosterStudent } from '../components/ReportForm';
 import { PrintPreview } from '../components/PrintPreview';
-import { generateAIReport } from '../lib/aiService';
+import { generateAIReport, firstName } from '../lib/aiService';
 import { exportToDocx } from '../lib/exportDocx';
-import { mockStudents, mockClasses } from '../store/mockDb';
 import { useAuth } from '../contexts/AuthContext';
-import { useSettings } from '../contexts/SettingsContext';
+import { useSchool } from '../contexts/SchoolContext';
+import { useAsync } from '../lib/useAsync';
+import { listEnrollments, listStudents, createDocument, updateDocument, listDocuments } from '../data';
+import type { Student, StudentDocument } from '../types/db';
 
 export function ReportGenerator() {
   const { user } = useAuth();
-  const { settings } = useSettings();
+  const { school, classes, selectedYear, refreshAiUsage } = useSchool();
   const [isLoading, setIsLoading] = useState(false);
   const [reportResult, setReportResult] = useState('');
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
   const [showPrintPreview, setShowPrintPreview] = useState(false);
-  
-  const currentStudentRef = useRef<StudentData | null>(null);
+  const [doc, setDoc] = useState<StudentDocument | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [currentStudent, setCurrentStudent] = useState<StudentData | null>(null);
+  const [formStudentId, setFormStudentId] = useState<string | null>(null);
 
-  // Filter students based on role
-  const availableStudents = mockStudents.filter(s => {
-    const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase());
-    if (!matchesSearch) return false;
+  // Alunos das turmas visíveis (a RLS já limitou as turmas ao que o usuário pode ver).
+  const classIds = useMemo(() => classes.map(c => c.id), [classes]);
+  const enrollQ = useAsync(() => listEnrollments(classIds), [classIds.join(',')], []);
+  const studentsQ = useAsync(() => school ? listStudents(school.id) : Promise.resolve([] as Student[]), [school?.id], [] as Student[]);
+  const roster = useMemo<RosterStudent[]>(() => {
+    return enrollQ.data
+      .map(e => ({ student: studentsQ.data.find(s => s.id === e.student_id), cls: classes.find(c => c.id === e.class_id) }))
+      .filter((r): r is RosterStudent => Boolean(r.student && r.cls))
+      .sort((a, b) => a.student.name.localeCompare(b.student.name, 'pt-BR'));
+  }, [enrollQ.data, studentsQ.data, classes]);
 
-    // Join with classes to check level
-    const studentClass = mockClasses.find(c => c.id === s.classId);
-    
-    if (user?.role === 'coordinator' && user.managedLevel && user.managedLevel !== 'all') {
-      return studentClass?.level === user.managedLevel;
-    }
-    
-    if (user?.role === 'teacher' && user.classId) {
-      return s.classId === user.classId;
-    }
-    
-    return true;
-  });
+  // Histórico segue o aluno escolhido na ficha; cai no aluno do documento aberto.
+  const currentStudentId = formStudentId ?? currentStudent?.studentId;
+  const historyQ = useAsync(
+    () => (school && currentStudentId) ? listDocuments({ schoolId: school.id, studentId: currentStudentId, kind: 'report' }) : Promise.resolve([]),
+    [school?.id, doc?.id, currentStudentId], [],
+  );
+
+  // Fotos são base64 pesadas e só servem para a impressão: não vão para o banco.
+  const stripPhotos = (d: StudentData): Partial<StudentData> => {
+    const copy: Partial<StudentData> = { ...d };
+    delete copy.photo1; delete copy.photo2; delete copy.photo3;
+    return copy;
+  };
 
   const handleGenerateReport = async (data: StudentData) => {
-    if (!settings.apiKey) {
-      setError('A chave da API não foi detectada neste navegador. Se você já configurou em outro computador, lembre-se que as configurações são locais. Vá em "Configurações" para inserir a chave neste dispositivo ou peça para a Direção.');
-      return;
-    }
-
+    if (!school || !user) return;
     setIsLoading(true);
     setError('');
     setReportResult('');
     setCopied(false);
-    currentStudentRef.current = data;
+    setDoc(null);
+    setCurrentStudent(data);
 
     try {
-      const result = await generateAIReport(data, {
-        provider: settings.aiProvider,
-        modelId: settings.aiModel,
-        apiKey: settings.apiKey
+      const result = await generateAIReport({
+        firstName: firstName(data.name),
+        age: data.age,
+        group: data.group,
+        teacherName: data.teacherName,
+        subject: data.subject,
+        reportContext: data.reportContext,
+        reportTone: data.reportTone,
+        generalObservations: data.generalObservations,
+        socialMap: data.socialMap, fieldSocial: data.fieldSocial,
+        motorMap: data.motorMap, fieldMotor: data.fieldMotor,
+        artsMap: data.artsMap, fieldArts: data.fieldArts,
+        languageMap: data.languageMap, fieldLanguage: data.fieldLanguage,
+        logicMap: data.logicMap, fieldLogic: data.fieldLogic,
+        englishMap: data.englishMap, fieldEnglish: data.fieldEnglish,
+        peMap: data.peMap, fieldPe: data.fieldPe,
+        positivePoints: data.positivePoints,
+        attentionPoints: data.attentionPoints,
       });
       setReportResult(result);
-    } catch (err: any) {
-      setError(err.message || 'Erro ao gerar o relatório.');
+      void refreshAiUsage();
+
+      // Salva como rascunho já na geração: nada se perde se a aba fechar.
+      const created = await createDocument({
+        school_id: school.id,
+        student_id: data.studentId,
+        class_id: data.classId || null,
+        year_id: selectedYear?.id ?? null,
+        kind: 'report',
+        period: data.reportContext,
+        subject_id: data.subject === 'Inglês' ? 'ing' : data.subject === 'Educação Física' ? 'ef' : null,
+        author_id: user.id,
+        form_data: stripPhotos(data) as unknown as Record<string, unknown>,
+        content: result,
+        status: 'draft',
+      });
+      setDoc(created);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao gerar o relatório.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const persist = async (status: StudentDocument['status']) => {
+    if (!doc) return;
+    setSaving(true);
+    try {
+      const updated = await updateDocument(doc.id, { content: reportResult, status });
+      setDoc(updated);
+      toast.success(status === 'submitted' ? 'Relatório enviado para a coordenação.' : 'Relatório salvo.');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao salvar.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleCopy = () => {
-    navigator.clipboard.writeText(reportResult);
+    void navigator.clipboard.writeText(reportResult);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleDownloadDoc = () => {
-    if (reportResult && currentStudentRef.current) {
-      exportToDocx(reportResult, currentStudentRef.current);
+    if (reportResult && currentStudent && school) {
+      void exportToDocx(reportResult, currentStudent, { schoolName: school.legal_name || school.name, year: selectedYear?.label ?? '' });
     }
+  };
+
+  const loadPrevious = (d: StudentDocument) => {
+    setDoc(d);
+    setReportResult(d.content);
+    const fd = d.form_data as unknown as StudentData;
+    setCurrentStudent({ ...fd, name: fd.name ?? '', studentId: d.student_id });
   };
 
   return (
@@ -82,126 +141,97 @@ export function ReportGenerator() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 style={{ margin: 0 }}>Gerador de Relatórios</h2>
-          <p className="text-muted">
-            {user?.role === 'teacher' 
-              ? `Visualizando alunos da sua turma: ${mockClasses.find(c => c.id === user.classId)?.name}`
-              : 'Acesso total aos alunos da escola'}
-          </p>
+          <p className="text-muted">{roster.length} aluno(s) disponíveis · {selectedYear?.label ?? ''}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-2" style={{ gridTemplateColumns: 'minmax(0, 1.3fr) minmax(0, 0.7fr)', gap: '2rem' }}>
         <div className="left-panel">
-          <ReportForm onSubmit={handleGenerateReport} isLoading={isLoading} />
+          <ReportForm students={roster} onSubmit={handleGenerateReport} isLoading={isLoading} onStudentChange={setFormStudentId} />
         </div>
-        
-        <div className="right-panel">
-          <div className="card" style={{ marginBottom: '1.5rem', padding: '1rem' }}>
-            <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Pesquisar Aluno</h3>
-            <div className="form-group" style={{ position: 'relative', margin: 0 }}>
-              <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-              <input 
-                type="text" 
-                placeholder="Nome do aluno..." 
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                style={{ paddingLeft: '40px' }}
-              />
-            </div>
-            
-            <div style={{ marginTop: '1rem', maxHeight: '200px', overflowY: 'auto' }}>
-              {availableStudents.map(s => (
-                <div key={s.id} style={{ 
-                  padding: '0.75rem', borderBottom: '1px solid var(--color-bg)', 
-                  cursor: 'pointer', fontSize: '0.9rem', display: 'flex', justifyContent: 'space-between' 
-                }}>
-                  <span>{s.name}</span>
-                </div>
-              ))}
-              {availableStudents.length === 0 && <p className="text-muted" style={{ textAlign: 'center', padding: '1rem' }}>Nenhum aluno encontrado.</p>}
-            </div>
-          </div>
 
-          <div className="card result-card" style={{ 
-            minHeight: '500px', 
-            maxHeight: 'calc(100vh - 100px)', 
-            display: 'flex', 
-            flexDirection: 'column', 
-            position: 'sticky', 
-            top: '2rem',
-            boxShadow: 'var(--shadow-lg)'
-          }}>
-            <div className="flex justify-between items-center mb-4">
+        <div className="right-panel">
+          <div style={{ position: 'sticky', top: '2rem' }}>
+          {historyQ.data.length > 0 && (
+            <div className="card mb-4" style={{ padding: '0.9rem 1.25rem' }}>
+              <h4 className="flex items-center gap-2 mb-2" style={{ fontSize: '0.85rem', margin: 0 }}><History size={15} /> Relatórios anteriores deste aluno</h4>
+              <div style={{ maxHeight: '120px', overflowY: 'auto' }}>
+                {historyQ.data.map(d => (
+                  <button key={d.id} onClick={() => loadPrevious(d)} style={{ display: 'flex', justifyContent: 'space-between', width: '100%', background: d.id === doc?.id ? '#eff6ff' : 'none', border: '1px solid #f1f5f9', borderRadius: '6px', padding: '0.4rem 0.75rem', marginTop: '0.4rem', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.8rem' }}>
+                    <span style={{ fontWeight: 600 }}>{d.period ?? 'Relatório'}</span>
+                    <span className="text-muted">{new Date(d.updated_at).toLocaleDateString('pt-BR')} · {d.status === 'draft' ? 'rascunho' : d.status === 'submitted' ? 'enviado' : d.status === 'approved' ? 'aprovado' : 'devolvido'}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="card result-card" style={{ minHeight: '520px', maxHeight: 'calc(100vh - 160px)', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-lg)' }}>
+            <div className="flex justify-between items-center mb-4" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
               <h2 style={{ marginBottom: 0, color: 'var(--color-secondary)', fontSize: '1.2rem' }} className="flex items-center gap-2">
-                <Sparkles size={20} /> Resultado
+                <Sparkles size={20} /> Relatório
+                {doc && <span style={{ fontSize: '0.65rem', padding: '0.15rem 0.5rem', borderRadius: '4px', backgroundColor: '#f1f5f9', color: '#475569', fontWeight: 700 }}>{doc.status === 'draft' ? 'RASCUNHO' : doc.status === 'submitted' ? 'ENVIADO' : doc.status === 'approved' ? 'APROVADO' : 'DEVOLVIDO'}</span>}
               </h2>
               {reportResult && (
-                <div className="flex gap-2">
-                  <button onClick={() => setShowPrintPreview(true)} className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
-                    <Printer size={14} /> PDF / Imprimir
-                  </button>
-                  <button onClick={handleDownloadDoc} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
-                    <FileText size={14} /> Word
-                  </button>
-                  <button onClick={handleCopy} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: 'var(--color-surface)' }}>
-                    {copied ? <CheckCircle size={14} /> : <Copy size={14} />}
-                  </button>
+                <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
+                  <button onClick={() => setShowPrintPreview(true)} className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}><Printer size={14} /> PDF</button>
+                  <button onClick={handleDownloadDoc} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}><FileText size={14} /> Word</button>
+                  <button onClick={handleCopy} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>{copied ? <CheckCircle size={14} /> : <Copy size={14} />}</button>
                 </div>
               )}
             </div>
 
-            <div className="result-content" style={{ 
-              flex: 1, 
-              display: 'flex',
-              flexDirection: 'column',
-              backgroundColor: 'rgba(255, 255, 255, 0.3)',
-              borderRadius: 'var(--radius-sm)'
-            }}>
+            <div className="result-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 0, minHeight: 0 }}>
               {isLoading ? (
-                <div className="flex justify-center items-center" style={{ height: '100%', flexDirection: 'column', gap: '1rem', color: 'var(--color-text-muted)' }}>
-                  <div className="loader"></div>
+                <div className="flex justify-center items-center" style={{ height: '100%', flexDirection: 'column', gap: '1rem', color: 'var(--color-text-muted)', padding: '2rem' }}>
+                  <div className="loader" style={{ borderTopColor: 'var(--color-primary)', borderColor: 'rgba(0,0,0,0.1)' }}></div>
                   <p>A IA está redigindo o relatório...</p>
                 </div>
               ) : reportResult ? (
-                <textarea 
-                  value={reportResult} 
-                  onChange={(e) => setReportResult(e.target.value)}
-                  style={{ 
-                    flex: 1, 
-                    border: 'none', 
-                    background: 'transparent', 
-                    padding: '1.5rem', 
-                    fontSize: '1rem', 
-                    lineHeight: '1.7', 
-                    resize: 'none',
-                    fontFamily: 'inherit',
-                    color: '#333'
-                  }}
-                />
-              ) : error ? (
-                <div className="flex justify-center items-center" style={{ height: '100%', color: '#991b1b', textAlign: 'center', padding: '2rem', backgroundColor: 'rgba(254, 226, 226, 0.5)' }}>
-                  <div>
-                    <AlertCircle size={40} style={{ margin: '0 auto 1rem' }} />
-                    <p style={{ fontWeight: 600 }}>{error}</p>
-                    <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>Verifique as configurações ou tente novamente.</p>
-                  </div>
-                </div>
+                <textarea value={reportResult} onChange={(e) => setReportResult(e.target.value)} style={{ flex: 1, border: 'none', background: 'transparent', padding: '1.5rem', fontSize: '1rem', lineHeight: '1.7', resize: 'none', fontFamily: 'inherit', color: '#222', minHeight: '300px' }} />
               ) : (
                 <div className="flex justify-center items-center" style={{ height: '100%', color: 'var(--color-text-muted)', textAlign: 'center', padding: '2rem' }}>
-                  <p>Os dados preenchidos serão transformados em um relatório pedagógico aqui.</p>
+                  <div style={{ opacity: 0.5 }}>
+                    <Sparkles size={48} style={{ marginBottom: '1rem' }} />
+                    <p>Preencha a ficha e gere o relatório. Ele fica salvo como rascunho e pode ser editado aqui.</p>
+                  </div>
                 </div>
               )}
             </div>
+
+            {doc && reportResult && (
+              <div className="flex gap-2 mt-4" style={{ flexWrap: 'wrap' }}>
+                <button className="btn btn-secondary" style={{ flex: 1, padding: '0.6rem', fontSize: '0.85rem' }} disabled={saving} onClick={() => void persist(doc.status === 'approved' ? 'approved' : 'draft')}>
+                  <Save size={16} /> Salvar edições
+                </button>
+                {user?.role === 'teacher' && doc.status !== 'approved' && (
+                  <button className="btn btn-primary" style={{ flex: 1, padding: '0.6rem', fontSize: '0.85rem' }} disabled={saving} onClick={() => void persist('submitted')}>
+                    <Send size={16} /> Enviar para coordenação
+                  </button>
+                )}
+                {(user?.role === 'admin' || user?.role === 'coordinator') && doc.status !== 'approved' && (
+                  <button className="btn btn-primary" style={{ flex: 1, padding: '0.6rem', fontSize: '0.85rem' }} disabled={saving} onClick={() => void persist('approved')}>
+                    <CheckCircle size={16} /> Aprovar
+                  </button>
+                )}
+              </div>
+            )}
+
+            {error && (
+              <div style={{ color: '#991b1b', padding: '1rem', backgroundColor: '#fef2f2', borderRadius: 'var(--radius-sm)', marginTop: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start', fontSize: '0.9rem' }}>
+                <AlertCircle size={18} style={{ flexShrink: 0 }} /> {error}
+              </div>
+            )}
+          </div>
+
           </div>
         </div>
       </div>
 
-      <PrintPreview 
+      <PrintPreview
         isOpen={showPrintPreview}
         onClose={() => setShowPrintPreview(false)}
-        title="ESCOLA VIDA DE APRENDIZ"
-        subtitle="Relatório Pedagógico Descritivo - 2026"
-        studentData={currentStudentRef.current || {}}
+        subtitle={`RELATÓRIO PEDAGÓGICO DESCRITIVO · ${currentStudent?.reportContext ?? ''} · ${selectedYear?.label ?? ''}`}
+        studentData={currentStudent ?? {}}
         content={reportResult}
         type="report"
       />

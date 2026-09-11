@@ -1,25 +1,14 @@
 {
-  "name": "Vida de Aprendiz",
-  "short_name": "Vida de Aprendiz",
-  "description": "Sistema de gestão pedagógica e relatórios descritivos com inteligência artificial",
+  "name": "Althion Education",
+  "short_name": "Althion",
+  "description": "Plataforma pedagógica para escolas: relatórios com IA, PEI, planejamento, frequência, notas e agenda.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#f4f6fb",
   "theme_color": "#0a73ff",
-  "orientation": "portrait-primary",
-  "categories": ["education", "productivity"],
+  "lang": "pt-BR",
   "icons": [
-    {
-      "src": "/icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
   ]
 }

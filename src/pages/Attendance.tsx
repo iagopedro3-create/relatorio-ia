@@ -1,117 +1,112 @@
 import { useState, useMemo } from 'react';
 import { Save, ChevronLeft, ChevronRight } from 'lucide-react';
-import { mockStudents, mockClasses } from '../store/mockDb';
-import type { ClassGroup, Student } from '../store/mockDb';
+import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
+import { useSchool } from '../contexts/SchoolContext';
+import { useAsync } from '../lib/useAsync';
+import { listClassRoster, listAttendance, saveAttendance, listEvents } from '../data';
+import type { AttendanceStatus } from '../types/db';
+import { MONTHS } from '../lib/format';
 
-const MONTHS = [
-  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-];
 
-const HOLIDAYS_2026: Record<string, string> = {
-  '2026-01-01': 'Ano Novo',
-  '2026-02-16': 'Carnaval',
-  '2026-02-17': 'Carnaval',
-  '2026-02-18': 'Cinzas',
-  '2026-04-03': 'Sexta Santa',
-  '2026-04-21': 'Tiradentes',
-  '2026-04-23': 'São Jorge (Estadual RJ)',
-  '2026-05-01': 'Dia do Trabalho',
-  '2026-06-04': 'Corpus Christi',
-  '2026-06-29': 'São Pedro (Mun. Cabo Frio)',
-  '2026-08-15': 'Nsa. Sra. Assunção (Mun. Cabo Frio)',
-  '2026-09-07': 'Independência',
-  '2026-10-12': 'Nsa. Sra. Aparecida',
-  '2026-11-02': 'Finados',
-  '2026-11-13': 'Aniv. Cabo Frio (Municipal)',
-  '2026-11-15': 'Procl. República',
-  '2026-11-20': 'Consciência Negra',
-  '2026-12-25': 'Natal'
-};
+type Cell = AttendanceStatus | '';
 
 export function Attendance() {
   const { user } = useAuth();
+  const { school, classes, selectedYear } = useSchool();
+  const year = selectedYear ? parseInt(selectedYear.label, 10) || new Date().getFullYear() : new Date().getFullYear();
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-  const [selectedClassId, setSelectedClassId] = useState<string>(user?.classId || '');
-  const [attendanceData, setAttendanceData] = useState<Record<string, Record<string, 'P' | 'F' | ''>>>({});
+  const [chosenClassId, setChosenClassId] = useState<string>('');
+  const [edits, setEdits] = useState<Record<string, Record<string, Cell>>>({}); // enrollmentId -> date -> status
+  const [selectedDay, setSelectedDay] = useState(new Date().getDate());
+  const [saving, setSaving] = useState(false);
 
-  const managedClasses = useMemo(() => {
-    if (user?.role === 'teacher') return mockClasses.filter((c: ClassGroup) => c.id === user.classId);
-    if (user?.role === 'coordinator' && user.managedLevel !== 'all') {
-      return mockClasses.filter((c: ClassGroup) => c.level === user.managedLevel);
-    }
-    return mockClasses;
-  }, [user]);
+  // Turma selecionada cai na primeira disponível se a escolhida sumir (troca de ano, RLS).
+  const selectedClassId = classes.some(c => c.id === chosenClassId) ? chosenClassId : (classes[0]?.id ?? '');
+  const selectClass = (id: string) => { setChosenClassId(id); setEdits({}); };
+  const selectMonth = (m: number) => { setSelectedMonth(m); setEdits({}); };
 
-  // Set default selected class if not set
-  useMemo(() => {
-    if (!selectedClassId && managedClasses.length > 0) {
-      setSelectedClassId(managedClasses[0].id);
-    }
-  }, [managedClasses, selectedClassId]);
-
-  const currentClass = useMemo(() => 
-    mockClasses.find((c: ClassGroup) => c.id === selectedClassId), 
-    [selectedClassId]
-  );
-
-  const isWeekend = (day: number) => {
-    const d = new Date(2026, selectedMonth, day);
-    const dayOfWeek = d.getDay();
-    return dayOfWeek === 0 || dayOfWeek === 6; // 0 = Dom, 6 = Sáb
-  };
-
-  const getHoliday = (day: number) => {
-    const dateKey = `2026-${String(selectedMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return HOLIDAYS_2026[dateKey];
-  };
-
-  // Filter students by selected class
-  const students = useMemo(() => 
-    mockStudents.filter((s: Student) => s.classId === selectedClassId),
-    [selectedClassId]
-  );
-
-  // Generate days for the selected month
-  const year = 2026;
+  const currentClass = classes.find(c => c.id === selectedClassId);
   const daysInMonth = new Date(year, selectedMonth + 1, 0).getDate();
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  const from = `${year}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
+  const to = `${year}-${String(selectedMonth + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+  const dateKey = (day: number) => `${year}-${String(selectedMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-  const toggleStatus = (studentId: string, day: number, targetStatus?: 'P' | 'F' | '') => {
-    const dateKey = `${year}-${String(selectedMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    setAttendanceData(prev => {
-      const studentDays = prev[studentId] || {};
-      const currentStatus = studentDays[dateKey] || '';
-      
-      let nextStatus: 'P' | 'F' | '' = '';
-      
-      if (targetStatus !== undefined) {
-        // Direct set (useful for mobile buttons)
-        nextStatus = currentStatus === targetStatus ? '' : targetStatus;
-      } else {
-        // Cycling toggle (useful for desktop grid)
-        if (currentStatus === '') nextStatus = 'P';
-        else if (currentStatus === 'P') nextStatus = 'F';
-        else nextStatus = '';
+  const rosterQ = useAsync(() => selectedClassId ? listClassRoster(selectedClassId) : Promise.resolve([]), [selectedClassId], []);
+  const enrollmentIds = useMemo(() => rosterQ.data.map(r => r.enrollment.id), [rosterQ.data]);
+  const recordsQ = useAsync(() => listAttendance(enrollmentIds, from, to), [enrollmentIds.join(','), from, to], []);
+  const eventsQ = useAsync(() => school ? listEvents(school.id) : Promise.resolve([]), [school?.id], []);
+
+  // Feriados vêm da agenda da escola (tipo 'feriado'), não de tabela chumbada.
+  const holidays = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const e of eventsQ.data) if (e.type === 'feriado') map[e.date] = e.title;
+    return map;
+  }, [eventsQ.data]);
+
+  const saved = useMemo(() => {
+    const map: Record<string, Record<string, Cell>> = {};
+    for (const r of recordsQ.data) {
+      map[r.enrollment_id] = map[r.enrollment_id] ?? {};
+      map[r.enrollment_id][r.date] = r.status;
+    }
+    return map;
+  }, [recordsQ.data]);
+
+  const statusOf = (enrollmentId: string, day: number): Cell => {
+    const key = dateKey(day);
+    const edited = edits[enrollmentId]?.[key];
+    if (edited !== undefined) return edited;
+    return saved[enrollmentId]?.[key] ?? '';
+  };
+
+  const isWeekend = (day: number) => {
+    const dow = new Date(year, selectedMonth, day).getDay();
+    return dow === 0 || dow === 6;
+  };
+  const getHoliday = (day: number) => holidays[dateKey(day)];
+
+  const toggleStatus = (enrollmentId: string, day: number, target?: AttendanceStatus) => {
+    const current = statusOf(enrollmentId, day);
+    let next: Cell;
+    if (target !== undefined) next = current === target ? '' : target;
+    else next = current === '' ? 'P' : current === 'P' ? 'F' : '';
+    setEdits(prev => ({ ...prev, [enrollmentId]: { ...(prev[enrollmentId] ?? {}), [dateKey(day)]: next } }));
+  };
+
+  const dirtyCount = Object.values(edits).reduce((n, m) => n + Object.keys(m).length, 0);
+
+  const handleSave = async () => {
+    if (!school || !user) return;
+    const upserts: { enrollment_id: string; date: string; status: AttendanceStatus }[] = [];
+    const deletes: { enrollment_id: string; date: string }[] = [];
+    for (const [enrollment_id, byDate] of Object.entries(edits)) {
+      for (const [date, status] of Object.entries(byDate)) {
+        if (saved[enrollment_id]?.[date] === status) continue;
+        if (status === '') { if (saved[enrollment_id]?.[date]) deletes.push({ enrollment_id, date }); }
+        else upserts.push({ enrollment_id, date, status });
       }
-
-      return {
-        ...prev,
-        [studentId]: { ...studentDays, [dateKey]: nextStatus }
-      };
-    });
+    }
+    if (upserts.length === 0 && deletes.length === 0) { toast.info('Nada para salvar.'); return; }
+    setSaving(true);
+    try {
+      await saveAttendance(school.id, user.id, upserts, deletes);
+      await recordsQ.reload();
+      setEdits({});
+      toast.success('Frequência salva.');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao salvar.');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const [selectedDay, setSelectedDay] = useState(new Date().getDate());
+  const students = rosterQ.data;
 
-  const handleSave = () => {
-    alert('Frequência salva com sucesso!');
-  };
-
-  const MobileDaySelector = () => (
+  const mobileDaySelector = (
     <div className="mobile-only" style={{ display: 'none', marginBottom: '1rem' }}>
-      <div className="flex items-center justify-between bg-surface p-3 rounded-lg border border-border">
+      <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-200">
         <button onClick={() => setSelectedDay(d => Math.max(1, d - 1))} className="btn btn-secondary" style={{ padding: '0.5rem' }}><ChevronLeft size={20} /></button>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>Dia Selecionado</div>
@@ -131,196 +126,144 @@ export function Attendance() {
           .mobile-list { display: flex !important; flex-direction: column; gap: 0.75rem; }
           .attendance-card { padding: 1rem !important; }
         }
+        .desktop-grid::-webkit-scrollbar { height: 8px; }
+        .desktop-grid::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
       `}</style>
-      
+
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 style={{ margin: 0 }}>Frequência</h2>
-          <p className="text-muted no-mobile">Turma: {currentClass?.name} - 2026</p>
+          <p className="text-muted no-mobile">Turma: {currentClass?.name ?? '—'} · {year}</p>
         </div>
-        <button onClick={handleSave} className="btn btn-primary">
-          <Save size={20} /> <span className="no-mobile">Salvar</span>
+        <button onClick={() => void handleSave()} className="btn btn-primary" disabled={saving || dirtyCount === 0}>
+          <Save size={20} /> <span className="no-mobile">Salvar{dirtyCount > 0 ? ` (${dirtyCount})` : ''}</span>
         </button>
       </div>
 
       <div className="card mb-6" style={{ padding: '1.5rem', display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        {managedClasses.length > 1 && (
+        {classes.length > 1 && (
           <div className="flex items-center gap-2">
             <label style={{ margin: 0, fontWeight: 700, whiteSpace: 'nowrap' }}>Turma:</label>
-            <select 
-              value={selectedClassId} 
-              onChange={e => setSelectedClassId(e.target.value)}
-              style={{ width: '220px' }}
-            >
-              {managedClasses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            <select value={selectedClassId} onChange={e => selectClass(e.target.value)} style={{ width: '220px' }}>
+              {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
         )}
-        
         <div className="flex items-center gap-2">
           <label style={{ margin: 0, fontWeight: 700, whiteSpace: 'nowrap' }}>Mês:</label>
           <div className="flex items-center gap-2">
-            <button onClick={() => setSelectedMonth(m => Math.max(0, m - 1))} className="btn btn-secondary" style={{ padding: '0.5rem' }}><ChevronLeft size={20} /></button>
+            <button onClick={() => selectMonth(Math.max(0, selectedMonth - 1))} className="btn btn-secondary" style={{ padding: '0.5rem' }}><ChevronLeft size={20} /></button>
             <span style={{ fontWeight: 700, minWidth: '100px', textAlign: 'center' }}>{MONTHS[selectedMonth]}</span>
-            <button onClick={() => setSelectedMonth(m => Math.min(11, m + 1))} className="btn btn-secondary" style={{ padding: '0.5rem' }}><ChevronRight size={20} /></button>
+            <button onClick={() => selectMonth(Math.min(11, selectedMonth + 1))} className="btn btn-secondary" style={{ padding: '0.5rem' }}><ChevronRight size={20} /></button>
           </div>
         </div>
       </div>
 
-      <div className="card attendance-card" style={{ padding: '1.5rem' }}>
-        <div className="flex items-center gap-4 mb-6">
-          <div className="flex gap-4 ml-auto no-mobile">
-            <div className="flex items-center gap-2">
-              <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#fef3c7' }}></div>
-              <span style={{ fontSize: '0.8rem' }}>Feriado</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#C6EFCE' }}></div>
-              <span style={{ fontSize: '0.8rem' }}>P</span>
+      {classes.length === 0 && (
+        <div className="card text-center p-12"><p className="text-muted">Você não tem turma vinculada neste ano letivo.</p></div>
+      )}
+
+      {classes.length > 0 && (
+        <div className="card attendance-card" style={{ padding: '1.5rem' }}>
+          <div className="flex items-center gap-4 mb-6">
+            <div className="flex gap-4 ml-auto no-mobile">
+              <div className="flex items-center gap-2"><div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#fef3c7' }}></div><span style={{ fontSize: '0.8rem' }}>Feriado</span></div>
+              <div className="flex items-center gap-2"><div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#C6EFCE' }}></div><span style={{ fontSize: '0.8rem' }}>P</span></div>
+              <div className="flex items-center gap-2"><div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#FFC7CE' }}></div><span style={{ fontSize: '0.8rem' }}>F</span></div>
             </div>
           </div>
-        </div>
 
-        <MobileDaySelector />
+          {mobileDaySelector}
 
-        {/* Mobile View: List by Day */}
-        <div className="mobile-list" style={{ display: 'none' }}>
-          {getHoliday(selectedDay) || isWeekend(selectedDay) ? (
-            <div style={{ padding: '2rem', textAlign: 'center', backgroundColor: '#f9fafb', borderRadius: 'var(--radius-md)', border: '1px dashed #ddd' }}>
-              <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#92400e' }}>
-                {getHoliday(selectedDay) || 'Final de Semana'}
+          <div className="mobile-list" style={{ display: 'none' }}>
+            {getHoliday(selectedDay) || isWeekend(selectedDay) ? (
+              <div style={{ padding: '2rem', textAlign: 'center', backgroundColor: '#f9fafb', borderRadius: 'var(--radius-md)', border: '1px dashed #ddd' }}>
+                <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#92400e' }}>{getHoliday(selectedDay) || 'Final de Semana'}</div>
+                <p className="text-muted" style={{ marginTop: '0.5rem' }}>Sem aulas previstas para este dia.</p>
               </div>
-              <p className="text-muted" style={{ marginTop: '0.5rem' }}>Sem aulas previstas para este dia.</p>
-            </div>
-          ) : students.length === 0 ? (
-            <p className="text-center text-muted">Nenhum aluno encontrado para esta turma.</p>
-          ) : (
-            students.map(student => {
-              const dateKey = `${year}-${String(selectedMonth + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
-              const status = attendanceData[student.id]?.[dateKey] || '';
-              return (
-                <div key={student.id} style={{ 
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
-                  padding: '1rem', backgroundColor: 'var(--color-bg)', borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--color-border)'
-                }}>
-                  <span style={{ fontWeight: 600 }}>{student.name}</span>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => toggleStatus(student.id, selectedDay, 'P')}
-                      style={{ 
-                        padding: '0.5rem 1.5rem', borderRadius: 'var(--radius-sm)', border: '2px solid #C6EFCE',
-                        backgroundColor: status === 'P' ? '#C6EFCE' : 'white',
-                        fontWeight: 800, color: status === 'P' ? '#166534' : '#666',
-                        transition: 'all 0.1s'
-                      }}
-                    >P</button>
-                    <button 
-                      onClick={() => toggleStatus(student.id, selectedDay, 'F')}
-                      style={{ 
-                        padding: '0.5rem 1.5rem', borderRadius: 'var(--radius-sm)', border: '2px solid #FFC7CE',
-                        backgroundColor: status === 'F' ? '#FFC7CE' : 'white',
-                        fontWeight: 800, color: status === 'F' ? '#991b1b' : '#666',
-                        transition: 'all 0.1s'
-                      }}
-                    >F</button>
+            ) : students.length === 0 ? (
+              <p className="text-center text-muted">Nenhum aluno matriculado nesta turma.</p>
+            ) : (
+              students.map(({ enrollment, student }) => {
+                const status = statusOf(enrollment.id, selectedDay);
+                return (
+                  <div key={enrollment.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', backgroundColor: 'var(--color-bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                    <span style={{ fontWeight: 600 }}>{student.name}</span>
+                    <div className="flex gap-2">
+                      <button onClick={() => toggleStatus(enrollment.id, selectedDay, 'P')} style={{ padding: '0.5rem 1.5rem', borderRadius: 'var(--radius-sm)', border: '2px solid #C6EFCE', backgroundColor: status === 'P' ? '#C6EFCE' : 'white', fontWeight: 800, color: status === 'P' ? '#166534' : '#666' }}>P</button>
+                      <button onClick={() => toggleStatus(enrollment.id, selectedDay, 'F')} style={{ padding: '0.5rem 1.5rem', borderRadius: 'var(--radius-sm)', border: '2px solid #FFC7CE', backgroundColor: status === 'F' ? '#FFC7CE' : 'white', fontWeight: 800, color: status === 'F' ? '#991b1b' : '#666' }}>F</button>
+                    </div>
                   </div>
-                </div>
-              );
-            })
-          )}
-        </div>
+                );
+              })
+            )}
+          </div>
 
-        {/* Desktop View: Full Grid */}
-        <div className="desktop-grid" style={{ overflowX: 'auto' }}>
-          {students.length === 0 ? (
-            <p className="text-center text-muted p-8">Nenhum aluno encontrado para esta turma.</p>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-              <thead>
-                <tr>
-                  <th style={{ 
-                    textAlign: 'left', padding: '0.75rem 1rem', borderBottom: '2px solid var(--color-border)', 
-                    position: 'sticky', left: 0, backgroundColor: 'var(--color-surface)', zIndex: 10,
-                    minWidth: '150px', whiteSpace: 'nowrap', boxShadow: '2px 0 5px rgba(0,0,0,0.05)'
-                  }}>Aluno</th>
-                  {days.map(day => {
-                    const holiday = getHoliday(day);
-                    const weekend = isWeekend(day);
+          <div className="desktop-grid" style={{ overflowX: 'auto' }}>
+            {rosterQ.loading ? (
+              <p className="text-center text-muted p-8">Carregando...</p>
+            ) : students.length === 0 ? (
+              <p className="text-center text-muted p-8">Nenhum aluno matriculado nesta turma.</p>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: 'left', padding: '0.75rem 1rem', borderBottom: '2px solid var(--color-border)', position: 'sticky', left: 0, backgroundColor: 'var(--color-surface)', zIndex: 10, minWidth: '150px', whiteSpace: 'nowrap', boxShadow: '2px 0 5px rgba(0,0,0,0.05)' }}>Aluno</th>
+                    {days.map(day => {
+                      const holiday = getHoliday(day);
+                      const weekend = isWeekend(day);
+                      return (
+                        <th key={day} title={holiday} style={{ padding: '0.25rem', borderBottom: '2px solid var(--color-border)', minWidth: '30px', backgroundColor: holiday ? '#fef3c7' : weekend ? '#f3f4f6' : 'transparent', color: holiday ? '#92400e' : 'inherit', fontSize: '0.75rem' }}>{day}</th>
+                      );
+                    })}
+                    <th style={{ padding: '0.25rem', borderBottom: '2px solid var(--color-border)', backgroundColor: '#f0fdf4', color: '#166534', minWidth: '35px' }}>P</th>
+                    <th style={{ padding: '0.25rem', borderBottom: '2px solid var(--color-border)', backgroundColor: '#fef2f2', color: '#991b1b', minWidth: '35px' }}>F</th>
+                    <th style={{ padding: '0.25rem', borderBottom: '2px solid var(--color-border)', backgroundColor: '#eff6ff', color: '#1e40af', minWidth: '45px' }}>%</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {students.map(({ enrollment, student }) => {
+                    let faltas = 0;
+                    let presencas = 0;
+                    days.forEach(day => {
+                      const s = statusOf(enrollment.id, day);
+                      if (s === 'F') faltas++;
+                      if (s === 'P') presencas++;
+                    });
+                    const registrados = faltas + presencas;
                     return (
-                      <th key={day} title={holiday} style={{ 
-                        padding: '0.25rem', borderBottom: '2px solid var(--color-border)', minWidth: '30px',
-                        backgroundColor: holiday ? '#fef3c7' : weekend ? '#f3f4f6' : 'transparent',
-                        color: holiday ? '#92400e' : 'inherit', fontSize: '0.75rem'
-                      }}>{day}</th>
+                      <tr key={enrollment.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                        <td style={{ padding: '0.5rem 1rem', fontWeight: 600, position: 'sticky', left: 0, backgroundColor: 'var(--color-surface)', zIndex: 9, borderRight: '1px solid var(--color-border)', boxShadow: '2px 0 5px rgba(0,0,0,0.05)', whiteSpace: 'nowrap' }}>
+                          {student.name}
+                        </td>
+                        {days.map(day => {
+                          const status = statusOf(enrollment.id, day);
+                          const holiday = getHoliday(day);
+                          const weekend = isWeekend(day);
+                          const blocked = Boolean(holiday || weekend);
+                          return (
+                            <td
+                              key={day}
+                              onClick={() => !blocked && toggleStatus(enrollment.id, day)}
+                              title={holiday}
+                              style={{ textAlign: 'center', cursor: blocked ? 'not-allowed' : 'pointer', backgroundColor: holiday ? '#fef3c7' : weekend ? '#f9fafb' : status === 'P' ? '#C6EFCE' : status === 'F' ? '#FFC7CE' : 'transparent', opacity: blocked ? 0.6 : 1, fontSize: '0.65rem', borderLeft: '1px solid #f1f5f9', height: '32px' }}
+                            >{holiday ? 'FER' : weekend ? '-' : status}</td>
+                          );
+                        })}
+                        <td style={{ textAlign: 'center', fontWeight: 700, color: '#166534', backgroundColor: '#f0fdf4', borderLeft: '1px solid #C6EFCE' }}>{presencas || ''}</td>
+                        <td style={{ textAlign: 'center', fontWeight: 700, color: '#991b1b', backgroundColor: '#fef2f2', borderLeft: '1px solid #FFC7CE' }}>{faltas || ''}</td>
+                        <td style={{ textAlign: 'center', fontWeight: 800, color: '#1e40af', backgroundColor: '#eff6ff', borderLeft: '1px solid #bfdbfe' }}>
+                          {registrados > 0 ? `${Math.round((presencas / registrados) * 100)}%` : '---'}
+                        </td>
+                      </tr>
                     );
                   })}
-                  <th style={{ padding: '0.25rem', borderBottom: '2px solid var(--color-border)', backgroundColor: '#f0fdf4', color: '#166534', minWidth: '35px' }}>P</th>
-                  <th style={{ padding: '0.25rem', borderBottom: '2px solid var(--color-border)', backgroundColor: '#fef2f2', color: '#991b1b', minWidth: '35px' }}>F</th>
-                  <th style={{ padding: '0.25rem', borderBottom: '2px solid var(--color-border)', backgroundColor: '#eff6ff', color: '#1e40af', minWidth: '45px' }}>%</th>
-                </tr>
-              </thead>
-              <tbody>
-                {students.map(student => {
-                  let totalFaltas = 0;
-                  let totalPresencas = 0;
-                  let totalDiasUteis = 0;
-                  
-                  days.forEach(day => {
-                    if (!isWeekend(day) && !getHoliday(day)) totalDiasUteis++;
-                  });
-
-                  return (
-                    <tr key={student.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                      <td style={{ 
-                        padding: '0.5rem 1rem', fontWeight: 600, position: 'sticky', left: 0, 
-                        backgroundColor: 'var(--color-surface)', zIndex: 9, 
-                        borderRight: '1px solid var(--color-border)', boxShadow: '2px 0 5px rgba(0,0,0,0.05)',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {student.name}
-                      </td>
-                      {days.map(day => {
-                        const dateKey = `${year}-${String(selectedMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                        const status = attendanceData[student.id]?.[dateKey] || '';
-                        const holiday = getHoliday(day);
-                        const weekend = isWeekend(day);
-                        if (status === 'F') totalFaltas++;
-                        if (status === 'P') totalPresencas++;
-                        
-                        return (
-                          <td 
-                            key={day} 
-                            onClick={() => !(holiday || weekend) && toggleStatus(student.id, day)}
-                            title={holiday}
-                            style={{ 
-                              textAlign: 'center', cursor: (holiday || weekend) ? 'not-allowed' : 'pointer',
-                              backgroundColor: holiday ? '#fef3c7' : weekend ? '#f9fafb' : status === 'P' ? '#C6EFCE' : status === 'F' ? '#FFC7CE' : 'transparent',
-                              opacity: (holiday || weekend) ? 0.6 : 1, fontSize: '0.65rem', borderLeft: '1px solid #f1f5f9'
-                            }}
-                          >{holiday ? 'FER' : weekend ? '-' : status}</td>
-                        );
-                      })}
-                      <td style={{ textAlign: 'center', fontWeight: 700, color: '#166534', backgroundColor: '#f0fdf4', borderLeft: '1px solid #C6EFCE' }}>{totalPresencas > 0 ? totalPresencas : ''}</td>
-                      <td style={{ textAlign: 'center', fontWeight: 700, color: '#991b1b', backgroundColor: '#fef2f2', borderLeft: '1px solid #FFC7CE' }}>{totalFaltas > 0 ? totalFaltas : ''}</td>
-                      <td style={{ textAlign: 'center', fontWeight: 800, color: '#1e40af', backgroundColor: '#eff6ff', borderLeft: '1px solid #bfdbfe' }}>
-                        {totalDiasUteis > 0 ? `${Math.round(((totalDiasUteis - totalFaltas) / totalDiasUteis) * 100)}%` : '---'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
-      </div>
-      <style>{`
-        .desktop-grid::-webkit-scrollbar { height: 8px; }
-        .desktop-grid::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
-        .desktop-grid::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        .desktop-grid::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-      `}</style>
+      )}
     </div>
   );
 }
-

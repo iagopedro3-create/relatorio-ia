@@ -3,28 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Vida de Aprendiz - Sistema Escolar</title>
-    <meta name="description" content="Sistema de gestão escolar com relatórios descritivos por IA, agenda digital e comunicação com responsáveis." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Althion Education</title>
+    <meta name="description" content="Plataforma pedagógica para escolas: relatórios descritivos com IA, PEI, planejamento, frequência, notas e agenda digital." />
     <meta name="theme-color" content="#0a73ff" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Vida de Aprendiz" />
+    <meta name="apple-mobile-web-app-title" content="Althion Education" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
+      // O service worker antigo cacheava o bundle inteiro com nome fixo e servia
+      // versões velhas depois do deploy. Desregistra o que ainda estiver instalado.
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(() => {});
-        });
+        navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((r) => r.unregister())).catch(() => {});
+      }
+      if ('caches' in window) {
+        caches.keys().then((keys) => keys.forEach((k) => caches.delete(k))).catch(() => {});
       }
     </script>
   </body>

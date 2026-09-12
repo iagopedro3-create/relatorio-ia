@@ -1,5 +1,9 @@
-import { useState } from 'react';
-import { Send, CheckSquare, MessageSquare, GraduationCap } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Send, CheckSquare, MessageSquare, GraduationCap, NotebookPen } from 'lucide-react';
+import { OBSERVATION_FIELDS } from '../store/bnccFields';
+import { periodRange, periodIndexForDate } from '../lib/periods';
+import { formatDate } from '../lib/format';
+import type { Observation } from '../types/db';
 import { BNCC_CHECKLISTS } from '../store/bnccData';
 import { useAuth } from '../contexts/AuthContext';
 import { useSchool } from '../contexts/SchoolContext';
@@ -47,6 +51,8 @@ interface ReportFormProps {
   isLoading: boolean;
   /** Avisa o pai quando o aluno muda (para listar relatórios anteriores). */
   onStudentChange?: (studentId: string | null) => void;
+  /** Registros de observação do aluno no ano; a ficha filtra pelo período escolhido. */
+  observations?: Observation[];
 }
 
 const AGE_GROUPS: { id: AgeGroupId; label: string }[] = [
@@ -67,9 +73,9 @@ function guessAgeGroup(cls: ClassGroup, infantilSeries: string[]): AgeGroupId {
   return 'pequenas';
 }
 
-export function ReportForm({ students, onSubmit, isLoading, onStudentChange }: ReportFormProps) {
+export function ReportForm({ students, onSubmit, isLoading, onStudentChange, observations = [] }: ReportFormProps) {
   const { user } = useAuth();
-  const { grading } = useSchool();
+  const { grading, selectedYear } = useSchool();
   const contexts = [...grading.periods, ...EXTRA_CONTEXTS];
 
   const [formData, setFormData] = useState<StudentData>({
@@ -82,7 +88,7 @@ export function ReportForm({ students, onSubmit, isLoading, onStudentChange }: R
     teacherName: user?.name || '',
     parentsName: '',
     subject: user?.specialty === 'english' ? 'Inglês' : (user?.specialty === 'pe' ? 'Educação Física' : ''),
-    reportContext: grading.periods[0],
+    reportContext: grading.periods[periodIndexForDate(selectedYear, grading.periods.length)] ?? grading.periods[0],
     reportTone: 'pedagogical',
     generalObservations: '',
     socialMap: {}, fieldSocial: '',
@@ -112,6 +118,31 @@ export function ReportForm({ students, onSubmit, isLoading, onStudentChange }: R
       ageGroupId: guessAgeGroup(cls, grading.series.infantil),
       parentsName: [student.guardian1, student.guardian2].filter(Boolean).join(' e '),
     }));
+  };
+
+  // Registros do período escolhido na ficha, agrupados pelo campo de texto que alimentam.
+  const periodObs = useMemo(() => {
+    const idx = grading.periods.indexOf(formData.reportContext);
+    if (idx < 0) return observations;
+    const r = periodRange(selectedYear, grading.periods.length, idx);
+    return observations.filter(o => o.date >= r.start && o.date <= r.end);
+  }, [observations, formData.reportContext, grading.periods, selectedYear]);
+
+  const applyObservations = () => {
+    const byKey: Partial<Record<string, string[]>> = {};
+    for (const o of [...periodObs].sort((a, b) => a.date.localeCompare(b.date))) {
+      const key = OBSERVATION_FIELDS.find(f => f.id === o.field_id)?.formKey ?? 'generalObservations';
+      (byKey[key] ??= []).push(`${formatDate(o.date)}: ${o.text}`);
+    }
+    setFormData(prev => {
+      const next = { ...prev } as Record<string, unknown>;
+      for (const [key, lines] of Object.entries(byKey)) {
+        const current = String(next[key] ?? '').trim();
+        const add = (lines ?? []).filter(l => !current.includes(l)).join('\n');
+        if (add) next[key] = current ? `${current}\n${add}` : add;
+      }
+      return next as StudentData;
+    });
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -239,6 +270,23 @@ export function ReportForm({ students, onSubmit, isLoading, onStudentChange }: R
           </div>
         )}
       </div>
+
+      {formData.studentId && (
+        <div className={`callout ${periodObs.length > 0 ? 'callout-info' : 'callout-warning'} mt-4`}>
+          <NotebookPen size={18} />
+          <div style={{ flex: 1 }}>
+            {periodObs.length > 0 ? (
+              <>
+                <strong>{periodObs.length} registro(s) de observação</strong> de {formData.name.split(' ')[0]} em {formData.reportContext}.
+                <button type="button" className="btn btn-primary btn-sm" style={{ marginLeft: '0.75rem' }} onClick={applyObservations}>Usar na ficha</button>
+                <div style={{ fontSize: '0.78rem', marginTop: '0.35rem', opacity: 0.85 }}>Os textos entram nos campos de experiência correspondentes; você edita antes de gerar.</div>
+              </>
+            ) : (
+              <>Nenhum registro de observação neste período. O relatório vai depender só do que você escrever agora — registrar ao longo do bimestre (menu Registros) deixa o texto mais concreto.</>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="form-group mt-4">
         <label htmlFor="generalObservations">Abertura e Contextualização do Período</label>

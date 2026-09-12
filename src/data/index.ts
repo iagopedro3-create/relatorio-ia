@@ -9,7 +9,7 @@ import type {
   AgendaEvent, AgendaMessage, AgendaReply, Assessment, AssessmentResult, AttendanceRecord,
   ClassGroup, Enrollment, GradeEntry, LessonEntry, LessonPlan, Profile, School, SchoolYear,
   Student, StudentDocument, StudentGuardian, TeacherAssignment, UserRole,
-  TuitionPlan, StudentBilling, Invoice, InvoiceStatus, FinanceMonthSummary,
+  TuitionPlan, StudentBilling, Invoice, InvoiceStatus, FinanceMonthSummary, Observation, YearPeriod,
 } from '../types/db';
 
 // ---------------------------------------------------------------------------
@@ -34,6 +34,10 @@ export async function uploadLogo(schoolId: string, file: File): Promise<string> 
 
 export async function createYear(schoolId: string, label: string) {
   return unwrap(await supabase.from('school_years').insert({ school_id: schoolId, label }).select('*').single()) as SchoolYear;
+}
+
+export async function updateYearPeriods(yearId: string, periods: YearPeriod[]) {
+  return unwrap(await supabase.from('school_years').update({ periods }).eq('id', yearId).select('*').single()) as SchoolYear;
 }
 
 export async function setActiveYear(schoolId: string, yearId: string) {
@@ -333,6 +337,10 @@ export async function createAssessment(input: Partial<Assessment> & { school_id:
   return unwrap(await supabase.from('assessments').insert(input).select('*').single()) as Assessment;
 }
 
+export async function updateAssessment(id: string, patch: Partial<Assessment>) {
+  return unwrap(await supabase.from('assessments').update(patch).eq('id', id).select('*').single()) as Assessment;
+}
+
 export async function deleteAssessment(id: string) {
   unwrap(await supabase.from('assessments').delete().eq('id', id));
 }
@@ -463,4 +471,50 @@ export async function financeCharges<T = unknown>(body: Record<string, unknown>)
 
 export async function financeAsaas<T = unknown>(body: Record<string, unknown>) {
   return callApi<T>('/api/finance/asaas', body);
+}
+
+// ---------------------------------------------------------------------------
+// Registros de observação (documentação pedagógica contínua)
+// ---------------------------------------------------------------------------
+
+export async function listObservations(filter: { schoolId: string; studentId?: string; classId?: string; from?: string; to?: string; sharedOnly?: boolean; limit?: number }) {
+  let q = supabase.from('observations').select('*').eq('school_id', filter.schoolId).order('date', { ascending: false }).order('created_at', { ascending: false });
+  if (filter.studentId) q = q.eq('student_id', filter.studentId);
+  if (filter.classId) q = q.eq('class_id', filter.classId);
+  if (filter.from) q = q.gte('date', filter.from);
+  if (filter.to) q = q.lte('date', filter.to);
+  if (filter.sharedOnly) q = q.eq('share_with_family', true);
+  if (filter.limit) q = q.limit(filter.limit);
+  return unwrap(await q) as Observation[];
+}
+
+export async function createObservation(input: Partial<Observation> & { school_id: string; student_id: string; author_id: string; text: string }) {
+  return unwrap(await supabase.from('observations').insert(input).select('*').single()) as Observation;
+}
+
+export async function updateObservation(id: string, patch: Partial<Observation>) {
+  return unwrap(await supabase.from('observations').update(patch).eq('id', id).select('*').single()) as Observation;
+}
+
+export async function deleteObservation(id: string) {
+  unwrap(await supabase.from('observations').delete().eq('id', id));
+}
+
+/** Foto no bucket privado. Devolve o caminho (não a URL): a URL é assinada na leitura. */
+export async function uploadObservationPhoto(schoolId: string, studentId: string, file: File): Promise<string> {
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  const path = `${schoolId}/${studentId}/${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from('observations').upload(path, file, { contentType: file.type });
+  if (error) throw new Error(error.message);
+  return path;
+}
+
+/** URLs assinadas (1 h) para um lote de fotos. Caminhos sem permissão voltam sem URL. */
+export async function signObservationPhotos(paths: string[]): Promise<Record<string, string>> {
+  const unique = [...new Set(paths.filter(Boolean))];
+  if (unique.length === 0) return {};
+  const { data } = await supabase.storage.from('observations').createSignedUrls(unique, 3600);
+  const out: Record<string, string> = {};
+  for (const r of data ?? []) if (r.path && r.signedUrl) out[r.path] = r.signedUrl;
+  return out;
 }

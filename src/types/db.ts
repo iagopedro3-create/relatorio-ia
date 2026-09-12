@@ -76,12 +76,20 @@ export interface Profile {
   updated_at: string;
 }
 
+/** Período letivo com datas (school_years.periods). */
+export interface YearPeriod {
+  label: string;
+  start: string;
+  end: string;
+}
+
 export interface SchoolYear {
   id: string;
   school_id: string;
   label: string;
   active: boolean;
   closed: boolean;
+  periods: YearPeriod[];
   created_at: string;
 }
 
@@ -244,6 +252,8 @@ export interface Assessment {
   period: string | null;
   subject_id: string | null;
   questions: AssessmentQuestion[];
+  analysis: string | null;
+  analyzed_at: string | null;
   created_by: string | null;
   created_at: string;
 }
@@ -394,4 +404,20 @@ export interface FinanceMonthSummary {
   pending_cents: number;
   overdue_cents: number;
   overdue_count: number;
+}
+
+/** Registro de observação (documentação pedagógica contínua). */
+export interface Observation {
+  id: string;
+  school_id: string;
+  student_id: string;
+  class_id: string | null;
+  author_id: string | null;
+  date: string;
+  field_id: string;
+  text: string;
+  photo_path: string | null;
+  share_with_family: boolean;
+  created_at: string;
+  updated_at: string;
 }

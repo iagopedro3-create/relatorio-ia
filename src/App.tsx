@@ -26,6 +26,7 @@ import { PlatformAdmin } from './pages/PlatformAdmin';
 import { ResetPassword } from './pages/ResetPassword';
 import { Finance } from './pages/Finance';
 import { FamilyFinance } from './pages/FamilyFinance';
+import { Observations } from './pages/Observations';
 
 export function App() {
   return (
@@ -57,6 +58,7 @@ export function App() {
               <Route path="/planning" element={<LessonPlanning />} />
               <Route path="/admin" element={<PlatformAdmin />} />
               <Route path="/finance" element={<Finance />} />
+              <Route path="/observations" element={<Observations />} />
               <Route path="/family/finance" element={<FamilyFinance />} />
             </Route>
             <Route path="*" element={<Navigate to="/" />} />

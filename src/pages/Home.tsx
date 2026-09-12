@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Users, TrendingUp, AlertCircle, FileCheck, BookOpenCheck, MessageSquare, Bell, Heart, Clock, FileText, Printer, Inbox } from 'lucide-react';
+import { Calendar, Users, TrendingUp, AlertCircle, FileCheck, BookOpenCheck, MessageSquare, Bell, Heart, Clock, FileText, Printer, Inbox, NotebookPen, Brain } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useSchool } from '../contexts/SchoolContext';
 import { useAsync } from '../lib/useAsync';
-import { listEnrollments, listStudents, listDocuments, updateDocument, listMessages, listEvents, listAttendanceOfEnrollments } from '../data';
+import { listEnrollments, listStudents, listDocuments, updateDocument, listMessages, listEvents, listAttendanceOfEnrollments, listObservations, signObservationPhotos, listLessonPlans } from '../data';
+import { FIELD_BY_ID } from '../store/bnccFields';
 import { attendanceRate } from '../lib/gradeEngine';
 import { currentPeriodIndex } from '../lib/format';
 import { Management } from './Management';
@@ -28,6 +29,9 @@ export function Home() {
   const enrollQ = useAsync(() => listEnrollments(reportClassIds), [reportClassIds.join(',')], []);
   const studentsQ = useAsync(() => school ? listStudents(school.id) : Promise.resolve([] as Student[]), [school?.id], [] as Student[]);
   const docsQ = useAsync(() => (school && selectedYear) ? listDocuments({ schoolId: school.id, yearId: selectedYear.id, kind: 'report' }) : Promise.resolve([]), [school?.id, selectedYear?.id], []);
+  // Fila da coordenação além dos relatórios: PEIs e planos de aula enviados.
+  const peiQ = useAsync(() => (school && selectedYear && user?.role !== 'guardian') ? listDocuments({ schoolId: school.id, yearId: selectedYear.id, kind: 'pei' }) : Promise.resolve([]), [school?.id, selectedYear?.id, user?.role], []);
+  const plansQ = useAsync(() => (school && user?.role !== 'guardian') ? listLessonPlans(school.id) : Promise.resolve([]), [school?.id, user?.role], []);
   const loading = classesLoading || enrollQ.loading || studentsQ.loading || docsQ.loading;
 
   const periodDocs = useMemo(() => docsQ.data.filter(d => d.period === selectedPeriod), [docsQ.data, selectedPeriod]);
@@ -83,10 +87,18 @@ export function Home() {
     const myDone = new Set(periodDocs.map(d => d.student_id)).size;
     const myPercent = myStudentsCount > 0 ? Math.round((myDone / myStudentsCount) * 100) : 0;
     const myPending = Object.values(pendingGrouped).flat();
+    const returned = [...docsQ.data, ...peiQ.data].filter(d => d.status === 'returned' && d.author_id === user.id);
+    const returnedPlans = plansQ.data.filter(p => p.status === 'returned' && p.teacher_id === user.id);
     return (
       <div>
         <PageHeader title={`Olá, ${user.name.split(' ')[0]}!`} subtitle={classes.length > 0 ? `Suas turmas: ${classes.map(c => c.name).join(', ')}` : 'Você ainda não está vinculado(a) a nenhuma turma este ano.'} />
         {periodSelector}
+        {(returned.length > 0 || returnedPlans.length > 0) && (
+          <div className="callout callout-danger mb-6"><AlertCircle size={16} /><span>
+            {returned.length > 0 && <><strong>{returned.length} documento(s) devolvido(s)</strong> pela coordenação: {returned.map(d => `${d.kind === 'pei' ? 'PEI' : 'relatório'} de ${studentsQ.data.find(s => s.id === d.student_id)?.name.split(' ')[0] ?? ''}`).join(', ')}. </>}
+            {returnedPlans.length > 0 && <><strong>{returnedPlans.length} plano(s) de aula</strong> devolvido(s) com orientações.</>}
+          </span></div>
+        )}
         {loading ? (
           <>
             <SkeletonStats count={3} />
@@ -174,6 +186,21 @@ export function Home() {
         <PageHeader title="Acompanhamento pedagógico" subtitle="Relatórios descritivos por turma e período" />
         {periodSelector}
 
+        {(peiQ.data.some(d => d.status === 'submitted') || plansQ.data.some(p => p.status === 'submitted')) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            {peiQ.data.filter(d => d.status === 'submitted').length > 0 && (
+              <a href="/pei" className="callout callout-warning" style={{ textDecoration: 'none' }}>
+                <Brain size={16} /><span><strong>{peiQ.data.filter(d => d.status === 'submitted').length} PEI(s)</strong> aguardando aprovação: {peiQ.data.filter(d => d.status === 'submitted').map(d => studentsQ.data.find(s => s.id === d.student_id)?.name.split(' ')[0]).filter(Boolean).join(', ')}</span>
+              </a>
+            )}
+            {plansQ.data.filter(p => p.status === 'submitted').length > 0 && (
+              <a href="/planning" className="callout callout-warning" style={{ textDecoration: 'none' }}>
+                <BookOpenCheck size={16} /><span><strong>{plansQ.data.filter(p => p.status === 'submitted').length} plano(s) de aula</strong> aguardando revisão</span>
+              </a>
+            )}
+          </div>
+        )}
+
         <div className="card p-0 mb-6">
           <div className="flex justify-between items-center" style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--color-border)' }}>
             <h3 style={{ margin: 0, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><BookOpenCheck size={18} color="var(--color-primary)" /> Relatórios para revisão</h3>
@@ -254,6 +281,9 @@ function GuardianHome() {
   const docsQ = useAsync(() => (school && student) ? listDocuments({ schoolId: school.id, studentId: student.id }) : Promise.resolve([]), [school?.id, student?.id], []);
   const [openDoc, setOpenDoc] = useState<StudentDocument | null>(null);
   const [printDoc, setPrintDoc] = useState<StudentDocument | null>(null);
+  // Momentos: registros que a professora marcou para a família ver.
+  const momentsQ = useAsync(() => (school && student) ? listObservations({ schoolId: school.id, studentId: student.id, sharedOnly: true, limit: 12 }) : Promise.resolve([]), [school?.id, student?.id], []);
+  const momentPhotosQ = useAsync(() => signObservationPhotos(momentsQ.data.map(o => o.photo_path ?? '')), [momentsQ.data.map(o => o.photo_path).join(',')], {} as Record<string, string>);
 
   const loading = classesLoading || studentsQ.loading || enrollQ.loading;
   const freq = attendanceRate(attQ.data);
@@ -393,6 +423,27 @@ function GuardianHome() {
           )}
         </div>
       </div>
+
+      {momentsQ.data.length > 0 && (
+        <div className="mt-8">
+          <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><NotebookPen size={18} color="var(--color-primary)" /> Momentos de {firstName(student)}</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {momentsQ.data.map(o => {
+              const f = FIELD_BY_ID[o.field_id];
+              const url = o.photo_path ? momentPhotosQ.data[o.photo_path] : undefined;
+              return (
+                <div key={o.id} className="card p-0" style={{ overflow: 'hidden' }}>
+                  {url && <img src={url} alt="" style={{ width: '100%', maxHeight: 220, objectFit: 'cover', display: 'block' }} />}
+                  <div style={{ padding: '0.9rem 1rem' }}>
+                    <div className="flex items-center gap-2 flex-wrap" style={{ fontSize: '0.75rem', color: 'var(--color-text-subtle)', marginBottom: '0.35rem' }}><span>{new Date(o.date + 'T00:00:00').toLocaleDateString('pt-BR')}</span>{f && f.id !== 'general' && <span className={`badge badge-${f.tone}`}>{f.short}</span>}</div>
+                    <p style={{ margin: 0, fontSize: '0.9rem', lineHeight: 1.55 }}>{o.text}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {openDoc && (
         <div className="dialog-overlay" onClick={() => setOpenDoc(null)}>

@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, User, CalendarDays, ShieldCheck, X } from 'lucide-react';
+import { ArrowLeft, FileText, User, CalendarDays, ShieldCheck, X, NotebookPen } from 'lucide-react';
 import { useSchool } from '../contexts/SchoolContext';
 import { useAsync } from '../lib/useAsync';
-import { getStudent, listEnrollmentsOfStudent, getClassesByIds, listDocuments } from '../data';
+import { getStudent, listEnrollmentsOfStudent, getClassesByIds, listDocuments, listObservations, signObservationPhotos } from '../data';
+import { FIELD_BY_ID } from '../store/bnccFields';
+import { Badge } from '../components/ui';
 import type { ClassGroup, StudentDocument } from '../types/db';
 import { formatDate, calcAge } from '../lib/format';
 
@@ -23,6 +25,8 @@ export function StudentProfile() {
   const studentQ = useAsync(() => id ? getStudent(id) : Promise.resolve(null), [id], null);
   const enrollQ = useAsync(() => id ? listEnrollmentsOfStudent(id) : Promise.resolve([]), [id], []);
   const docsQ = useAsync(() => (school && id) ? listDocuments({ schoolId: school.id, studentId: id }) : Promise.resolve([]), [school?.id, id], []);
+  const obsQ = useAsync(() => (school && id) ? listObservations({ schoolId: school.id, studentId: id, limit: 60 }) : Promise.resolve([]), [school?.id, id], []);
+  const photosQ = useAsync(() => signObservationPhotos(obsQ.data.map(o => o.photo_path ?? '')), [obsQ.data.map(o => o.photo_path).join(',')], {} as Record<string, string>);
   const otherClassIds = useMemo(() => enrollQ.data.map(e => e.class_id).filter(cid => !classes.some(c => c.id === cid)), [enrollQ.data, classes]);
   const otherClassesQ = useAsync(() => getClassesByIds(otherClassIds), [otherClassIds.join(',')], [] as ClassGroup[]);
 
@@ -108,7 +112,31 @@ export function StudentProfile() {
           </div>
         </div>
 
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 flex flex-col gap-6">
+          <div className="card p-0" style={{ overflow: 'hidden' }}>
+            <div className="p-5 border-b border-slate-200 flex justify-between items-center" style={{ backgroundColor: 'var(--color-surface-2)' }}>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><NotebookPen size={20} color="var(--color-primary)" /> Registros de observação</h3>
+              <span className="text-muted" style={{ fontSize: '0.8rem' }}>{obsQ.data.length} registro(s)</span>
+            </div>
+            <div className="p-5">
+              {obsQ.data.length === 0 && <p className="text-muted" style={{ margin: 0, fontSize: '0.875rem' }}>Nenhum registro ainda. As professoras registram pelo menu Registros.</p>}
+              <div className="flex flex-col gap-3">
+                {obsQ.data.map(o => {
+                  const f = FIELD_BY_ID[o.field_id];
+                  const url = o.photo_path ? photosQ.data[o.photo_path] : undefined;
+                  return (
+                    <div key={o.id} style={{ borderLeft: '3px solid var(--color-primary-border)', paddingLeft: '0.75rem' }}>
+                      <div className="flex items-center gap-2 flex-wrap" style={{ fontSize: '0.75rem', color: 'var(--color-text-subtle)' }}>
+                        <span>{formatDate(o.date)}</span>{f && <Badge tone={f.tone}>{f.short}</Badge>}<span>{staff.find(u => u.id === o.author_id)?.name?.split(' ')[0]}</span>
+                      </div>
+                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.9rem', lineHeight: 1.55 }}>{o.text}</p>
+                      {url && <img src={url} alt="" style={{ marginTop: '0.5rem', maxHeight: 180, borderRadius: 6 }} />}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
           <div className="card p-0" style={{ overflow: 'hidden' }}>
             <div className="p-5 border-b border-slate-200" style={{ backgroundColor: 'var(--color-surface-2)' }}>
               <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

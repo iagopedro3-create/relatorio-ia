@@ -9,12 +9,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSchool } from '../contexts/SchoolContext';
 import { useAsync } from '../lib/useAsync';
 import { PageHeader, SkeletonCard, StatusBadge } from '../components/ui';
-import { listEnrollments, listStudents, createDocument, updateDocument, listDocuments } from '../data';
+import { listEnrollments, listStudents, createDocument, updateDocument, listDocuments, listObservations } from '../data';
+import { periodRange } from '../lib/periods';
 import type { Student, StudentDocument } from '../types/db';
 
 export function ReportGenerator() {
   const { user } = useAuth();
-  const { school, classes, selectedYear, refreshAiUsage } = useSchool();
+  const { school, classes, selectedYear, grading, refreshAiUsage } = useSchool();
   const [isLoading, setIsLoading] = useState(false);
   const [reportResult, setReportResult] = useState('');
   const [error, setError] = useState('');
@@ -42,6 +43,13 @@ export function ReportGenerator() {
   const historyQ = useAsync(
     () => (school && currentStudentId) ? listDocuments({ schoolId: school.id, studentId: currentStudentId, kind: 'report' }) : Promise.resolve([]),
     [school?.id, doc?.id, currentStudentId], [],
+  );
+
+  // Registros de observação do aluno no ano letivo (a ficha filtra por período).
+  const yearRange = { start: periodRange(selectedYear, grading.periods.length, 0).start, end: periodRange(selectedYear, grading.periods.length, grading.periods.length - 1).end };
+  const observationsQ = useAsync(
+    () => (school && currentStudentId) ? listObservations({ schoolId: school.id, studentId: currentStudentId, from: yearRange.start, to: yearRange.end }) : Promise.resolve([]),
+    [school?.id, currentStudentId, yearRange.start, yearRange.end], [],
   );
 
   // Fotos são base64 pesadas e só servem para a impressão: não vão para o banco.
@@ -148,7 +156,7 @@ export function ReportGenerator() {
 
       <div className="grid grid-cols-2" style={{ gridTemplateColumns: 'minmax(0, 1.3fr) minmax(0, 0.7fr)', gap: '2rem' }}>
         <div className="left-panel">
-          {rosterLoading ? <SkeletonCard lines={8} /> : <ReportForm students={roster} onSubmit={handleGenerateReport} isLoading={isLoading} onStudentChange={setFormStudentId} />}
+          {rosterLoading ? <SkeletonCard lines={8} /> : <ReportForm students={roster} onSubmit={handleGenerateReport} isLoading={isLoading} onStudentChange={setFormStudentId} observations={observationsQ.data} />}
         </div>
 
         <div className="right-panel">

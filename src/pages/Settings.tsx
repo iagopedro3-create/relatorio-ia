@@ -5,14 +5,15 @@ import { PageHeader, SkeletonCard } from '../components/ui';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useSchool } from '../contexts/SchoolContext';
-import { updateSchool, uploadLogo, createYear, setActiveYear } from '../data';
+import { updateSchool, uploadLogo, createYear, setActiveYear, updateYearPeriods } from '../data';
+import { periodRange } from '../lib/periods';
+import type { School, SchoolYear, YearPeriod } from '../types/db';
 import { callApi, supabase } from '../lib/supabase';
 import { useAsync } from '../lib/useAsync';
 import type { Plan } from '../types/db';
 import { applyBranding, DEFAULT_COLORS, logoUrl } from '../lib/branding';
 import { DEFAULT_GRADING_CONFIG, validateGradingConfig } from '../store/gradingConfig';
 import type { GradingConfig } from '../store/gradingConfig';
-import type { School } from '../types/db';
 
 type Tab = 'school' | 'brand' | 'years' | 'grading' | 'plan';
 
@@ -215,6 +216,7 @@ function SettingsForm({ school, grading }: { school: School; grading: GradingCon
             ))}
             {years.length === 0 && <p className="text-muted">Nenhum ano letivo. Crie o primeiro abaixo.</p>}
           </div>
+          {years.filter(y => y.active).map(y => <YearPeriodsEditor key={`${y.id}:${JSON.stringify(y.periods)}`} year={y} labels={grading.periods} onSaved={() => void refresh()} />)}
           <div className="flex gap-2 items-end">
             <div><label>Novo ano letivo</label><input type="text" value={newYear} onChange={e => setNewYear(e.target.value)} maxLength={4} style={{ width: '140px' }} /></div>
             <button className="btn btn-primary" onClick={() => void addYear()}><Plus size={18} /> Criar</button>
@@ -327,6 +329,45 @@ function SettingsForm({ school, grading }: { school: School; grading: GradingCon
             : <p style={{ fontSize: '0.85rem', color: 'var(--color-warning-text)' }}>Contrato de tratamento de dados (LGPD) ainda não registrado. Veja docs/lgpd no repositório do produto.</p>}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Datas de início e fim de cada período do ano ativo — alimentam boletim, diário e registros. */
+function YearPeriodsEditor({ year, labels, onSaved }: { year: SchoolYear; labels: string[]; onSaved: () => void }) {
+  const [rows, setRows] = useState<YearPeriod[]>(() => labels.map((label, i) => {
+    const saved = year.periods?.[i];
+    const approx = periodRange(year, labels.length, i);
+    return { label, start: saved?.start ?? approx.start, end: saved?.end ?? approx.end };
+  }));
+  const [saving, setSaving] = useState(false);
+  const configured = (year.periods?.length ?? 0) > 0;
+
+  const save = async () => {
+    for (const r of rows) if (!r.start || !r.end || r.end < r.start) { toast.error(`${r.label}: datas inválidas.`); return; }
+    setSaving(true);
+    try { await updateYearPeriods(year.id, rows); onSaved(); toast.success('Períodos salvos.'); }
+    catch (e) { toast.error(e instanceof Error ? e.message : 'Falha.'); } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="mb-6" style={{ padding: '1rem', border: '1px solid var(--color-border)', borderRadius: '8px' }}>
+      <div className="flex justify-between items-center mb-2 flex-wrap gap-2">
+        <h4 style={{ margin: 0, fontSize: '0.95rem' }}>Períodos de {year.label}</h4>
+        <span className={`badge ${configured ? 'badge-success' : 'badge-warning'}`}>{configured ? 'datas cadastradas' : 'aproximado por meses'}</span>
+      </div>
+      <p className="text-muted" style={{ fontSize: '0.8rem' }}>Frequência do boletim, diário e registros de observação usam estas datas. Sem elas, o sistema aproxima (fev–abr, mai–jul, ago–set, out–dez).</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        {rows.map((r, i) => (
+          <div key={r.label} className="flex items-center gap-2 flex-wrap" style={{ fontSize: '0.85rem' }}>
+            <span style={{ fontWeight: 600, minWidth: 90 }}>{r.label}</span>
+            <input type="date" value={r.start} onChange={e => setRows(rows.map((x, j) => j === i ? { ...x, start: e.target.value } : x))} style={{ width: 'auto', padding: '0.35rem 0.5rem' }} />
+            <span className="text-muted">a</span>
+            <input type="date" value={r.end} onChange={e => setRows(rows.map((x, j) => j === i ? { ...x, end: e.target.value } : x))} style={{ width: 'auto', padding: '0.35rem 0.5rem' }} />
+          </div>
+        ))}
+      </div>
+      <button className="btn btn-primary btn-sm mt-3" disabled={saving} onClick={() => void save()}><Save size={14} /> Salvar períodos</button>
     </div>
   );
 }

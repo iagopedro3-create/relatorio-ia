@@ -11,7 +11,7 @@ import { logoUrl } from '../lib/branding';
 import type { Student } from '../types/db';
 
 /** Frequência (%) por bimestre, aproximando períodos por trimestre de meses (fev-abr, mai-jul, ago-set, out-dez). */
-const PERIOD_MONTHS = [[1, 2, 3], [4, 5, 6], [7, 8], [9, 10, 11]];
+import { periodRange } from '../lib/periods';
 
 export function Bulletin() {
   const { user } = useAuth();
@@ -48,10 +48,11 @@ export function Bulletin() {
     return calcStudentOutcome(books, subjects, attendanceRate(attQ.data), policy);
   }, [gradesQ.data, attQ.data, subjects, policy]);
 
-  const attendanceByPeriod = useMemo(() => PERIOD_MONTHS.map(months => {
-    const recs = attQ.data.filter(r => months.includes(new Date(r.date + 'T00:00:00').getMonth()));
-    return attendanceRate(recs);
-  }), [attQ.data]);
+  // Frequência por período pelas datas cadastradas no ano letivo (ou aproximação por meses).
+  const attendanceByPeriod = useMemo(() => grading.periods.map((_, i) => {
+    const r = periodRange(selectedYear, grading.periods.length, i);
+    return attendanceRate(attQ.data.filter(x => x.date >= r.start && x.date <= r.end));
+  }), [attQ.data, grading.periods, selectedYear]);
 
   const freqAnual = outcome.attendance;
   const fmt = (v: number | null) => v === null ? '—' : roundGrade(v, policy).toFixed(policy.decimals);

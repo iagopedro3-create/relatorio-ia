@@ -4,7 +4,7 @@ import {
   LogOut, Users, Settings, LayoutDashboard, FileText,
   ShieldCheck, Brain, CalendarCheck, BookOpen, ClipboardList,
   GraduationCap, ChevronDown, BookOpenCheck,
-  Sliders, UserCog, Baby, FileArchive, Printer, MessageSquareText, Menu, X, Building2, AlertTriangle, Sparkles, Wallet,
+  Sliders, UserCog, Baby, FileArchive, Printer, MessageSquareText, Menu, X, Building2, AlertTriangle, Sparkles, Wallet, NotebookPen,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSchool } from '../contexts/SchoolContext';
@@ -112,6 +112,7 @@ export function Layout() {
   const academicoItems: NavItem[] = [];
 
   if (!isGuardian) {
+    academicoItems.push({ name: 'Registros', path: '/observations', icon: <NotebookPen size={18} /> });
     academicoItems.push({ name: 'Frequência', path: '/attendance', icon: <CalendarCheck size={18} /> });
     academicoItems.push({ name: 'Conteúdos', path: '/lessons', icon: <BookOpen size={18} /> });
     if (!isInfantilTeacher && !isInfantilCoord) {
@@ -187,6 +188,7 @@ export function Layout() {
   if (location.pathname === '/family/finance' && !isGuardian) return <Navigate to="/" />;
   if (location.pathname === '/admin' && !isPlatformAdmin) return <Navigate to="/" />;
   if (location.pathname.startsWith('/students/') && isGuardian) return <Navigate to="/" />;
+  if (location.pathname === '/observations' && isGuardian) return <Navigate to="/" />;
   const blockedWhenInactive = !subscriptionOk && location.pathname !== '/settings' && location.pathname !== '/';
 
   const logo = logoUrl(school);

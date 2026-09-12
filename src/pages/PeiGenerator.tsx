@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Sparkles, Copy, CheckCircle, FileText, Brain, Printer, Save } from 'lucide-react';
+import { Sparkles, Copy, CheckCircle, FileText, Brain, Printer, Save, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { PeiForm, type PeiData } from '../components/PeiForm';
 import { PrintPreview } from '../components/PrintPreview';
@@ -80,12 +80,12 @@ export function PeiGenerator() {
     }
   };
 
-  const persist = async () => {
+  const persist = async (status?: StudentDocument['status']) => {
     if (!doc) return;
     setSaving(true);
     try {
-      setDoc(await updateDocument(doc.id, { content: peiResult }));
-      toast.success('PEI salvo.');
+      setDoc(await updateDocument(doc.id, { content: peiResult, ...(status ? { status, ...(status === 'approved' ? { reviewed_by: user?.id ?? null } : {}) } : {}) }));
+      toast.success(status === 'submitted' ? 'PEI enviado para a coordenação.' : status === 'approved' ? 'PEI aprovado — a família já pode ver.' : 'PEI salvo.');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Falha ao salvar.');
     } finally {
@@ -149,7 +149,23 @@ export function PeiGenerator() {
               )}
             </div>
             {doc && peiResult && (
-              <button className="btn btn-secondary btn-sm mt-4" disabled={saving} onClick={() => void persist()}><Save size={16} /> Salvar edições</button>
+              <div className="mt-4">
+                <p className="text-muted" style={{ fontSize: '0.78rem', margin: '0 0 0.5rem' }}>
+                  {doc.status === 'draft' && 'Rascunho salvo. Revise e envie para a coordenação.'}
+                  {doc.status === 'submitted' && 'Enviado. Depois da aprovação, a família vê o PEI no portal.'}
+                  {doc.status === 'returned' && 'Devolvido pela coordenação: ajuste e envie de novo.'}
+                  {doc.status === 'approved' && 'Aprovado — visível para a família.'}
+                </p>
+                <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
+                  <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} disabled={saving} onClick={() => void persist()}><Save size={16} /> Salvar edições</button>
+                  {user?.role === 'teacher' && doc.status !== 'approved' && (
+                    <button className="btn btn-primary btn-sm" style={{ flex: 1 }} disabled={saving} onClick={() => void persist('submitted')}><Send size={16} /> {doc.status === 'submitted' ? 'Reenviar' : 'Enviar para coordenação'}</button>
+                  )}
+                  {(user?.role === 'admin' || user?.role === 'coordinator') && doc.status !== 'approved' && (
+                    <button className="btn btn-primary btn-sm" style={{ flex: 1 }} disabled={saving} onClick={() => void persist('approved')}><CheckCircle size={16} /> Aprovar</button>
+                  )}
+                </div>
+              </div>
             )}
             {error && <div className="callout callout-danger mt-4">{error}</div>}
           </div>

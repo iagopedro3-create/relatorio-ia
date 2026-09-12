@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useSchool } from '../contexts/SchoolContext';
 import { useAsync } from '../lib/useAsync';
-import { listAssessments, createAssessment, deleteAssessment, listAssessmentResults, saveAssessmentResults, listClassRoster } from '../data';
+import { listAssessments, createAssessment, updateAssessment, deleteAssessment, listAssessmentResults, saveAssessmentResults, listClassRoster } from '../data';
 import { generatePedagogicalIntelligence, firstName } from '../lib/aiService';
 import { renderMarkdown } from '../lib/markdown';
 import type { Assessment, AssessmentQuestion } from '../types/db';
@@ -128,6 +128,9 @@ export function PedagogicalIntelligence() {
       });
       setResult(aiResponse);
       void refreshAiUsage();
+      // Persistida: a análise custa crédito e precisa sobreviver à troca de tela.
+      await updateAssessment(selected.id, { analysis: aiResponse, analyzed_at: new Date().toISOString() });
+      await assessmentsQ.reload();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Erro ao gerar análise.');
     } finally {
@@ -173,7 +176,7 @@ export function PedagogicalIntelligence() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {assessmentsQ.data.map(a => (
-          <div key={a.id} onClick={() => { setSelectedId(a.id); setLocalAnswers({}); setResult(null); setCurrentStep('input'); }} className="p-6 rounded-xl border-2 cursor-pointer transition-all"
+          <div key={a.id} onClick={() => { setSelectedId(a.id); setLocalAnswers({}); setResult(a.analysis ?? null); setCurrentStep(a.analysis ? 'dashboard' : 'input'); }} className="p-6 rounded-xl border-2 cursor-pointer transition-all"
             style={{ borderColor: selectedId === a.id ? 'var(--color-primary)' : 'var(--color-border)', backgroundColor: selectedId === a.id ? 'rgba(0,0,0,0.03)' : 'white' }}>
             <div className="flex justify-between items-start mb-2">
               <div className="flex gap-2">

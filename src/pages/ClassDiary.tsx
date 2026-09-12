@@ -3,27 +3,24 @@ import { Printer, BookOpen, Users, FileText } from 'lucide-react';
 import { useSchool } from '../contexts/SchoolContext';
 import { useAsync } from '../lib/useAsync';
 import { listClassRoster, listAttendance, listLessons, listEvents } from '../data';
-import { MONTHS, currentPeriodIndex } from '../lib/format';
+import { MONTHS } from '../lib/format';
+import { periodMonths, periodRange, periodIndexForDate } from '../lib/periods';
 import { PRODUCT_NAME } from '../lib/branding';
 import { EmptyState, PageHeader, SkeletonCard } from '../components/ui';
 
-/** Meses (0-based) de cada período — aproximação: fev-abr, mai-jul, ago-set, out-dez. */
-const PERIOD_MONTHS: number[][] = [[1, 2, 3], [4, 5, 6], [7, 8], [9, 10, 11]];
 
 export function ClassDiary() {
   const { school, classes, staff, grading, selectedYear } = useSchool();
   const [chosenClassId, setSelectedClassId] = useState('');
-  const [periodIdx, setPeriodIdx] = useState(() => Math.min(currentPeriodIndex(grading.periods.length), PERIOD_MONTHS.length - 1));
+  const [periodIdx, setPeriodIdx] = useState(() => periodIndexForDate(selectedYear, grading.periods.length));
   const year = selectedYear ? parseInt(selectedYear.label, 10) || new Date().getFullYear() : new Date().getFullYear();
   const selectedClassId = classes.some(c => c.id === chosenClassId) ? chosenClassId : (classes[0]?.id ?? '');
 
   const currentClass = classes.find(c => c.id === selectedClassId);
   const teacher = staff.find(u => u.id === currentClass?.homeroom_teacher_id);
-  const months = PERIOD_MONTHS[periodIdx];
+  const months = periodMonths(selectedYear, grading.periods.length, periodIdx);
   const pad = (n: number) => String(n).padStart(2, '0');
-  const from = `${year}-${pad(months[0] + 1)}-01`;
-  const lastMonth = months[months.length - 1];
-  const to = `${year}-${pad(lastMonth + 1)}-${pad(new Date(year, lastMonth + 1, 0).getDate())}`;
+  const { start: from, end: to } = periodRange(selectedYear, grading.periods.length, periodIdx);
 
   const rosterQ = useAsync(() => selectedClassId ? listClassRoster(selectedClassId) : Promise.resolve([]), [selectedClassId], []);
   const enrollmentIds = useMemo(() => rosterQ.data.map(r => r.enrollment.id), [rosterQ.data]);

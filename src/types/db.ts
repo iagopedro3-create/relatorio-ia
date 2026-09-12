@@ -57,6 +57,7 @@ export interface School {
   billing_customer_id: string | null;
   billing_subscription_id: string | null;
   feature_overrides: Record<string, boolean>;
+  finance_config: FinanceConfig;
   dpa_signed_at: string | null;
   created_at: string;
   updated_at: string;
@@ -311,4 +312,86 @@ export interface AiUsage {
   ok: boolean;
   error: string | null;
   created_at: string;
+}
+
+// ---------------------------------------------------------------------------
+// Financeiro (supabase/migrations/20260912100000_finance.sql)
+// ---------------------------------------------------------------------------
+
+export type InvoiceStatus = 'draft' | 'pending' | 'paid' | 'overdue' | 'canceled' | 'refunded';
+export type BillingType = 'UNDEFINED' | 'BOLETO' | 'PIX' | 'CREDIT_CARD';
+
+/** `schools.finance_config` — configuração pública do financeiro (nada sensível). */
+export interface FinanceConfig {
+  due_day?: number;
+  fine_pct?: number;
+  interest_pct_month?: number;
+  discount_days?: number;
+  asaas_connected?: boolean;
+  asaas_env?: 'sandbox' | 'production';
+}
+
+export interface TuitionPlan {
+  id: string;
+  school_id: string;
+  year_id: string;
+  name: string;
+  amount_cents: number;
+  due_day: number;
+  discount_cents: number;
+  discount_days: number;
+  active: boolean;
+  created_at: string;
+}
+
+export interface StudentBilling {
+  student_id: string;
+  school_id: string;
+  tuition_plan_id: string | null;
+  custom_amount_cents: number | null;
+  discount_cents: number;
+  scholarship_pct: number;
+  payer_name: string | null;
+  payer_cpf_cnpj: string | null;
+  payer_email: string | null;
+  payer_phone: string | null;
+  asaas_customer_id: string | null;
+  notes: string | null;
+  active: boolean;
+  updated_at: string;
+}
+
+export interface Invoice {
+  id: string;
+  school_id: string;
+  student_id: string;
+  year_id: string | null;
+  reference_month: string;
+  description: string;
+  amount_cents: number;
+  discount_cents: number;
+  due_date: string;
+  status: InvoiceStatus;
+  billing_type: BillingType;
+  paid_at: string | null;
+  paid_amount_cents: number | null;
+  payment_method: string | null;
+  asaas_payment_id: string | null;
+  invoice_url: string | null;
+  bank_slip_url: string | null;
+  pix_payload: string | null;
+  pix_qr_code: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FinanceMonthSummary {
+  invoices_count: number;
+  total_cents: number;
+  paid_cents: number;
+  pending_cents: number;
+  overdue_cents: number;
+  overdue_count: number;
 }

@@ -9,6 +9,7 @@ import type {
   AgendaEvent, AgendaMessage, AgendaReply, Assessment, AssessmentResult, AttendanceRecord,
   ClassGroup, Enrollment, GradeEntry, LessonEntry, LessonPlan, Profile, School, SchoolYear,
   Student, StudentDocument, StudentGuardian, TeacherAssignment, UserRole,
+  TuitionPlan, StudentBilling, Invoice, InvoiceStatus, FinanceMonthSummary,
 } from '../types/db';
 
 // ---------------------------------------------------------------------------
@@ -401,4 +402,65 @@ export async function createEvent(input: Partial<AgendaEvent> & { school_id: str
 
 export async function deleteEvent(id: string) {
   unwrap(await supabase.from('agenda_events').delete().eq('id', id));
+}
+
+// ---------------------------------------------------------------------------
+// Financeiro
+// ---------------------------------------------------------------------------
+
+export async function listTuitionPlans(yearId: string) {
+  return unwrap(await supabase.from('tuition_plans').select('*').eq('year_id', yearId).order('name')) as TuitionPlan[];
+}
+
+export async function upsertTuitionPlan(input: Partial<TuitionPlan> & { school_id: string; year_id: string; name: string; amount_cents: number }) {
+  return unwrap(await supabase.from('tuition_plans').upsert(input).select('*').single()) as TuitionPlan;
+}
+
+export async function deleteTuitionPlan(id: string) {
+  unwrap(await supabase.from('tuition_plans').delete().eq('id', id));
+}
+
+export async function listStudentBilling(schoolId: string) {
+  return unwrap(await supabase.from('student_billing').select('*').eq('school_id', schoolId)) as StudentBilling[];
+}
+
+export async function upsertStudentBilling(input: Partial<StudentBilling> & { school_id: string; student_id: string }) {
+  return unwrap(await supabase.from('student_billing').upsert(input).select('*').single()) as StudentBilling;
+}
+
+export async function listInvoices(filter: { schoolId: string; yearId?: string | null; month?: string; status?: InvoiceStatus[]; studentId?: string }) {
+  let q = supabase.from('invoices').select('*').eq('school_id', filter.schoolId).order('due_date', { ascending: false });
+  if (filter.yearId) q = q.eq('year_id', filter.yearId);
+  if (filter.month) q = q.eq('reference_month', `${filter.month}-01`);
+  if (filter.status?.length) q = q.in('status', filter.status);
+  if (filter.studentId) q = q.eq('student_id', filter.studentId);
+  return unwrap(await q) as Invoice[];
+}
+
+/** Cobranças dos filhos do responsável (a RLS filtra). */
+export async function listMyInvoices() {
+  return unwrap(await supabase.from('invoices').select('*').order('due_date', { ascending: false })) as Invoice[];
+}
+
+export async function createInvoice(input: Partial<Invoice> & { school_id: string; student_id: string; reference_month: string; description: string; amount_cents: number; due_date: string }) {
+  return unwrap(await supabase.from('invoices').insert(input).select('*').single()) as Invoice;
+}
+
+export async function updateInvoice(id: string, patch: Partial<Invoice>) {
+  return unwrap(await supabase.from('invoices').update(patch).eq('id', id).select('*').single()) as Invoice;
+}
+
+export async function financeMonthSummary(yearId: string, month: string): Promise<FinanceMonthSummary> {
+  const rows = unwrap(await supabase.rpc('finance_month_summary', { p_year_id: yearId, p_month: `${month}-01` })) as FinanceMonthSummary[] | FinanceMonthSummary;
+  const r = Array.isArray(rows) ? rows[0] : rows;
+  return { invoices_count: Number(r?.invoices_count ?? 0), total_cents: Number(r?.total_cents ?? 0), paid_cents: Number(r?.paid_cents ?? 0), pending_cents: Number(r?.pending_cents ?? 0), overdue_cents: Number(r?.overdue_cents ?? 0), overdue_count: Number(r?.overdue_count ?? 0) };
+}
+
+/** Operações que tocam o Asaas (servidor). */
+export async function financeCharges<T = unknown>(body: Record<string, unknown>) {
+  return callApi<T>('/api/finance/charges', body);
+}
+
+export async function financeAsaas<T = unknown>(body: Record<string, unknown>) {
+  return callApi<T>('/api/finance/asaas', body);
 }

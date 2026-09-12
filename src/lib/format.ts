@@ -35,3 +35,26 @@ export function currentPeriodIndex(periodCount: number, today = new Date()): num
   const pos = Math.max(0, Math.min(10, month - 1)); // fev..dez -> 0..10
   return Math.min(periodCount - 1, Math.floor((pos / 11) * periodCount));
 }
+
+/** Centavos -> "R$ 1.234,56". */
+export function formatBRL(cents: number | null | undefined): string {
+  return ((cents ?? 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+/** "R$ 1.234,56" / "1234,56" / "1234.56" -> centavos. */
+export function parseBRL(text: string): number {
+  const clean = text.replace(/[^\d,.-]/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.');
+  const n = Number(clean);
+  return Number.isFinite(n) ? Math.round(n * 100) : 0;
+}
+
+/** 'YYYY-MM' -> 'setembro de 2026'. */
+export function monthLabel(ym: string): string {
+  const [y, m] = ym.split('-').map(Number);
+  return `${MONTHS[(m || 1) - 1].toLowerCase()} de ${y}`;
+}
+
+export function currentMonth(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}

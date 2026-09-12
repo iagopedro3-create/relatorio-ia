@@ -10,7 +10,7 @@ import { applyBranding } from '../lib/branding';
 /** Funcionalidades que o plano pode ligar/desligar. */
 export type FeatureKey =
   | 'report' | 'pei' | 'planning' | 'pedagogical' | 'agenda'
-  | 'grades' | 'bulletin' | 'transcript';
+  | 'grades' | 'bulletin' | 'transcript' | 'finance';
 
 interface SchoolContextType {
   school: School | null;
@@ -38,7 +38,7 @@ interface SchoolContextType {
   refreshAiUsage: () => Promise<void>;
 }
 
-const ALL_FEATURES: FeatureKey[] = ['report', 'pei', 'planning', 'pedagogical', 'agenda', 'grades', 'bulletin', 'transcript'];
+const ALL_FEATURES: FeatureKey[] = ['report', 'pei', 'planning', 'pedagogical', 'agenda', 'grades', 'bulletin', 'transcript', 'finance'];
 
 const SchoolContext = createContext<SchoolContextType | null>(null);
 

@@ -4,7 +4,7 @@ import {
   LogOut, Users, Settings, LayoutDashboard, FileText,
   ShieldCheck, Brain, CalendarCheck, BookOpen, ClipboardList,
   GraduationCap, ChevronDown, BookOpenCheck,
-  Sliders, UserCog, Baby, FileArchive, Printer, MessageSquareText, Menu, X, Building2, AlertTriangle, Sparkles,
+  Sliders, UserCog, Baby, FileArchive, Printer, MessageSquareText, Menu, X, Building2, AlertTriangle, Sparkles, Wallet,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSchool } from '../contexts/SchoolContext';
@@ -106,6 +106,7 @@ export function Layout() {
   const flatItems: NavItem[] = [{ name: 'Início', path: '/', icon: <LayoutDashboard size={18} /> }];
   flatItems.push({ name: 'Agenda Digital', path: '/agenda', icon: <MessageSquareText size={18} />, feature: 'agenda' });
   if (!isGuardian) flatItems.push({ name: 'Planejamento de Aula', path: '/planning', icon: <BookOpenCheck size={18} />, feature: 'planning' });
+  if (isGuardian) flatItems.push({ name: 'Financeiro', path: '/family/finance', icon: <Wallet size={18} />, feature: 'finance' });
 
   const groups: NavGroup[] = [];
   const academicoItems: NavItem[] = [];
@@ -150,6 +151,7 @@ export function Layout() {
         { name: 'Turmas', path: '/classes', icon: <GraduationCap size={18} /> },
         { name: 'Alunos', path: '/students', icon: <Baby size={18} /> },
         { name: 'Usuários', path: '/users', icon: <Users size={18} /> },
+        ...(user.role === 'admin' ? [{ name: 'Financeiro', path: '/finance', icon: <Wallet size={18} />, feature: 'finance' as const }] : []),
       ],
     });
   }
@@ -181,6 +183,8 @@ export function Layout() {
   const managerPaths = ['/classes', '/students', '/users', '/transcript'];
   if (managerPaths.includes(location.pathname) && !isManager) return <Navigate to="/" />;
   if (location.pathname === '/settings' && user.role !== 'admin') return <Navigate to="/" />;
+  if (location.pathname === '/finance' && user.role !== 'admin') return <Navigate to="/" />;
+  if (location.pathname === '/family/finance' && !isGuardian) return <Navigate to="/" />;
   if (location.pathname === '/admin' && !isPlatformAdmin) return <Navigate to="/" />;
   if (location.pathname.startsWith('/students/') && isGuardian) return <Navigate to="/" />;
   const blockedWhenInactive = !subscriptionOk && location.pathname !== '/settings' && location.pathname !== '/';

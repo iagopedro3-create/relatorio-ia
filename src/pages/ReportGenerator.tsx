@@ -88,7 +88,7 @@ export function ReportGenerator() {
 
     try {
       const evidenceIn = toEvidence(periodObservations(data.reportContext));
-      const { content: result, evidence } = await generateAIReport({
+      const { content: result, evidence, meta } = await generateAIReport({
         firstName: firstName(data.name),
         age: data.age,
         group: data.group,
@@ -121,7 +121,7 @@ export function ReportGenerator() {
         period: data.reportContext,
         subject_id: data.subject === 'Inglês' ? 'ing' : data.subject === 'Educação Física' ? 'ef' : null,
         author_id: user.id,
-        form_data: { ...stripPhotos(data), evidence, observationIds: evidenceIn.map(e => e.id) } as unknown as Record<string, unknown>,
+        form_data: { ...stripPhotos(data), evidence, observationIds: evidenceIn.map(e => e.id), generation: meta } as unknown as Record<string, unknown>,
         content: result,
         status: 'draft',
       });

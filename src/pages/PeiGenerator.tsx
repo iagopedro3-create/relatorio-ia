@@ -109,7 +109,7 @@ export function PeiGenerator() {
 
     try {
       const evidenceIn = toEvidence(observationsQ.data);
-      const { content: result, goals: draftGoals, evidence } = await generatePei(data.studentId, {
+      const { content: result, goals: draftGoals, evidence, meta } = await generatePei(data.studentId, {
         firstName: firstName(data.name),
         age: data.age,
         group: data.group,
@@ -134,7 +134,7 @@ export function PeiGenerator() {
         kind: 'pei',
         period: selectedYear?.label ?? null,
         author_id: user.id,
-        form_data: { ...data, evidence, observationIds: evidenceIn.map(e => e.id) } as unknown as Record<string, unknown>,
+        form_data: { ...data, evidence, observationIds: evidenceIn.map(e => e.id), generation: meta } as unknown as Record<string, unknown>,
         content: result,
         status: 'draft',
       });

@@ -73,14 +73,21 @@ export function firstName(fullName: string): string {
   return fullName.trim().split(/\s+/)[0] || '';
 }
 
-export async function generateAIReport(data: ReportInput, evidence: EvidenceIn[] = []): Promise<{ content: string; evidence: EvidenceMap }> {
-  const res = await callApi<AiResponse & { evidence?: EvidenceMap }>('/api/ai/generate', { feature: 'report', data, evidence });
-  return { content: res.content, evidence: res.evidence ?? {} };
+/** Rastro da geração guardado em form_data: qual prompt e modelo produziram o rascunho. */
+export interface GenerationMeta { promptVersion: string; model: string; generatedAt: string }
+
+function meta(res: AiResponse): GenerationMeta {
+  return { promptVersion: res.promptVersion, model: res.model, generatedAt: new Date().toISOString() };
 }
 
-export async function generatePei(studentId: string, data: PeiInput, evidence: EvidenceIn[] = []): Promise<{ content: string; goals: DraftGoal[]; evidence: EvidenceMap }> {
+export async function generateAIReport(data: ReportInput, evidence: EvidenceIn[] = []): Promise<{ content: string; evidence: EvidenceMap; meta: GenerationMeta }> {
+  const res = await callApi<AiResponse & { evidence?: EvidenceMap }>('/api/ai/generate', { feature: 'report', data, evidence });
+  return { content: res.content, evidence: res.evidence ?? {}, meta: meta(res) };
+}
+
+export async function generatePei(studentId: string, data: PeiInput, evidence: EvidenceIn[] = []): Promise<{ content: string; goals: DraftGoal[]; evidence: EvidenceMap; meta: GenerationMeta }> {
   const res = await callApi<AiResponse & { goals?: DraftGoal[]; evidence?: EvidenceMap }>('/api/ai/generate', { feature: 'pei', studentId, data, evidence });
-  return { content: res.content, goals: res.goals ?? [], evidence: res.evidence ?? {} };
+  return { content: res.content, goals: res.goals ?? [], evidence: res.evidence ?? {}, meta: meta(res) };
 }
 
 export async function generatePedagogicalIntelligence(data: PedagogicalInput): Promise<string> {

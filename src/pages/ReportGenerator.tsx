@@ -216,9 +216,11 @@ export function ReportGenerator() {
                   {doc.status === 'approved' && 'Aprovado — já visível para a família no portal.'}
                 </p>
                 <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
-                  <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} disabled={saving} onClick={() => void persist(doc.status === 'approved' ? 'approved' : 'draft')}>
-                    <Save size={16} /> Salvar edições
-                  </button>
+                  {(doc.status !== 'approved' || user?.role === 'admin' || user?.role === 'coordinator') && (
+                    <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} disabled={saving} onClick={() => void persist(doc.status === 'approved' ? 'approved' : 'draft')}>
+                      <Save size={16} /> Salvar edições
+                    </button>
+                  )}
                   {user?.role === 'teacher' && doc.status !== 'approved' && (
                     <button className="btn btn-primary btn-sm" style={{ flex: 1 }} disabled={saving} onClick={() => void persist('submitted')}>
                       <Send size={16} /> {doc.status === 'submitted' ? 'Reenviar' : 'Enviar para coordenação'}

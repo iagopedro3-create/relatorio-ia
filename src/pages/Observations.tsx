@@ -1,15 +1,15 @@
 import { useMemo, useRef, useState } from 'react';
-import { NotebookPen, Camera, Users, Share2, Trash2, Pencil, Check, X, ImageOff } from 'lucide-react';
+import { NotebookPen, Camera, Users, Share2, Trash2, Pencil, Check, X, ImageOff, Target } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useSchool } from '../contexts/SchoolContext';
 import { useAsync } from '../lib/useAsync';
-import { listClassRoster, listObservations, createObservation, updateObservation, deleteObservation, uploadObservationPhoto, signObservationPhotos } from '../data';
+import { listClassRoster, listObservations, createObservation, updateObservation, deleteObservation, uploadObservationPhoto, signObservationPhotos, listGoals, listGoalEvidence, linkEvidence, unlinkEvidence } from '../data';
 import { OBSERVATION_FIELDS, FIELD_BY_ID } from '../store/bnccFields';
 import { periodRange, periodIndexForDate } from '../lib/periods';
 import { formatDate } from '../lib/format';
 import { Badge, EmptyState, PageHeader, SkeletonCard, useConfirm } from '../components/ui';
-import type { Observation } from '../types/db';
+import type { Observation, PeiGoal } from '../types/db';
 
 /**
  * Documentação pedagógica contínua: a professora registra em 20 segundos o
@@ -32,12 +32,21 @@ export function Observations() {
   const obsQ = useAsync(() => (school && classId) ? listObservations({ schoolId: school.id, classId, from: range.start, to: range.end }) : Promise.resolve([]), [school?.id, classId, range.start, range.end], []);
   const photosQ = useAsync(() => signObservationPhotos(obsQ.data.map(o => o.photo_path ?? '')), [obsQ.data.map(o => o.photo_path).join(',')], {} as Record<string, string>);
 
+  // PEI vivo: metas ativas das crianças da turma e evidências já ligadas aos registros do período.
+  const rosterIds = useMemo(() => rosterQ.data.map(r => r.student.id), [rosterQ.data]);
+  const goalsQ = useAsync(() => (school && rosterIds.length) ? listGoals({ schoolId: school.id, studentIds: rosterIds, activeOnly: true }) : Promise.resolve([] as PeiGoal[]), [school?.id, rosterIds.join(',')], [] as PeiGoal[]);
+  const evidenceQ = useAsync(() => (school && obsQ.data.length) ? listGoalEvidence({ schoolId: school.id, observationIds: obsQ.data.map(o => o.id) }) : Promise.resolve([]), [school?.id, obsQ.data.map(o => o.id).join(',')], []);
+  const goalsOf = (studentId: string) => goalsQ.data.filter(g => g.student_id === studentId);
+  const goalById = (id: string) => goalsQ.data.find(g => g.id === id);
+  const linkedGoalIds = (observationId: string) => evidenceQ.data.filter(e => e.observation_id === observationId).map(e => e.goal_id);
+
   // Formulário de captura rápida.
   const [studentIds, setStudentIds] = useState<string[]>([]);
   const [fieldId, setFieldId] = useState('general');
   const [text, setText] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [share, setShare] = useState(false);
+  const [goalIds, setGoalIds] = useState<string[]>([]);
   const [photo, setPhoto] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -45,7 +54,7 @@ export function Observations() {
   // Filtros da lista.
   const [filterStudent, setFilterStudent] = useState('');
   const [filterField, setFilterField] = useState('');
-  const [editing, setEditing] = useState<{ id: string; text: string; share: boolean } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; text: string; share: boolean; goalIds: string[] } | null>(null);
 
   const students = useMemo(() => rosterQ.data.map(r => r.student).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')), [rosterQ.data]);
   const nameOf = (id: string) => students.find(s => s.id === id)?.name ?? '—';
@@ -56,6 +65,9 @@ export function Observations() {
   const visible = useMemo(() => obsQ.data.filter(o => (!filterStudent || o.student_id === filterStudent) && (!filterField || o.field_id === filterField)), [obsQ.data, filterStudent, filterField]);
 
   const toggleStudent = (id: string) => setStudentIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const toggleGoal = (id: string) => setGoalIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  // Metas que podem ser ligadas ao registro em edição: as das crianças marcadas.
+  const selectableGoals = useMemo(() => goalsQ.data.filter(g => studentIds.includes(g.student_id)), [goalsQ.data, studentIds]);
 
   const save = async () => {
     if (!school || !user) return;
@@ -65,12 +77,19 @@ export function Observations() {
     try {
       let photo_path: string | null = null;
       if (photo) photo_path = await uploadObservationPhoto(school.id, classId, photo);
+      let linked = 0;
       for (const student_id of studentIds) {
-        await createObservation({ school_id: school.id, student_id, class_id: classId || null, author_id: user.id, date, field_id: fieldId, text: text.trim(), photo_path, share_with_family: share });
+        const obs = await createObservation({ school_id: school.id, student_id, class_id: classId || null, author_id: user.id, date, field_id: fieldId, text: text.trim(), photo_path, share_with_family: share });
+        // Liga só as metas que pertencem a esta criança (a evidência de uma nunca vai para outra).
+        const mine = goalIds.filter(gid => goalById(gid)?.student_id === student_id);
+        if (mine.length) {
+          await linkEvidence(mine.map(goal_id => ({ goal_id, observation_id: obs.id, school_id: school.id })), user.id);
+          linked += mine.length;
+        }
       }
       await obsQ.reload();
-      toast.success(studentIds.length === 1 ? `Registro salvo para ${firstName(studentIds[0])}.` : `Registro salvo para ${studentIds.length} crianças.`);
-      setText(''); setPhoto(null); setStudentIds([]); setShare(false);
+      toast.success((studentIds.length === 1 ? `Registro salvo para ${firstName(studentIds[0])}.` : `Registro salvo para ${studentIds.length} crianças.`) + (linked ? ` Ligado a ${linked} meta(s) do PEI.` : ''));
+      setText(''); setPhoto(null); setStudentIds([]); setShare(false); setGoalIds([]);
       if (fileRef.current) fileRef.current.value = '';
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Falha ao salvar.');
@@ -85,9 +104,18 @@ export function Observations() {
   };
 
   const saveEdit = async () => {
-    if (!editing) return;
-    try { await updateObservation(editing.id, { text: editing.text.trim(), share_with_family: editing.share }); setEditing(null); await obsQ.reload(); }
-    catch (e) { toast.error(e instanceof Error ? e.message : 'Falha.'); }
+    if (!editing || !school || !user) return;
+    try {
+      await updateObservation(editing.id, { text: editing.text.trim(), share_with_family: editing.share });
+      const before = linkedGoalIds(editing.id);
+      const toAdd = editing.goalIds.filter(g => !before.includes(g));
+      const toRemove = before.filter(g => !editing.goalIds.includes(g));
+      if (toAdd.length) await linkEvidence(toAdd.map(goal_id => ({ goal_id, observation_id: editing.id, school_id: school.id })), user.id);
+      for (const g of toRemove) await unlinkEvidence(g, editing.id);
+      setEditing(null);
+      await obsQ.reload();
+      await evidenceQ.reload();
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Falha.'); }
   };
 
   const canEdit = (o: Observation) => user?.role === 'admin' || user?.role === 'coordinator' || o.author_id === user?.id;
@@ -141,6 +169,22 @@ export function Observations() {
                   <button key={f.id} type="button" onClick={() => setFieldId(f.id)} className="badge" title={f.label} style={{ cursor: 'pointer', textTransform: 'none', fontSize: '0.78rem', padding: '0.35rem 0.7rem', background: fieldId === f.id ? 'var(--color-text)' : 'var(--color-surface-2)', color: fieldId === f.id ? 'white' : 'var(--color-text-muted)', border: '1px solid var(--color-border)', fontFamily: 'inherit' }}>{f.short}</button>
                 ))}
               </div>
+              {selectableGoals.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-muted flex items-center gap-1" style={{ fontSize: '0.8rem', margin: '0 0 0.5rem' }}><Target size={13} /> Este registro é evidência de alguma meta do PEI? (opcional)</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectableGoals.map(g => {
+                      const on = goalIds.includes(g.id);
+                      return (
+                        <button key={g.id} type="button" onClick={() => toggleGoal(g.id)} className="badge" title={`${firstName(g.student_id)} · ${g.axis}${g.context ? ` · ${g.context}` : ''}`}
+                          style={{ cursor: 'pointer', textTransform: 'none', fontSize: '0.78rem', padding: '0.35rem 0.7rem', maxWidth: '100%', whiteSpace: 'normal', textAlign: 'left', background: on ? 'var(--color-secondary)' : 'var(--color-surface-2)', color: on ? 'white' : 'var(--color-text)', border: '1px solid var(--color-border)', fontFamily: 'inherit' }}>
+                          {studentIds.length > 1 ? `${firstName(g.student_id)}: ` : ''}{g.title.length > 70 ? g.title.slice(0, 70) + '…' : g.title}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               <textarea value={text} onChange={e => setText(e.target.value)} rows={3} placeholder='Ex.: "Hoje pediu a palavra na roda e contou do passeio com o avô. Esperou a vez dos colegas."' style={{ minHeight: '84px' }} />
               <div className="flex items-center gap-3 flex-wrap mt-3">
                 <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ width: 'auto', padding: '0.4rem 0.6rem' }} />
@@ -181,16 +225,31 @@ export function Observations() {
                           <span style={{ fontWeight: 600 }}>{nameOf(o.student_id)}</span>
                           {f && <Badge tone={f.tone}>{f.short}</Badge>}
                           {o.share_with_family && <Badge tone="primary"><Share2 size={11} /> família</Badge>}
+                          {!isEditing && linkedGoalIds(o.id).map(gid => {
+                            const g = goalById(gid);
+                            return g ? <Badge key={gid} tone="secondary" title={g.title}><Target size={11} /> {g.axis}</Badge> : null;
+                          })}
                         </div>
                         <div className="flex items-center gap-1">
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-subtle)' }}>{formatDate(o.date)}{authorOf(o.author_id) ? ` · ${authorOf(o.author_id)}` : ''}</span>
-                          {canEdit(o) && !isEditing && <button className="btn btn-ghost" onClick={() => setEditing({ id: o.id, text: o.text, share: o.share_with_family })} title="Editar"><Pencil size={14} /></button>}
+                          {canEdit(o) && !isEditing && <button className="btn btn-ghost" onClick={() => setEditing({ id: o.id, text: o.text, share: o.share_with_family, goalIds: linkedGoalIds(o.id) })} title="Editar"><Pencil size={14} /></button>}
                           {canEdit(o) && <button className="btn btn-ghost danger" onClick={() => void remove(o)} title="Excluir"><Trash2 size={14} /></button>}
                         </div>
                       </div>
                       {isEditing ? (
                         <div className="mt-2">
                           <textarea value={editing.text} onChange={e => setEditing({ ...editing, text: e.target.value })} rows={3} />
+                          {goalsOf(o.student_id).length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {goalsOf(o.student_id).map(g => {
+                                const on = editing.goalIds.includes(g.id);
+                                return <button key={g.id} type="button" className="badge" title={g.title} onClick={() => setEditing({ ...editing, goalIds: on ? editing.goalIds.filter(x => x !== g.id) : [...editing.goalIds, g.id] })}
+                                  style={{ cursor: 'pointer', textTransform: 'none', fontSize: '0.75rem', padding: '0.3rem 0.6rem', whiteSpace: 'normal', textAlign: 'left', background: on ? 'var(--color-secondary)' : 'var(--color-surface-2)', color: on ? 'white' : 'var(--color-text)', border: '1px solid var(--color-border)', fontFamily: 'inherit' }}>
+                                  <Target size={11} /> {g.title.length > 60 ? g.title.slice(0, 60) + '…' : g.title}
+                                </button>;
+                              })}
+                            </div>
+                          )}
                           <div className="flex items-center gap-3 mt-2">
                             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, fontSize: '0.85rem', fontWeight: 500 }}><input type="checkbox" checked={editing.share} onChange={e => setEditing({ ...editing, share: e.target.checked })} /> Mostrar à família</label>
                             <button className="btn btn-secondary btn-sm" style={{ marginLeft: 'auto' }} onClick={() => setEditing(null)}>Cancelar</button>
@@ -227,6 +286,29 @@ export function Observations() {
                 </div>
               )}
             </div>
+            {goalsQ.data.length > 0 && (
+              <div className="card mt-4">
+                <h3 className="flex items-center gap-2" style={{ fontSize: '1rem', margin: '0 0 0.25rem' }}><Target size={16} color="var(--color-secondary)" /> O que observar</h3>
+                <p className="text-muted" style={{ fontSize: '0.8rem' }}>Metas ativas do PEI das crianças desta turma e quantos registros do período já servem de evidência.</p>
+                <div className="flex flex-col gap-2">
+                  {students.filter(s => goalsOf(s.id).length > 0).map(s => (
+                    <div key={s.id}>
+                      <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>{s.name}</div>
+                      {goalsOf(s.id).map(g => {
+                        const n = evidenceQ.data.filter(e => e.goal_id === g.id).length;
+                        return (
+                          <button key={g.id} type="button" onClick={() => { setStudentIds([s.id]); setGoalIds([g.id]); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                            className="flex items-start justify-between w-full text-left bg-transparent border-none cursor-pointer rounded-md px-2 py-1 hover:bg-[var(--color-surface-2)]" style={{ fontFamily: 'inherit', fontSize: '0.82rem', gap: '0.5rem' }} title="Registrar uma observação para esta meta">
+                            <span><span className="text-muted">{g.axis} · </span>{g.title}{g.context ? <span className="text-muted"> — {g.context}</span> : null}</span>
+                            <Badge tone={n === 0 ? 'danger' : n < 3 ? 'warning' : 'success'}>{n}</Badge>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="callout callout-info mt-4">
               <NotebookPen size={16} />
               <span>Na hora do relatório, a ficha da criança já vem com estes registros por campo. Quanto mais concreto ("montou torre de 10 peças"), melhor o texto.</span>

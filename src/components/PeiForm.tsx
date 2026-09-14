@@ -36,9 +36,10 @@ interface PeiFormProps {
   students: RosterStudent[];
   onSubmit: (data: PeiData) => void;
   isLoading: boolean;
+  onStudentChange?: (studentId: string | null) => void;
 }
 
-export function PeiForm({ students, onSubmit, isLoading }: PeiFormProps) {
+export function PeiForm({ students, onSubmit, isLoading, onStudentChange }: PeiFormProps) {
   const [formData, setFormData] = useState<PeiData>({
     studentId: '', classId: '', name: '', age: '', group: '', diagnosis: '',
     selectedComm: [], communication: '',
@@ -56,6 +57,7 @@ export function PeiForm({ students, onSubmit, isLoading }: PeiFormProps) {
 
   const selectStudent = (studentId: string) => {
     const entry = students.find(s => s.student.id === studentId);
+    onStudentChange?.(entry ? studentId : null);
     if (!entry) { setFormData(prev => ({ ...prev, studentId: '', classId: '', name: '', age: '', group: '' })); return; }
     setFormData(prev => ({
       ...prev,

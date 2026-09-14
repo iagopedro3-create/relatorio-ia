@@ -421,3 +421,39 @@ export interface Observation {
   created_at: string;
   updated_at: string;
 }
+
+// ---------------------------------------------------------------------------
+// PEI vivo: metas e evidências
+// ---------------------------------------------------------------------------
+
+export type GoalStatus = 'active' | 'achieved' | 'paused' | 'dropped';
+export type GoalTerm = 'curto' | 'medio' | 'longo';
+
+export interface PeiGoal {
+  id: string;
+  school_id: string;
+  document_id: string;
+  student_id: string;
+  axis: string;
+  title: string;
+  criterion: string | null;
+  context: string | null;
+  baseline: string | null;
+  term: GoalTerm;
+  status: GoalStatus;
+  progress_note: string | null;
+  progress_updated_by: string | null;
+  progress_updated_at: string | null;
+  sort_order: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GoalEvidence {
+  goal_id: string;
+  observation_id: string;
+  school_id: string;
+  created_by: string | null;
+  created_at: string;
+}

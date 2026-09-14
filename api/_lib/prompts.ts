@@ -8,7 +8,7 @@
  * primeiro nome e o front completa o cabeçalho impresso com o resto.
  */
 
-export const PROMPT_VERSION = '2026-09-11';
+export const PROMPT_VERSION = '2026-09-14';
 
 export type ItemStatus = 'none' | 'developing' | 'consolidated';
 type ItemMap = Record<string, ItemStatus> | undefined;
@@ -115,30 +115,39 @@ export interface PeiInput {
   selectedSensory?: string[]; sensory?: string;
 }
 
-export const PEI_SYSTEM_PROMPT = `Você é um especialista em educação inclusiva, psicopedagogia e desenvolvimento infantil. Sua missão é gerar um Plano Educacional Individualizado (PEI) técnico, humanizado e extremamente estruturado.
+export const PEI_SYSTEM_PROMPT = `Você é um especialista em educação inclusiva e desenvolvimento infantil que apoia a equipe pedagógica de uma escola. Sua tarefa é rascunhar um Plano Educacional Individualizado (PEI) técnico, humanizado e estruturado, que a coordenação vai revisar, editar e assinar. O texto é um RASCUNHO; a decisão é sempre do profissional.
 
-DIRETRIZES DE REDAÇÃO:
-- Use os indicadores selecionados como base direta das metas. Se indicadores como "heteroagressão" foram marcados, a meta deve endereçar isso especificamente.
-- Se um eixo não possui indicadores marcados, não gere metas para ele.
-- Use negrito APENAS em títulos de seções e termos-chave essenciais. Evite negrito excessivo no corpo do texto.
-- Estruture o documento com hierarquia visual clara.
+LIMITES (obrigatórios):
+- Você não diagnostica, não infere transtornos, condições clínicas ou psicológicas, não emite avaliação clínica e não recomenda tratamento ou medicação.
+- A "condição informada" é um dado declarado pela família/escola; cite-a apenas como contexto, sem elaborar sobre ela nem deduzir características a partir dela.
+- Baseie-se APENAS nos indicadores e observações informados. Não invente observações, comportamentos, histórico ou progresso.
+- Use linguagem respeitosa, sem rótulos; descreva comportamentos observáveis, não a criança.
 - Refira-se ao estudante apenas pelo primeiro nome informado.
 
-METAS SMART (OBRIGATÓRIO):
-Cada meta deve conter:
-1. Comportamento observável e específico.
-2. Contexto de observação (ex: "em momentos de transição", "durante a alimentação").
-3. Critério de sucesso mensurável (ex: "em 8 de 10 oportunidades", "por pelo menos 15 minutos").
-4. Prazo (Curto, Médio ou Longo Prazo).
-5. Nota de rodapé na meta orientando a professora a registrar a linha de base na primeira semana.
+DIRETRIZES DE REDAÇÃO:
+- Use os indicadores selecionados como base direta das metas. Se um indicador como "agressividade consigo mesmo" foi marcado, a meta deve endereçá-lo especificamente.
+- Se um eixo não possui indicadores nem observações, não gere metas para ele.
+- No máximo 5 metas no total; priorize as que mais afetam a participação na sala comum.
+- Negrito apenas em títulos de seções e termos essenciais. Sem hierarquia visual excessiva.
 
-ESTRUTURA OBRIGATÓRIA:
-1. PERFIL DO ESTUDANTE (Resumo técnico baseado no diagnóstico e idade)
-2. DIRETRIZES GERAIS (Abordagem pedagógica recomendada)
-3. ESTRATÉGIAS DE SALA DE AULA (Acomodações e manejo)
-4. QUADRO DE METAS SMART (Apresentado obrigatoriamente em formato de TABELA Markdown com colunas: Eixo | Meta | Prazo | Como medir)
-5. AVALIAÇÃO E MONITORAMENTO
-6. ORIENTAÇÕES À FAMÍLIA`;
+METAS (obrigatório em cada uma):
+1. Comportamento observável e específico.
+2. Contexto de observação (ex.: "em momentos de transição", "durante a alimentação").
+3. Critério de sucesso mensurável (ex.: "em 8 de 10 oportunidades", "por pelo menos 15 minutos").
+4. Prazo: curto, médio ou longo.
+5. Orientação para a professora registrar a linha de base na primeira semana.
+
+ESTRUTURA OBRIGATÓRIA DO TEXTO (markdown):
+1. PERFIL FUNCIONAL DO ESTUDANTE (síntese do que foi informado: potencialidades e necessidades de apoio; sem diagnóstico)
+2. DIRETRIZES GERAIS (abordagem pedagógica)
+3. ESTRATÉGIAS PARA A SALA DE AULA COMUM (acomodações e manejo que a professora regente consegue aplicar)
+4. QUADRO DE METAS (tabela markdown com colunas: Eixo | Meta | Contexto | Como medir | Prazo)
+5. AVALIAÇÃO E MONITORAMENTO (o que a professora observa e registra semanalmente para cada meta)
+6. ORIENTAÇÕES À FAMÍLIA
+
+SAÍDA ESTRUTURADA (obrigatório): DEPOIS do texto, em uma linha própria, escreva exatamente <<<METAS>>> e em seguida um JSON válido, sem comentários e sem cercas de código, no formato:
+{"goals":[{"axis":"...","title":"...","criterion":"...","context":"...","term":"curto|medio|longo"}]}
+As metas do JSON devem ser exatamente as do quadro, na mesma ordem.`;
 
 function axis(n: number, title: string, selected?: string[], notes?: string): string {
   return `${n}. ${title}:
@@ -152,7 +161,7 @@ Gere um PEI detalhado para o aluno:
 - Nome: ${d.firstName}
 - Idade: ${d.age}
 - Turma: ${d.group}
-- Diagnóstico: ${d.diagnosis || 'Não informado'}
+- Condição informada pela família/escola (contexto, não elabore): ${d.diagnosis || 'Não informada'}
 
 DADOS COLETADOS POR EIXO (INDICADORES + OBSERVAÇÕES):
 
@@ -173,7 +182,8 @@ ${axis(7, 'Autonomia e Vida Diária', d.selectedAutonomy, d.autonomy)}
 ${axis(8, 'Perfil Sensorial', d.selectedSensory, d.sensory)}
 
 INSTRUÇÃO ADICIONAL:
-As metas devem ser correlacionadas aos indicadores marcados. Exemplo: se "Autoagressão" foi marcado em Comportamento, a meta deve focar na redução/substituição desse comportamento com critérios SMART.
+As metas devem ser correlacionadas aos indicadores marcados. Exemplo: se "Agressividade consigo mesmo" foi marcado em Comportamento, a meta deve focar na substituição desse comportamento por uma alternativa, com critério mensurável.
+Lembre-se: termine com a linha <<<METAS>>> seguida do JSON das metas.
 `;
 }
 
@@ -235,4 +245,55 @@ Ao sugerir atividades, foque em:
 
 export function buildPlanningPrompt(d: PlanningInput): string {
   return d.prompt;
+}
+
+// ---------------------------------------------------------------------------
+// Metas estruturadas do PEI: o modelo devolve o texto, a linha <<<METAS>>> e um
+// JSON. Separamos os dois; se o JSON vier quebrado, o texto segue e as metas
+// ficam vazias (a coordenação cadastra à mão).
+// ---------------------------------------------------------------------------
+
+export interface DraftGoal {
+  axis: string;
+  title: string;
+  criterion?: string;
+  context?: string;
+  term: 'curto' | 'medio' | 'longo';
+}
+
+const GOAL_MARKER = '<<<METAS>>>';
+
+export function splitPeiOutput(raw: string): { content: string; goals: DraftGoal[] } {
+  const at = raw.lastIndexOf(GOAL_MARKER);
+  if (at < 0) return { content: raw.trim(), goals: [] };
+  const content = raw.slice(0, at).trim();
+  let tail = raw.slice(at + GOAL_MARKER.length).trim();
+  tail = tail.replace(/^```(?:json)?/i, '').replace(/```\s*$/, '').trim();
+  const start = tail.indexOf('{');
+  const end = tail.lastIndexOf('}');
+  if (start < 0 || end < start) return { content, goals: [] };
+  try {
+    const parsed = JSON.parse(tail.slice(start, end + 1)) as { goals?: unknown };
+    const list = Array.isArray(parsed.goals) ? parsed.goals : [];
+    const goals: DraftGoal[] = [];
+    for (const g of list) {
+      if (!g || typeof g !== 'object') continue;
+      const o = g as Record<string, unknown>;
+      const title = typeof o.title === 'string' ? o.title.trim() : '';
+      if (!title) continue;
+      const termRaw = typeof o.term === 'string' ? o.term.toLowerCase() : '';
+      const term: DraftGoal['term'] = termRaw.startsWith('curt') ? 'curto' : termRaw.startsWith('long') ? 'longo' : 'medio';
+      goals.push({
+        axis: typeof o.axis === 'string' && o.axis.trim() ? o.axis.trim() : 'Geral',
+        title,
+        criterion: typeof o.criterion === 'string' ? o.criterion.trim() : undefined,
+        context: typeof o.context === 'string' ? o.context.trim() : undefined,
+        term,
+      });
+      if (goals.length >= 8) break;
+    }
+    return { content, goals };
+  } catch {
+    return { content, goals: [] };
+  }
 }

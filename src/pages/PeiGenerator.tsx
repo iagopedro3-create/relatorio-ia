@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Sparkles, Copy, CheckCircle, FileText, Brain, Printer, Save, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { PeiForm, type PeiData } from '../components/PeiForm';
@@ -10,8 +10,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSchool } from '../contexts/SchoolContext';
 import { useAsync } from '../lib/useAsync';
 import { PageHeader, SkeletonCard, StatusBadge } from '../components/ui';
-import { listEnrollments, listStudents, createDocument, updateDocument } from '../data';
-import type { Student, StudentDocument } from '../types/db';
+import { listEnrollments, listStudents, createDocument, updateDocument, listDocuments, listGoals, createGoals, listGoalEvidence } from '../data';
+import type { PeiGoal, Student, StudentDocument } from '../types/db';
+import { GoalsPanel } from '../components/GoalsPanel';
 
 export function PeiGenerator() {
   const { user } = useAuth();
@@ -24,6 +25,10 @@ export function PeiGenerator() {
   const [doc, setDoc] = useState<StudentDocument | null>(null);
   const [saving, setSaving] = useState(false);
   const [currentData, setCurrentData] = useState<PeiData | null>(null);
+  const [goals, setGoals] = useState<PeiGoal[]>([]);
+  const [evidenceCounts, setEvidenceCounts] = useState<Record<string, number>>({});
+  const [loadingExisting, setLoadingExisting] = useState(false);
+  const isManager = user?.role === 'admin' || user?.role === 'coordinator';
 
   const classIds = useMemo(() => classes.map(c => c.id), [classes]);
   const enrollQ = useAsync(() => listEnrollments(classIds), [classIds.join(',')], []);
@@ -34,6 +39,36 @@ export function PeiGenerator() {
     .filter((r): r is RosterStudent => Boolean(r.student && r.cls))
     .sort((a, b) => a.student.name.localeCompare(b.student.name, 'pt-BR')), [enrollQ.data, studentsQ.data, classes]);
 
+  const loadGoals = useCallback(async (d: StudentDocument) => {
+    const gs = await listGoals({ schoolId: d.school_id, documentId: d.id });
+    setGoals(gs);
+    const ev = await listGoalEvidence({ schoolId: d.school_id, goalIds: gs.map(g => g.id) });
+    const counts: Record<string, number> = {};
+    for (const e of ev) counts[e.goal_id] = (counts[e.goal_id] ?? 0) + 1;
+    setEvidenceCounts(counts);
+  }, []);
+
+  /** PEI vivo: ao escolher o aluno, abre o PEI mais recente dele (com as metas) em vez de começar do zero. */
+  const handleStudentChange = useCallback(async (studentId: string | null) => {
+    setDoc(null); setPeiResult(''); setGoals([]); setEvidenceCounts({}); setCurrentData(null); setError('');
+    if (!studentId || !school) return;
+    setLoadingExisting(true);
+    try {
+      const docs = await listDocuments({ schoolId: school.id, kind: 'pei', studentId });
+      const latest = docs[0];
+      if (latest) {
+        setDoc(latest);
+        setPeiResult(latest.content);
+        setCurrentData(latest.form_data as unknown as PeiData);
+        await loadGoals(latest);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao carregar o PEI atual.');
+    } finally {
+      setLoadingExisting(false);
+    }
+  }, [school, loadGoals]);
+
   const handleGeneratePei = async (data: PeiData) => {
     if (!school || !user) return;
     setIsLoading(true);
@@ -41,10 +76,12 @@ export function PeiGenerator() {
     setPeiResult('');
     setCopied(false);
     setDoc(null);
+    setGoals([]);
+    setEvidenceCounts({});
     setCurrentData(data);
 
     try {
-      const result = await generatePei(data.studentId, {
+      const { content: result, goals: draftGoals } = await generatePei(data.studentId, {
         firstName: firstName(data.name),
         age: data.age,
         group: data.group,
@@ -73,6 +110,16 @@ export function PeiGenerator() {
         status: 'draft',
       });
       setDoc(created);
+      if (draftGoals.length > 0) {
+        const saved = await createGoals(draftGoals.map((g, i) => ({
+          school_id: school.id, document_id: created.id, student_id: data.studentId,
+          axis: g.axis, title: g.title, criterion: g.criterion ?? null, context: g.context ?? null,
+          term: g.term, sort_order: i, created_by: user.id,
+        })));
+        setGoals(saved);
+      } else {
+        toast.message('A IA não devolveu metas estruturadas. Cadastre as metas no painel abaixo do texto.');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao gerar o PEI.');
     } finally {
@@ -115,11 +162,11 @@ export function PeiGenerator() {
 
       <div className="grid grid-cols-2" style={{ gridTemplateColumns: 'minmax(0, 1.3fr) minmax(0, 0.7fr)', gap: '2rem' }}>
         <div className="left-panel">
-          {rosterLoading ? <SkeletonCard lines={8} /> : <PeiForm students={roster} onSubmit={handleGeneratePei} isLoading={isLoading} />}
+          {rosterLoading ? <SkeletonCard lines={8} /> : <PeiForm students={roster} onSubmit={handleGeneratePei} isLoading={isLoading} onStudentChange={id => void handleStudentChange(id)} />}
         </div>
 
         <div className="right-panel">
-          <div className="card result-card" style={{ minHeight: '600px', maxHeight: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column', position: 'sticky', top: '2rem', boxShadow: 'var(--shadow-lg)' }}>
+          <div className="card result-card" style={{ minHeight: '480px', maxHeight: '70vh', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-lg)' }}>
             <div className="flex justify-between items-center mb-4" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
               <h2 style={{ marginBottom: 0, color: 'var(--color-text)', fontSize: '1.1rem' }} className="flex items-center gap-2"><Brain size={20} color="var(--color-secondary)" /> Plano elaborado {doc && <StatusBadge status={doc.status} />}</h2>
               {peiResult && (
@@ -132,10 +179,10 @@ export function PeiGenerator() {
             </div>
 
             <div className="result-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 0, minHeight: 0 }}>
-              {isLoading ? (
+              {isLoading || loadingExisting ? (
                 <div className="flex justify-center items-center" style={{ height: '100%', flexDirection: 'column', gap: '1rem', color: 'var(--color-text-muted)', padding: '2rem' }}>
                   <div className="loader" style={{ borderTopColor: 'var(--color-primary)', borderColor: 'rgba(0,0,0,0.1)' }}></div>
-                  <p>A IA está estruturando o PEI conforme as diretrizes pedagógicas...</p>
+                  <p>{loadingExisting ? 'Abrindo o PEI atual do aluno…' : 'A IA está rascunhando o PEI a partir dos indicadores informados…'}</p>
                 </div>
               ) : peiResult ? (
                 <textarea value={peiResult} onChange={(e) => setPeiResult(e.target.value)} style={{ flex: 1, border: 'none', background: 'transparent', padding: '1.5rem', fontSize: '1rem', lineHeight: '1.7', resize: 'none', fontFamily: 'inherit', color: '#222', minHeight: '300px' }} />
@@ -154,7 +201,7 @@ export function PeiGenerator() {
                   {doc.status === 'draft' && 'Rascunho salvo. Revise e envie para a coordenação.'}
                   {doc.status === 'submitted' && 'Enviado. Depois da aprovação, a família vê o PEI no portal.'}
                   {doc.status === 'returned' && 'Devolvido pela coordenação: ajuste e envie de novo.'}
-                  {doc.status === 'approved' && 'Aprovado — visível para a família.'}
+                  {doc.status === 'approved' && 'Aprovado — visível para a família. Gerar de novo cria uma nova versão; as metas seguem acompanhadas abaixo.'}
                 </p>
                 <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
                   {(doc.status !== 'approved' || user?.role === 'admin' || user?.role === 'coordinator') && (
@@ -171,6 +218,20 @@ export function PeiGenerator() {
             )}
             {error && <div className="callout callout-danger mt-4">{error}</div>}
           </div>
+
+          {doc && (
+            <div className="card mt-4">
+              <GoalsPanel
+                goals={goals}
+                doc={doc}
+                canEditStructure={isManager || doc.status !== 'approved'}
+                canTrack={user?.role !== 'guardian'}
+                evidenceCounts={evidenceCounts}
+                onChange={setGoals}
+                userId={user?.id ?? null}
+              />
+            </div>
+          )}
         </div>
       </div>
 

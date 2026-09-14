@@ -3,6 +3,7 @@ import { complete, providerConfig } from '../_lib/providers.js';
 import {
   buildPedagogicalPrompt, buildPeiPrompt, buildPlanningPrompt, buildReportPrompt,
   PEDAGOGICAL_SYSTEM_PROMPT, PEI_SYSTEM_PROMPT, PLANNING_SYSTEM_PROMPT, PROMPT_VERSION, REPORT_SYSTEM_PROMPT,
+  splitPeiOutput,
 } from '../_lib/prompts.js';
 import type { PedagogicalInput, PeiInput, PlanningInput, ReportInput } from '../_lib/prompts.js';
 
@@ -121,6 +122,10 @@ export default handler(['POST'], async (req) => {
       latency_ms: Date.now() - started,
       ok: true,
     });
+    if (payload.feature === 'pei') {
+      const { content, goals } = splitPeiOutput(out.text);
+      return { content, goals, model: cfg.model, promptVersion: PROMPT_VERSION };
+    }
     return { content: out.text, model: cfg.model, promptVersion: PROMPT_VERSION };
   } catch (err) {
     await db.from('ai_usage').insert({

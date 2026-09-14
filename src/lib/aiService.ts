@@ -59,6 +59,15 @@ interface AiResponse {
   promptVersion: string;
 }
 
+/** Meta rascunhada pela IA (ainda não persistida; a coordenação edita antes). */
+export interface DraftGoal {
+  axis: string;
+  title: string;
+  criterion?: string;
+  context?: string;
+  term: 'curto' | 'medio' | 'longo';
+}
+
 export function firstName(fullName: string): string {
   return fullName.trim().split(/\s+/)[0] || '';
 }
@@ -68,9 +77,9 @@ export async function generateAIReport(data: ReportInput): Promise<string> {
   return res.content;
 }
 
-export async function generatePei(studentId: string, data: PeiInput): Promise<string> {
-  const res = await callApi<AiResponse>('/api/ai/generate', { feature: 'pei', studentId, data });
-  return res.content;
+export async function generatePei(studentId: string, data: PeiInput): Promise<{ content: string; goals: DraftGoal[] }> {
+  const res = await callApi<AiResponse & { goals?: DraftGoal[] }>('/api/ai/generate', { feature: 'pei', studentId, data });
+  return { content: res.content, goals: res.goals ?? [] };
 }
 
 export async function generatePedagogicalIntelligence(data: PedagogicalInput): Promise<string> {

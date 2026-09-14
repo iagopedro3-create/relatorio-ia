@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, User, CalendarDays, ShieldCheck, X, NotebookPen } from 'lucide-react';
+import { ArrowLeft, FileText, User, CalendarDays, ShieldCheck, X, NotebookPen, Target } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { GoalsPanel } from '../components/GoalsPanel';
 import { useSchool } from '../contexts/SchoolContext';
 import { useAsync } from '../lib/useAsync';
-import { getStudent, listEnrollmentsOfStudent, getClassesByIds, listDocuments, listObservations, signObservationPhotos } from '../data';
+import { getStudent, listEnrollmentsOfStudent, getClassesByIds, listDocuments, listObservations, signObservationPhotos, listGoals, listGoalEvidence } from '../data';
 import { FIELD_BY_ID } from '../store/bnccFields';
 import { Badge } from '../components/ui';
 import type { ClassGroup, StudentDocument } from '../types/db';
@@ -20,12 +22,23 @@ export function StudentProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { school, staff, classes, selectedYear } = useSchool();
+  const { user } = useAuth();
   const [open, setOpen] = useState<StudentDocument | null>(null);
+  const isManager = user?.role === 'admin' || user?.role === 'coordinator';
 
   const studentQ = useAsync(() => id ? getStudent(id) : Promise.resolve(null), [id], null);
   const enrollQ = useAsync(() => id ? listEnrollmentsOfStudent(id) : Promise.resolve([]), [id], []);
   const docsQ = useAsync(() => (school && id) ? listDocuments({ schoolId: school.id, studentId: id }) : Promise.resolve([]), [school?.id, id], []);
   const obsQ = useAsync(() => (school && id) ? listObservations({ schoolId: school.id, studentId: id, limit: 60 }) : Promise.resolve([]), [school?.id, id], []);
+  const latestPei = useMemo(() => docsQ.data.find(d => d.kind === 'pei') ?? null, [docsQ.data]);
+  const goalsQ = useAsync(() => (school && latestPei) ? listGoals({ schoolId: school.id, documentId: latestPei.id }) : Promise.resolve([]), [school?.id, latestPei?.id], []);
+  const evidenceQ = useAsync(async () => {
+    if (!school || goalsQ.data.length === 0) return {} as Record<string, number>;
+    const ev = await listGoalEvidence({ schoolId: school.id, goalIds: goalsQ.data.map(g => g.id) });
+    const counts: Record<string, number> = {};
+    for (const e of ev) counts[e.goal_id] = (counts[e.goal_id] ?? 0) + 1;
+    return counts;
+  }, [school?.id, goalsQ.data.map(g => g.id).join(',')], {} as Record<string, number>);
   const photosQ = useAsync(() => signObservationPhotos(obsQ.data.map(o => o.photo_path ?? '')), [obsQ.data.map(o => o.photo_path).join(',')], {} as Record<string, string>);
   const otherClassIds = useMemo(() => enrollQ.data.map(e => e.class_id).filter(cid => !classes.some(c => c.id === cid)), [enrollQ.data, classes]);
   const otherClassesQ = useAsync(() => getClassesByIds(otherClassIds), [otherClassIds.join(',')], [] as ClassGroup[]);
@@ -113,6 +126,17 @@ export function StudentProfile() {
         </div>
 
         <div className="lg:col-span-2 flex flex-col gap-6">
+          {latestPei && (
+            <div className="card p-5">
+              <div className="flex justify-between items-center mb-3" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Target size={20} color="var(--color-secondary)" /> Metas do PEI</h3>
+                <span className="text-muted" style={{ fontSize: '0.8rem' }}>{latestPei.period ?? ''} · {STATUS_LABEL[latestPei.status].label}</span>
+              </div>
+              {goalsQ.loading
+                ? <p className="text-muted" style={{ fontSize: '0.85rem' }}>Carregando metas…</p>
+                : <GoalsPanel goals={goalsQ.data} doc={latestPei} canEditStructure={isManager || latestPei.status !== 'approved'} canTrack={user?.role !== 'guardian'} evidenceCounts={evidenceQ.data} onChange={goalsQ.setData} userId={user?.id ?? null} compact />}
+            </div>
+          )}
           <div className="card p-0" style={{ overflow: 'hidden' }}>
             <div className="p-5 border-b border-slate-200 flex justify-between items-center" style={{ backgroundColor: 'var(--color-surface-2)' }}>
               <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><NotebookPen size={20} color="var(--color-primary)" /> Registros de observação</h3>

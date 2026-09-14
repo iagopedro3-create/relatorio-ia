@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Users, TrendingUp, AlertCircle, FileCheck, BookOpenCheck, MessageSquare, Bell, Heart, Clock, FileText, Printer, Inbox, NotebookPen, Brain } from 'lucide-react';
+import { Calendar, Users, TrendingUp, AlertCircle, FileCheck, BookOpenCheck, MessageSquare, Bell, Heart, Clock, FileText, Printer, Inbox, NotebookPen, Brain, Target } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useSchool } from '../contexts/SchoolContext';
 import { useAsync } from '../lib/useAsync';
-import { listEnrollments, listStudents, listDocuments, updateDocument, listMessages, listEvents, listAttendanceOfEnrollments, listObservations, signObservationPhotos, listLessonPlans } from '../data';
+import { listEnrollments, listStudents, listDocuments, updateDocument, listMessages, listEvents, listAttendanceOfEnrollments, listObservations, signObservationPhotos, listLessonPlans, listGoals, listGoalEvidence } from '../data';
 import { FIELD_BY_ID } from '../store/bnccFields';
 import { attendanceRate } from '../lib/gradeEngine';
 import { currentPeriodIndex } from '../lib/format';
@@ -16,10 +16,12 @@ import { OnboardingChecklist } from '../components/OnboardingChecklist';
 import { DataTable, EmptyState, PageHeader, SkeletonCard, SkeletonStats, StatusBadge } from '../components/ui';
 import type { Column } from '../components/ui';
 import { renderMarkdown } from '../lib/markdown';
-import type { Student, StudentDocument } from '../types/db';
+import type { PeiGoal, Student, StudentDocument } from '../types/db';
+import { Badge } from '../components/ui';
 
 export function Home() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { school, classes, classesLoading, staff, years, selectedYear, setYear, grading, hasFeature } = useSchool();
   // Começa no período corrente pela data, não no 1º: no meio do ano a meta é do bimestre atual.
   const [selectedPeriod, setSelectedPeriod] = useState(() => grading.periods[currentPeriodIndex(grading.periods.length)] ?? grading.periods[0]);
@@ -33,6 +35,15 @@ export function Home() {
   const peiQ = useAsync(() => (school && selectedYear && user?.role !== 'guardian') ? listDocuments({ schoolId: school.id, yearId: selectedYear.id, kind: 'pei' }) : Promise.resolve([]), [school?.id, selectedYear?.id, user?.role], []);
   const plansQ = useAsync(() => (school && user?.role !== 'guardian') ? listLessonPlans(school.id) : Promise.resolve([]), [school?.id, user?.role], []);
   const loading = classesLoading || enrollQ.loading || studentsQ.loading || docsQ.loading;
+
+  // PEI vivo (professora): metas ativas das crianças de todas as minhas turmas e o que já foi registrado nos últimos 7 dias.
+  const allClassIds = useMemo(() => classes.map(c => c.id), [classes]);
+  const allEnrollQ = useAsync(() => user?.role === 'teacher' ? listEnrollments(allClassIds) : Promise.resolve([]), [allClassIds.join(','), user?.role], []);
+  const myStudentIds = useMemo(() => Array.from(new Set(allEnrollQ.data.map(e => e.student_id))), [allEnrollQ.data]);
+  const goalsQ = useAsync(() => (school && user?.role === 'teacher' && myStudentIds.length) ? listGoals({ schoolId: school.id, studentIds: myStudentIds, activeOnly: true }) : Promise.resolve([] as PeiGoal[]), [school?.id, myStudentIds.join(','), user?.role], [] as PeiGoal[]);
+  const goalEvidenceQ = useAsync(() => (school && goalsQ.data.length) ? listGoalEvidence({ schoolId: school.id, goalIds: goalsQ.data.map(g => g.id) }) : Promise.resolve([]), [school?.id, goalsQ.data.map(g => g.id).join(',')], []);
+  const [weekAgo] = useState(() => Date.now() - 7 * 24 * 3600 * 1000);
+  const evidenceThisWeek = (goalId: string) => goalEvidenceQ.data.filter(e => e.goal_id === goalId && new Date(e.created_at).getTime() >= weekAgo).length;
 
   const periodDocs = useMemo(() => docsQ.data.filter(d => d.period === selectedPeriod), [docsQ.data, selectedPeriod]);
 
@@ -98,6 +109,34 @@ export function Home() {
             {returned.length > 0 && <><strong>{returned.length} documento(s) devolvido(s)</strong> pela coordenação: {returned.map(d => `${d.kind === 'pei' ? 'PEI' : 'relatório'} de ${studentsQ.data.find(s => s.id === d.student_id)?.name.split(' ')[0] ?? ''}`).join(', ')}. </>}
             {returnedPlans.length > 0 && <><strong>{returnedPlans.length} plano(s) de aula</strong> devolvido(s) com orientações.</>}
           </span></div>
+        )}
+        {goalsQ.data.length > 0 && (
+          <div className="card card-accent mb-6">
+            <div className="flex justify-between items-center mb-2" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
+              <h3 className="flex items-center gap-2" style={{ margin: 0 }}><Target size={20} color="var(--color-secondary)" /> O que observar esta semana</h3>
+              <button className="btn btn-primary btn-sm" onClick={() => navigate('/observations')}><NotebookPen size={14} /> Registrar</button>
+            </div>
+            <p className="text-muted" style={{ fontSize: '0.85rem' }}>Metas ativas do PEI das suas crianças. Um registro de 20 segundos ligado à meta vira evidência no relatório de progresso.</p>
+            <div className="flex flex-col gap-2">
+              {myStudentIds.filter(id => goalsQ.data.some(g => g.student_id === id)).map(id => {
+                const st = studentsQ.data.find(x => x.id === id);
+                return (
+                  <div key={id}>
+                    <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{st?.name ?? '—'}</div>
+                    {goalsQ.data.filter(g => g.student_id === id).map(g => {
+                      const n = evidenceThisWeek(g.id);
+                      return (
+                        <div key={g.id} className="flex items-start justify-between gap-2" style={{ fontSize: '0.85rem', padding: '0.25rem 0.5rem' }}>
+                          <span><span className="text-muted">{g.axis} · </span>{g.title}{g.context ? <span className="text-muted"> — observe {g.context}</span> : null}</span>
+                          <Badge tone={n === 0 ? 'warning' : 'success'} title="Registros ligados a esta meta nos últimos 7 dias">{n} esta semana</Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
         {loading ? (
           <>

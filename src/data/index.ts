@@ -10,6 +10,7 @@ import type {
   ClassGroup, Enrollment, GradeEntry, LessonEntry, LessonPlan, Profile, School, SchoolYear,
   Student, StudentDocument, StudentGuardian, TeacherAssignment, UserRole,
   TuitionPlan, StudentBilling, Invoice, InvoiceStatus, FinanceMonthSummary, Observation, YearPeriod,
+  PeiGoal, GoalEvidence,
 } from '../types/db';
 
 // ---------------------------------------------------------------------------
@@ -517,4 +518,58 @@ export async function signObservationPhotos(paths: string[]): Promise<Record<str
   const out: Record<string, string> = {};
   for (const r of data ?? []) if (r.path && r.signedUrl) out[r.path] = r.signedUrl;
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// PEI vivo: metas e evidências
+// ---------------------------------------------------------------------------
+
+export async function listGoals(filter: { schoolId: string; documentId?: string; studentId?: string; studentIds?: string[]; activeOnly?: boolean }) {
+  let q = supabase.from('pei_goals').select('*').eq('school_id', filter.schoolId).order('sort_order').order('created_at');
+  if (filter.documentId) q = q.eq('document_id', filter.documentId);
+  if (filter.studentId) q = q.eq('student_id', filter.studentId);
+  if (filter.studentIds) {
+    if (filter.studentIds.length === 0) return [] as PeiGoal[];
+    q = q.in('student_id', filter.studentIds);
+  }
+  if (filter.activeOnly) q = q.eq('status', 'active');
+  return unwrap(await q) as PeiGoal[];
+}
+
+export type NewGoal = Pick<PeiGoal, 'school_id' | 'document_id' | 'student_id' | 'axis' | 'title'> &
+  Partial<Pick<PeiGoal, 'criterion' | 'context' | 'baseline' | 'term' | 'sort_order' | 'created_by'>>;
+
+export async function createGoals(rows: NewGoal[]) {
+  if (rows.length === 0) return [] as PeiGoal[];
+  return unwrap(await supabase.from('pei_goals').insert(rows).select('*')) as PeiGoal[];
+}
+
+export async function updateGoal(id: string, patch: Partial<PeiGoal>) {
+  return unwrap(await supabase.from('pei_goals').update(patch).eq('id', id).select('*').single()) as PeiGoal;
+}
+
+export async function deleteGoal(id: string) {
+  unwrap(await supabase.from('pei_goals').delete().eq('id', id));
+}
+
+export async function listGoalEvidence(filter: { schoolId: string; goalIds?: string[]; observationIds?: string[] }) {
+  let q = supabase.from('goal_evidence').select('*').eq('school_id', filter.schoolId);
+  if (filter.goalIds) {
+    if (filter.goalIds.length === 0) return [] as GoalEvidence[];
+    q = q.in('goal_id', filter.goalIds);
+  }
+  if (filter.observationIds) {
+    if (filter.observationIds.length === 0) return [] as GoalEvidence[];
+    q = q.in('observation_id', filter.observationIds);
+  }
+  return unwrap(await q) as GoalEvidence[];
+}
+
+export async function linkEvidence(rows: Pick<GoalEvidence, 'goal_id' | 'observation_id' | 'school_id'>[], createdBy: string | null) {
+  if (rows.length === 0) return;
+  unwrap(await supabase.from('goal_evidence').upsert(rows.map(r => ({ ...r, created_by: createdBy })), { onConflict: 'goal_id,observation_id', ignoreDuplicates: true }));
+}
+
+export async function unlinkEvidence(goalId: string, observationId: string) {
+  unwrap(await supabase.from('goal_evidence').delete().eq('goal_id', goalId).eq('observation_id', observationId));
 }

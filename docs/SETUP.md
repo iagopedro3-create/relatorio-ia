@@ -28,6 +28,7 @@
    - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (**Sensitive**)
    - `AI_PROVIDER`, `AI_API_KEY` (**Sensitive**), `AI_MODEL`
    - `APP_URL`
+   - `RESEND_API_KEY` (**Sensitive**, opcional) e `NOTIFY_FROM` (ex.: `Escola <notificacoes@seudominio.com.br>`, domínio verificado no Resend): e-mails de documento enviado/devolvido/aprovado. Sem a chave, o app funciona e só não avisa por e-mail.
    - opcionais: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICES`
 3. Deploy.
 

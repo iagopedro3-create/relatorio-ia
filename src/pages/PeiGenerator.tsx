@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Sparkles, Copy, CheckCircle, FileText, Brain, Printer, Save, Send, Eye, Pencil } from 'lucide-react';
+import { Sparkles, Copy, CheckCircle, FileText, Brain, Printer, Eye, Pencil } from 'lucide-react';
+import { ReviewActions, VersionHistory, type ReviewChange } from '../components/DocumentReview';
 import { toast } from 'sonner';
 import { PeiForm, type PeiData } from '../components/PeiForm';
 import { PrintPreview } from '../components/PrintPreview';
@@ -10,7 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSchool } from '../contexts/SchoolContext';
 import { useAsync } from '../lib/useAsync';
 import { PageHeader, SkeletonCard, StatusBadge } from '../components/ui';
-import { listEnrollments, listStudents, createDocument, updateDocument, listDocuments, listGoals, createGoals, listGoalEvidence, listObservations } from '../data';
+import { listEnrollments, listStudents, createDocument, updateDocument, listDocuments, listGoals, createGoals, listGoalEvidence, listObservations, notifyDocumentStatus } from '../data';
 import { toEvidence, stripCitations, citedNumbers, type EvidenceMap } from '../lib/evidence';
 import { renderMarkdown } from '../lib/markdown';
 import { FIELD_BY_ID } from '../store/bnccFields';
@@ -22,7 +23,7 @@ import { GoalsPanel } from '../components/GoalsPanel';
 
 export function PeiGenerator() {
   const { user } = useAuth();
-  const { school, classes, selectedYear, grading, refreshAiUsage } = useSchool();
+  const { school, classes, staff, selectedYear, grading, refreshAiUsage } = useSchool();
   const [isLoading, setIsLoading] = useState(false);
   const [peiResult, setPeiResult] = useState('');
   const [error, setError] = useState('');
@@ -155,12 +156,18 @@ export function PeiGenerator() {
     }
   };
 
-  const persist = async (status?: StudentDocument['status']) => {
+  const persist = async (change?: ReviewChange) => {
     if (!doc) return;
     setSaving(true);
     try {
-      setDoc(await updateDocument(doc.id, { content: peiResult, ...(status ? { status, ...(status === 'approved' ? { reviewed_by: user?.id ?? null } : {}) } : {}) }));
-      toast.success(status === 'submitted' ? 'PEI enviado para a coordenação.' : status === 'approved' ? 'PEI aprovado — a família já pode ver.' : 'PEI salvo.');
+      const updated = await updateDocument(doc.id, { content: peiResult, ...(change ?? {}) });
+      setDoc(updated);
+      const s = change?.status;
+      toast.success(s === 'submitted' ? 'PEI enviado para a coordenação.' : s === 'approved' ? 'PEI aprovado — a família já pode ver.' : s === 'returned' ? 'Devolvido à professora com o comentário.' : 'PEI salvo.');
+      if (s && s !== doc.status) {
+        const n = await notifyDocumentStatus(updated.id);
+        if (n.sent > 0) toast.message(`${n.sent} pessoa(s) avisada(s) por e-mail.`);
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Falha ao salvar.');
     } finally {
@@ -230,26 +237,11 @@ export function PeiGenerator() {
                 </div>
               )}
             </div>
-            {doc && peiResult && (
-              <div className="mt-4">
-                <p className="text-muted" style={{ fontSize: '0.78rem', margin: '0 0 0.5rem' }}>
-                  {doc.status === 'draft' && 'Rascunho salvo. Revise e envie para a coordenação.'}
-                  {doc.status === 'submitted' && 'Enviado. Depois da aprovação, a família vê o PEI no portal.'}
-                  {doc.status === 'returned' && 'Devolvido pela coordenação: ajuste e envie de novo.'}
-                  {doc.status === 'approved' && 'Aprovado — visível para a família. Gerar de novo cria uma nova versão; as metas seguem acompanhadas abaixo.'}
-                </p>
-                <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
-                  {(doc.status !== 'approved' || user?.role === 'admin' || user?.role === 'coordinator') && (
-                    <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} disabled={saving} onClick={() => void persist()}><Save size={16} /> Salvar edições</button>
-                  )}
-                  {user?.role === 'teacher' && doc.status !== 'approved' && (
-                    <button className="btn btn-primary btn-sm" style={{ flex: 1 }} disabled={saving} onClick={() => void persist('submitted')}><Send size={16} /> {doc.status === 'submitted' ? 'Reenviar' : 'Enviar para coordenação'}</button>
-                  )}
-                  {(user?.role === 'admin' || user?.role === 'coordinator') && doc.status !== 'approved' && (
-                    <button className="btn btn-primary btn-sm" style={{ flex: 1 }} disabled={saving} onClick={() => void persist('approved')}><CheckCircle size={16} /> Aprovar</button>
-                  )}
-                </div>
-              </div>
+            {doc && peiResult && user && (
+              <>
+                <ReviewActions doc={doc} role={user.role} saving={saving} kindLabel="PEI" onSave={change => void persist(change)} />
+                <VersionHistory doc={doc} staff={staff} refreshKey={doc.updated_at} />
+              </>
             )}
             {error && <div className="callout callout-danger mt-4">{error}</div>}
           </div>

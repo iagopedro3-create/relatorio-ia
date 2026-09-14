@@ -422,6 +422,19 @@ export interface Observation {
   updated_at: string;
 }
 
+export interface DocumentVersion {
+  id: number;
+  school_id: string;
+  document_id: string;
+  version_no: number;
+  content: string;
+  form_data: Record<string, unknown>;
+  status: DocumentStatus;
+  review_note: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
 // ---------------------------------------------------------------------------
 // PEI vivo: metas e evidências
 // ---------------------------------------------------------------------------

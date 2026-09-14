@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Sparkles, Copy, CheckCircle, FileText, Printer, AlertCircle, Send, Save, History, Eye, Pencil } from 'lucide-react';
+import { Sparkles, Copy, CheckCircle, FileText, Printer, AlertCircle, History, Eye, Pencil } from 'lucide-react';
+import { ReviewActions, VersionHistory, type ReviewChange } from '../components/DocumentReview';
 import { toast } from 'sonner';
 import { ReportForm, type StudentData, type RosterStudent } from '../components/ReportForm';
 import { PrintPreview } from '../components/PrintPreview';
@@ -9,7 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSchool } from '../contexts/SchoolContext';
 import { useAsync } from '../lib/useAsync';
 import { PageHeader, SkeletonCard, StatusBadge } from '../components/ui';
-import { listEnrollments, listStudents, createDocument, updateDocument, listDocuments, listObservations } from '../data';
+import { listEnrollments, listStudents, createDocument, updateDocument, listDocuments, listObservations, notifyDocumentStatus } from '../data';
 import { periodRange } from '../lib/periods';
 import { toEvidence, stripCitations, citedNumbers, type EvidenceMap } from '../lib/evidence';
 import { renderMarkdown } from '../lib/markdown';
@@ -20,7 +21,7 @@ import type { Student, StudentDocument } from '../types/db';
 
 export function ReportGenerator() {
   const { user } = useAuth();
-  const { school, classes, selectedYear, grading, refreshAiUsage } = useSchool();
+  const { school, classes, staff, selectedYear, grading, refreshAiUsage } = useSchool();
   const [isLoading, setIsLoading] = useState(false);
   const [reportResult, setReportResult] = useState('');
   const [error, setError] = useState('');
@@ -132,13 +133,18 @@ export function ReportGenerator() {
     }
   };
 
-  const persist = async (status: StudentDocument['status']) => {
+  const persist = async (change?: ReviewChange) => {
     if (!doc) return;
     setSaving(true);
     try {
-      const updated = await updateDocument(doc.id, { content: reportResult, status });
+      const updated = await updateDocument(doc.id, { content: reportResult, ...(change ?? {}) });
       setDoc(updated);
-      toast.success(status === 'submitted' ? 'Relatório enviado para a coordenação.' : 'Relatório salvo.');
+      const s = change?.status;
+      toast.success(s === 'submitted' ? 'Relatório enviado para a coordenação.' : s === 'approved' ? 'Relatório aprovado — a família já pode ver.' : s === 'returned' ? 'Devolvido à professora com o comentário.' : 'Relatório salvo.');
+      if (s && s !== doc.status) {
+        const n = await notifyDocumentStatus(updated.id);
+        if (n.sent > 0) toast.message(`${n.sent} pessoa(s) avisada(s) por e-mail.`);
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Falha ao salvar.');
     } finally {
@@ -246,32 +252,11 @@ export function ReportGenerator() {
               )}
             </div>
 
-            {doc && reportResult && (
-              <div className="mt-4">
-                <p className="text-muted" style={{ fontSize: '0.78rem', margin: '0 0 0.5rem' }}>
-                  {doc.status === 'draft' && 'Rascunho salvo automaticamente. Revise o texto e envie para a coordenação.'}
-                  {doc.status === 'submitted' && 'Enviado. A coordenação vai revisar e aprovar; depois disso a família passa a ver.'}
-                  {doc.status === 'returned' && 'Devolvido pela coordenação: ajuste o texto e envie de novo.'}
-                  {doc.status === 'approved' && 'Aprovado — já visível para a família no portal.'}
-                </p>
-                <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
-                  {(doc.status !== 'approved' || user?.role === 'admin' || user?.role === 'coordinator') && (
-                    <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} disabled={saving} onClick={() => void persist(doc.status === 'approved' ? 'approved' : 'draft')}>
-                      <Save size={16} /> Salvar edições
-                    </button>
-                  )}
-                  {user?.role === 'teacher' && doc.status !== 'approved' && (
-                    <button className="btn btn-primary btn-sm" style={{ flex: 1 }} disabled={saving} onClick={() => void persist('submitted')}>
-                      <Send size={16} /> {doc.status === 'submitted' ? 'Reenviar' : 'Enviar para coordenação'}
-                    </button>
-                  )}
-                  {(user?.role === 'admin' || user?.role === 'coordinator') && doc.status !== 'approved' && (
-                    <button className="btn btn-primary btn-sm" style={{ flex: 1 }} disabled={saving} onClick={() => void persist('approved')}>
-                      <CheckCircle size={16} /> Aprovar
-                    </button>
-                  )}
-                </div>
-              </div>
+            {doc && reportResult && user && (
+              <>
+                <ReviewActions doc={doc} role={user.role} saving={saving} kindLabel="relatório" onSave={change => void persist(change)} />
+                <VersionHistory doc={doc} staff={staff} refreshKey={doc.updated_at} />
+              </>
             )}
 
             {error && (

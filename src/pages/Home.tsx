@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
 import { useSchool } from '../contexts/SchoolContext';
 import { useAsync } from '../lib/useAsync';
-import { listEnrollments, listStudents, listDocuments, updateDocument, listMessages, listEvents, listAttendanceOfEnrollments, listObservations, signObservationPhotos, listLessonPlans, listGoals, listGoalEvidence } from '../data';
+import { listEnrollments, listStudents, listDocuments, updateDocument, listMessages, listEvents, listAttendanceOfEnrollments, listObservations, signObservationPhotos, listLessonPlans, listGoals, listGoalEvidence, notifyDocumentStatus } from '../data';
 import { FIELD_BY_ID } from '../store/bnccFields';
 import { attendanceRate } from '../lib/gradeEngine';
 import { currentPeriodIndex } from '../lib/format';
@@ -63,13 +63,27 @@ export function Home() {
     return grouped;
   }, [reportClasses, enrollQ.data, studentsQ.data, periodDocs]);
 
+  const [returning, setReturning] = useState<{ id: string; note: string } | null>(null);
+  const [readDoc, setReadDoc] = useState<StudentDocument | null>(null);
   const approve = async (d: StudentDocument) => {
     try {
-      await updateDocument(d.id, { status: 'approved', reviewed_by: user?.id ?? null });
+      await updateDocument(d.id, { status: 'approved', review_note: null });
       await docsQ.reload();
       toast.success('Relatório aprovado.');
+      void notifyDocumentStatus(d.id);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Falha ao aprovar.');
+    }
+  };
+  const giveBack = async (d: StudentDocument, note: string) => {
+    try {
+      await updateDocument(d.id, { status: 'returned', review_note: note });
+      setReturning(null);
+      await docsQ.reload();
+      toast.success('Devolvido à professora com o comentário.');
+      void notifyDocumentStatus(d.id);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao devolver.');
     }
   };
 
@@ -211,9 +225,25 @@ export function Home() {
     ) },
     { key: 'author', header: 'Professor(a)', hideOnMobile: true, render: r => staff.find(u => u.id === r.author_id)?.name ?? '—' },
     { key: 'status', header: 'Status', render: r => <StatusBadge status={r.status} /> },
-    { key: 'action', header: '', align: 'right', render: r => r.status !== 'approved'
-      ? <button className="btn btn-primary btn-sm" onClick={() => void approve(r)}>Aprovar</button>
-      : <span className="badge badge-success"><BookOpenCheck size={12} /> Visto</span> },
+    { key: 'action', header: '', align: 'right', render: r => r.status === 'approved'
+      ? <span className="badge badge-success"><BookOpenCheck size={12} /> Visto</span>
+      : returning?.id === r.id
+        ? (
+          <div style={{ minWidth: '260px' }}>
+            <textarea autoFocus rows={2} value={returning.note} onChange={e => setReturning({ id: r.id, note: e.target.value })} placeholder="O que precisa ajustar? (a professora recebe)" style={{ fontSize: '0.85rem' }} />
+            <div className="flex gap-2 mt-1" style={{ justifyContent: 'flex-end' }}>
+              <button className="btn btn-secondary btn-sm" onClick={() => setReturning(null)}>Cancelar</button>
+              <button className="btn btn-primary btn-sm" disabled={!returning.note.trim()} onClick={() => void giveBack(r, returning.note.trim())}>Devolver</button>
+            </div>
+          </div>
+        )
+        : (
+          <div className="flex gap-2" style={{ justifyContent: 'flex-end' }}>
+            <button className="btn btn-secondary btn-sm" onClick={() => setReadDoc(r)}>Ler</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => setReturning({ id: r.id, note: '' })}>Devolver</button>
+            <button className="btn btn-primary btn-sm" onClick={() => void approve(r)}>Aprovar</button>
+          </div>
+        ) },
   ];
 
   return (
@@ -296,6 +326,18 @@ export function Home() {
         </div>
       </div>
       {!hasFeature('report') && <p className="text-muted mt-4" style={{ fontSize: '0.85rem' }}>Relatórios com IA não estão no plano atual da escola.</p>}
+      {readDoc && (
+        <div className="dialog-overlay" onClick={() => setReadDoc(null)}>
+          <div className="card" style={{ maxWidth: '800px', width: '100%', maxHeight: '85vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4" style={{ gap: '0.5rem', flexWrap: 'wrap' }}>
+              <h3 style={{ margin: 0 }}>Relatório · {studentsQ.data.find(s => s.id === readDoc.student_id)?.name ?? ''}{readDoc.period ? ` · ${readDoc.period}` : ''} <StatusBadge status={readDoc.status} /></h3>
+              <button className="btn btn-secondary btn-sm" onClick={() => setReadDoc(null)}>Fechar</button>
+            </div>
+            <p className="text-muted" style={{ fontSize: '0.8rem' }}>Para ver a origem de cada frase (registros citados), abra no gerador de relatórios.</p>
+            <div>{renderMarkdown(readDoc.content)}</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

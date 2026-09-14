@@ -10,7 +10,7 @@ import type {
   ClassGroup, Enrollment, GradeEntry, LessonEntry, LessonPlan, Profile, School, SchoolYear,
   Student, StudentDocument, StudentGuardian, TeacherAssignment, UserRole,
   TuitionPlan, StudentBilling, Invoice, InvoiceStatus, FinanceMonthSummary, Observation, YearPeriod,
-  PeiGoal, GoalEvidence,
+  PeiGoal, GoalEvidence, DocumentVersion,
 } from '../types/db';
 
 // ---------------------------------------------------------------------------
@@ -300,6 +300,22 @@ export async function createDocument(input: Partial<StudentDocument> & { school_
 
 export async function updateDocument(id: string, patch: Partial<StudentDocument>) {
   return unwrap(await supabase.from('student_documents').update(patch).eq('id', id).select('*').single()) as StudentDocument;
+}
+
+export async function listDocumentVersions(documentId: string) {
+  return unwrap(await supabase.from('document_versions').select('*').eq('document_id', documentId).order('version_no')) as DocumentVersion[];
+}
+
+/**
+ * Avisa por e-mail quem precisa saber da mudança de status (coordenação,
+ * autora, família). Best-effort: nunca derruba a ação principal.
+ */
+export async function notifyDocumentStatus(documentId: string): Promise<{ sent: number; skipped?: string }> {
+  try {
+    return await callApi<{ sent: number; skipped?: string }>('/api/notify/document', { documentId });
+  } catch {
+    return { sent: 0, skipped: 'erro' };
+  }
 }
 
 export async function deleteDocument(id: string) {

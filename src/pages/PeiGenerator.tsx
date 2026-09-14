@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Sparkles, Copy, CheckCircle, FileText, Brain, Printer, Save, Send } from 'lucide-react';
+import { Sparkles, Copy, CheckCircle, FileText, Brain, Printer, Save, Send, Eye, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { PeiForm, type PeiData } from '../components/PeiForm';
 import { PrintPreview } from '../components/PrintPreview';
@@ -10,13 +10,19 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSchool } from '../contexts/SchoolContext';
 import { useAsync } from '../lib/useAsync';
 import { PageHeader, SkeletonCard, StatusBadge } from '../components/ui';
-import { listEnrollments, listStudents, createDocument, updateDocument, listDocuments, listGoals, createGoals, listGoalEvidence } from '../data';
+import { listEnrollments, listStudents, createDocument, updateDocument, listDocuments, listGoals, createGoals, listGoalEvidence, listObservations } from '../data';
+import { toEvidence, stripCitations, citedNumbers, type EvidenceMap } from '../lib/evidence';
+import { renderMarkdown } from '../lib/markdown';
+import { FIELD_BY_ID } from '../store/bnccFields';
+import { formatDate } from '../lib/format';
+import { periodRange } from '../lib/periods';
+import { EvidencePanel } from '../components/EvidencePanel';
 import type { PeiGoal, Student, StudentDocument } from '../types/db';
 import { GoalsPanel } from '../components/GoalsPanel';
 
 export function PeiGenerator() {
   const { user } = useAuth();
-  const { school, classes, selectedYear, refreshAiUsage } = useSchool();
+  const { school, classes, selectedYear, grading, refreshAiUsage } = useSchool();
   const [isLoading, setIsLoading] = useState(false);
   const [peiResult, setPeiResult] = useState('');
   const [error, setError] = useState('');
@@ -28,7 +34,23 @@ export function PeiGenerator() {
   const [goals, setGoals] = useState<PeiGoal[]>([]);
   const [evidenceCounts, setEvidenceCounts] = useState<Record<string, number>>({});
   const [loadingExisting, setLoadingExisting] = useState(false);
+  const [evidenceMap, setEvidenceMap] = useState<EvidenceMap>({});
+  const [editing, setEditing] = useState(false);
+  const [studentId, setStudentId] = useState<string | null>(null);
   const isManager = user?.role === 'admin' || user?.role === 'coordinator';
+
+  // Registros de observação do aluno no ano letivo: evidência para o PEI e origem dos marcadores [n].
+  const yearRange = { start: periodRange(selectedYear, grading.periods.length, 0).start, end: periodRange(selectedYear, grading.periods.length, grading.periods.length - 1).end };
+  const observationsQ = useAsync(
+    () => (school && studentId) ? listObservations({ schoolId: school.id, studentId, from: yearRange.start, to: yearRange.end, limit: 80 }) : Promise.resolve([]),
+    [school?.id, studentId, yearRange.start, yearRange.end], [],
+  );
+  const observationById = useMemo(() => new Map(observationsQ.data.map(o => [o.id, o])), [observationsQ.data]);
+  const citeTitle = (n: number) => {
+    const o = observationById.get(evidenceMap[String(n)] ?? '');
+    return o ? `${formatDate(o.date)} · ${FIELD_BY_ID[o.field_id]?.short ?? 'Geral'}: ${o.text}` : null;
+  };
+  const usedObservations = citedNumbers(peiResult).map(n => observationById.get(evidenceMap[String(n)] ?? '')).filter((o): o is NonNullable<typeof o> => Boolean(o));
 
   const classIds = useMemo(() => classes.map(c => c.id), [classes]);
   const enrollQ = useAsync(() => listEnrollments(classIds), [classIds.join(',')], []);
@@ -50,7 +72,8 @@ export function PeiGenerator() {
 
   /** PEI vivo: ao escolher o aluno, abre o PEI mais recente dele (com as metas) em vez de começar do zero. */
   const handleStudentChange = useCallback(async (studentId: string | null) => {
-    setDoc(null); setPeiResult(''); setGoals([]); setEvidenceCounts({}); setCurrentData(null); setError('');
+    setDoc(null); setPeiResult(''); setGoals([]); setEvidenceCounts({}); setCurrentData(null); setError(''); setEvidenceMap({}); setEditing(false);
+    setStudentId(studentId);
     if (!studentId || !school) return;
     setLoadingExisting(true);
     try {
@@ -60,6 +83,7 @@ export function PeiGenerator() {
         setDoc(latest);
         setPeiResult(latest.content);
         setCurrentData(latest.form_data as unknown as PeiData);
+        setEvidenceMap(((latest.form_data as { evidence?: EvidenceMap }).evidence) ?? {});
         await loadGoals(latest);
       }
     } catch (e) {
@@ -78,10 +102,13 @@ export function PeiGenerator() {
     setDoc(null);
     setGoals([]);
     setEvidenceCounts({});
+    setEvidenceMap({});
+    setEditing(false);
     setCurrentData(data);
 
     try {
-      const { content: result, goals: draftGoals } = await generatePei(data.studentId, {
+      const evidenceIn = toEvidence(observationsQ.data);
+      const { content: result, goals: draftGoals, evidence } = await generatePei(data.studentId, {
         firstName: firstName(data.name),
         age: data.age,
         group: data.group,
@@ -94,8 +121,9 @@ export function PeiGenerator() {
         selectedMotor: data.selectedMotor, motor: data.motor,
         selectedAutonomy: data.selectedAutonomy, autonomy: data.autonomy,
         selectedSensory: data.selectedSensory, sensory: data.sensory,
-      });
+      }, evidenceIn);
       setPeiResult(result);
+      setEvidenceMap(evidence);
       void refreshAiUsage();
       const created = await createDocument({
         school_id: school.id,
@@ -105,7 +133,7 @@ export function PeiGenerator() {
         kind: 'pei',
         period: selectedYear?.label ?? null,
         author_id: user.id,
-        form_data: data as unknown as Record<string, unknown>,
+        form_data: { ...data, evidence, observationIds: evidenceIn.map(e => e.id) } as unknown as Record<string, unknown>,
         content: result,
         status: 'draft',
       });
@@ -141,14 +169,14 @@ export function PeiGenerator() {
   };
 
   const handleCopy = () => {
-    void navigator.clipboard.writeText(peiResult);
+    void navigator.clipboard.writeText(stripCitations(peiResult));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleDownloadDoc = () => {
     if (peiResult && currentData && school) {
-      void exportPeiToDocx(peiResult, currentData, { schoolName: school.legal_name || school.name, year: selectedYear?.label ?? '' });
+      void exportPeiToDocx(stripCitations(peiResult), currentData, { schoolName: school.legal_name || school.name, year: selectedYear?.label ?? '' });
     }
   };
 
@@ -170,7 +198,8 @@ export function PeiGenerator() {
             <div className="flex justify-between items-center mb-4" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
               <h2 style={{ marginBottom: 0, color: 'var(--color-text)', fontSize: '1.1rem' }} className="flex items-center gap-2"><Brain size={20} color="var(--color-secondary)" /> Plano elaborado {doc && <StatusBadge status={doc.status} />}</h2>
               {peiResult && (
-                <div className="flex gap-2">
+                <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
+                  <button onClick={() => setEditing(e => !e)} className="btn btn-secondary btn-sm" title={editing ? 'Ver com evidências' : 'Editar o texto'}>{editing ? <Eye size={14} /> : <Pencil size={14} />} {editing ? 'Ver' : 'Editar'}</button>
                   <button onClick={() => setShowPrintPreview(true)} className="btn btn-primary btn-sm"><Printer size={14} /> PDF</button>
                   <button onClick={handleDownloadDoc} className="btn btn-secondary btn-sm"><FileText size={14} /> Word</button>
                   <button onClick={handleCopy} className="btn btn-secondary btn-sm" title="Copiar texto">{copied ? <CheckCircle size={14} /> : <Copy size={14} />}</button>
@@ -185,7 +214,13 @@ export function PeiGenerator() {
                   <p>{loadingExisting ? 'Abrindo o PEI atual do aluno…' : 'A IA está rascunhando o PEI a partir dos indicadores informados…'}</p>
                 </div>
               ) : peiResult ? (
-                <textarea value={peiResult} onChange={(e) => setPeiResult(e.target.value)} style={{ flex: 1, border: 'none', background: 'transparent', padding: '1.5rem', fontSize: '1rem', lineHeight: '1.7', resize: 'none', fontFamily: 'inherit', color: '#222', minHeight: '300px' }} />
+                editing ? (
+                  <textarea value={peiResult} onChange={(e) => setPeiResult(e.target.value)} style={{ flex: 1, border: 'none', background: 'transparent', padding: '1.5rem', fontSize: '1rem', lineHeight: '1.7', resize: 'none', fontFamily: 'inherit', color: '#222', minHeight: '300px' }} />
+                ) : (
+                  <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', minHeight: '300px' }}>
+                    {renderMarkdown(peiResult, { cite: citeTitle })}
+                  </div>
+                )
               ) : (
                 <div className="flex justify-center items-center" style={{ height: '100%', color: 'var(--color-text-muted)', textAlign: 'center', padding: '2rem' }}>
                   <div style={{ opacity: 0.5 }}>
@@ -219,6 +254,9 @@ export function PeiGenerator() {
             {error && <div className="callout callout-danger mt-4">{error}</div>}
           </div>
 
+          {peiResult && !isLoading && !loadingExisting && (
+            <EvidencePanel used={usedObservations} hasMap={Object.keys(evidenceMap).length > 0} totalAvailable={observationsQ.data.length} />
+          )}
           {doc && (
             <div className="card mt-4">
               <GoalsPanel

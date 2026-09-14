@@ -5,17 +5,44 @@ import {
   PEDAGOGICAL_SYSTEM_PROMPT, PEI_SYSTEM_PROMPT, PLANNING_SYSTEM_PROMPT, PROMPT_VERSION, REPORT_SYSTEM_PROMPT,
   splitPeiOutput,
 } from '../_lib/prompts.js';
-import type { PedagogicalInput, PeiInput, PlanningInput, ReportInput } from '../_lib/prompts.js';
+import type { EvidenceItem, PedagogicalInput, PeiInput, PlanningInput, ReportInput } from '../_lib/prompts.js';
 
 type Feature = 'report' | 'pei' | 'pedagogical' | 'planning';
 
+/** Registro de observação enviado pelo cliente para servir de evidência. */
+interface EvidenceIn { id: string; date: string; field: string; text: string }
+
 type Request =
-  | { feature: 'report'; data: ReportInput }
-  | { feature: 'pei'; data: PeiInput; studentId: string }
+  | { feature: 'report'; data: ReportInput; evidence?: EvidenceIn[] }
+  | { feature: 'pei'; data: PeiInput; studentId: string; evidence?: EvidenceIn[] }
   | { feature: 'pedagogical'; data: PedagogicalInput }
   | { feature: 'planning'; data: PlanningInput };
 
 const FEATURES: Feature[] = ['report', 'pei', 'pedagogical', 'planning'];
+
+const MAX_EVIDENCE = 60;
+const MAX_EVIDENCE_CHARS = 400;
+
+/**
+ * Numera os registros para o prompt e guarda o mapa n → id. Só texto, data e
+ * campo saem para o provedor; ids ficam no servidor.
+ */
+function prepareEvidence(list: EvidenceIn[] | undefined): { items: EvidenceItem[]; map: Record<number, string> } {
+  const items: EvidenceItem[] = [];
+  const map: Record<number, string> = {};
+  if (!Array.isArray(list)) return { items, map };
+  const sorted = [...list].filter(e => e && typeof e.id === 'string' && typeof e.text === 'string' && e.text.trim())
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+    .slice(0, MAX_EVIDENCE);
+  sorted.forEach((e, i) => {
+    const n = i + 1;
+    const iso = String(e.date);
+    const br = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : iso;
+    items.push({ n, date: br, field: String(e.field || 'Geral').slice(0, 80), text: e.text.trim().slice(0, MAX_EVIDENCE_CHARS) });
+    map[n] = e.id;
+  });
+  return { items, map };
+}
 
 /** Trial vigente, ativa, ou em atraso dentro da carência de 7 dias. */
 function subscriptionAllows(school: { status: string; trial_ends_at: string | null; updated_at: string }): boolean {
@@ -79,9 +106,12 @@ export default handler(['POST'], async (req) => {
   // Monta o prompt, garantindo pseudonimização mesmo se o cliente mandar demais.
   let system: string;
   let prompt: string;
+  let evidenceMap: Record<number, string> = {};
   switch (payload.feature) {
     case 'report': {
-      const d = { ...payload.data, firstName: firstNameOnly(payload.data.firstName) };
+      const ev = prepareEvidence(payload.evidence);
+      evidenceMap = ev.map;
+      const d = { ...payload.data, firstName: firstNameOnly(payload.data.firstName), evidence: ev.items };
       system = REPORT_SYSTEM_PROMPT; prompt = buildReportPrompt(d);
       break;
     }
@@ -94,7 +124,9 @@ export default handler(['POST'], async (req) => {
       if (!student.pei_consent_at) {
         throw new HttpError(403, 'Registre o consentimento do responsável (LGPD) no cadastro do aluno antes de gerar o PEI.');
       }
-      const d = { ...payload.data, firstName: firstNameOnly(payload.data.firstName) };
+      const ev = prepareEvidence(payload.evidence);
+      evidenceMap = ev.map;
+      const d = { ...payload.data, firstName: firstNameOnly(payload.data.firstName), evidence: ev.items };
       system = PEI_SYSTEM_PROMPT; prompt = buildPeiPrompt(d);
       break;
     }
@@ -124,7 +156,10 @@ export default handler(['POST'], async (req) => {
     });
     if (payload.feature === 'pei') {
       const { content, goals } = splitPeiOutput(out.text);
-      return { content, goals, model: cfg.model, promptVersion: PROMPT_VERSION };
+      return { content, goals, evidence: evidenceMap, model: cfg.model, promptVersion: PROMPT_VERSION };
+    }
+    if (payload.feature === 'report') {
+      return { content: out.text, evidence: evidenceMap, model: cfg.model, promptVersion: PROMPT_VERSION };
     }
     return { content: out.text, model: cfg.model, promptVersion: PROMPT_VERSION };
   } catch (err) {

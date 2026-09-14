@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Sparkles, Copy, CheckCircle, FileText, Printer, AlertCircle, Send, Save, History } from 'lucide-react';
+import { Sparkles, Copy, CheckCircle, FileText, Printer, AlertCircle, Send, Save, History, Eye, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { ReportForm, type StudentData, type RosterStudent } from '../components/ReportForm';
 import { PrintPreview } from '../components/PrintPreview';
@@ -11,6 +11,11 @@ import { useAsync } from '../lib/useAsync';
 import { PageHeader, SkeletonCard, StatusBadge } from '../components/ui';
 import { listEnrollments, listStudents, createDocument, updateDocument, listDocuments, listObservations } from '../data';
 import { periodRange } from '../lib/periods';
+import { toEvidence, stripCitations, citedNumbers, type EvidenceMap } from '../lib/evidence';
+import { renderMarkdown } from '../lib/markdown';
+import { OBSERVATION_FIELDS, FIELD_BY_ID } from '../store/bnccFields';
+import { formatDate } from '../lib/format';
+import { EvidencePanel } from '../components/EvidencePanel';
 import type { Student, StudentDocument } from '../types/db';
 
 export function ReportGenerator() {
@@ -25,6 +30,8 @@ export function ReportGenerator() {
   const [saving, setSaving] = useState(false);
   const [currentStudent, setCurrentStudent] = useState<StudentData | null>(null);
   const [formStudentId, setFormStudentId] = useState<string | null>(null);
+  const [evidenceMap, setEvidenceMap] = useState<EvidenceMap>({});
+  const [editing, setEditing] = useState(false);
 
   // Alunos das turmas visíveis (a RLS já limitou as turmas ao que o usuário pode ver).
   const classIds = useMemo(() => classes.map(c => c.id), [classes]);
@@ -59,6 +66,14 @@ export function ReportGenerator() {
     return copy;
   };
 
+  /** Registros do período escolhido na ficha: a evidência que a IA precisa citar. */
+  const periodObservations = (reportContext: string) => {
+    const idx = grading.periods.indexOf(reportContext);
+    if (idx < 0) return observationsQ.data;
+    const r = periodRange(selectedYear, grading.periods.length, idx);
+    return observationsQ.data.filter(o => o.date >= r.start && o.date <= r.end);
+  };
+
   const handleGenerateReport = async (data: StudentData) => {
     if (!school || !user) return;
     setIsLoading(true);
@@ -66,10 +81,13 @@ export function ReportGenerator() {
     setReportResult('');
     setCopied(false);
     setDoc(null);
+    setEditing(false);
+    setEvidenceMap({});
     setCurrentStudent(data);
 
     try {
-      const result = await generateAIReport({
+      const evidenceIn = toEvidence(periodObservations(data.reportContext));
+      const { content: result, evidence } = await generateAIReport({
         firstName: firstName(data.name),
         age: data.age,
         group: data.group,
@@ -87,8 +105,9 @@ export function ReportGenerator() {
         peMap: data.peMap, fieldPe: data.fieldPe,
         positivePoints: data.positivePoints,
         attentionPoints: data.attentionPoints,
-      });
+      }, evidenceIn);
       setReportResult(result);
+      setEvidenceMap(evidence);
       void refreshAiUsage();
 
       // Salva como rascunho já na geração: nada se perde se a aba fechar.
@@ -101,7 +120,7 @@ export function ReportGenerator() {
         period: data.reportContext,
         subject_id: data.subject === 'Inglês' ? 'ing' : data.subject === 'Educação Física' ? 'ef' : null,
         author_id: user.id,
-        form_data: stripPhotos(data) as unknown as Record<string, unknown>,
+        form_data: { ...stripPhotos(data), evidence, observationIds: evidenceIn.map(e => e.id) } as unknown as Record<string, unknown>,
         content: result,
         status: 'draft',
       });
@@ -128,23 +147,36 @@ export function ReportGenerator() {
   };
 
   const handleCopy = () => {
-    void navigator.clipboard.writeText(reportResult);
+    void navigator.clipboard.writeText(stripCitations(reportResult));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleDownloadDoc = () => {
     if (reportResult && currentStudent && school) {
-      void exportToDocx(reportResult, currentStudent, { schoolName: school.legal_name || school.name, year: selectedYear?.label ?? '' });
+      void exportToDocx(stripCitations(reportResult), currentStudent, { schoolName: school.legal_name || school.name, year: selectedYear?.label ?? '' });
     }
   };
 
   const loadPrevious = (d: StudentDocument) => {
     setDoc(d);
     setReportResult(d.content);
-    const fd = d.form_data as unknown as StudentData;
+    setEditing(false);
+    const fd = d.form_data as unknown as StudentData & { evidence?: EvidenceMap };
+    setEvidenceMap(fd.evidence ?? {});
     setCurrentStudent({ ...fd, name: fd.name ?? '', studentId: d.student_id });
   };
+
+  // Origem de cada marcador [n]: o registro correspondente (título do sobrescrito).
+  const observationById = useMemo(() => new Map(observationsQ.data.map(o => [o.id, o])), [observationsQ.data]);
+  const citeTitle = (n: number) => {
+    const o = observationById.get(evidenceMap[String(n)] ?? '');
+    return o ? `${formatDate(o.date)} · ${FIELD_BY_ID[o.field_id]?.short ?? 'Geral'}: ${o.text}` : null;
+  };
+  const usedObservations = citedNumbers(reportResult).map(n => observationById.get(evidenceMap[String(n)] ?? '')).filter((o): o is NonNullable<typeof o> => Boolean(o));
+  const fieldsWithoutEvidence = currentStudent
+    ? OBSERVATION_FIELDS.filter(f => ['social', 'motor', 'arts', 'language', 'logic'].includes(f.id) && !periodObservations(currentStudent.reportContext).some(o => o.field_id === f.id))
+    : [];
 
   return (
     <div>
@@ -182,6 +214,7 @@ export function ReportGenerator() {
               </h2>
               {reportResult && (
                 <div className="flex gap-2" style={{ flexWrap: 'wrap' }}>
+                  <button onClick={() => setEditing(e => !e)} className="btn btn-secondary btn-sm" title={editing ? 'Ver com evidências' : 'Editar o texto'}>{editing ? <Eye size={14} /> : <Pencil size={14} />} {editing ? 'Ver' : 'Editar'}</button>
                   <button onClick={() => setShowPrintPreview(true)} className="btn btn-primary btn-sm"><Printer size={14} /> PDF</button>
                   <button onClick={handleDownloadDoc} className="btn btn-secondary btn-sm"><FileText size={14} /> Word</button>
                   <button onClick={handleCopy} className="btn btn-secondary btn-sm" title="Copiar texto">{copied ? <CheckCircle size={14} /> : <Copy size={14} />}</button>
@@ -196,7 +229,13 @@ export function ReportGenerator() {
                   <p>A IA está redigindo o relatório...</p>
                 </div>
               ) : reportResult ? (
-                <textarea value={reportResult} onChange={(e) => setReportResult(e.target.value)} style={{ flex: 1, border: 'none', background: 'transparent', padding: '1.5rem', fontSize: '1rem', lineHeight: '1.7', resize: 'none', fontFamily: 'inherit', color: '#222', minHeight: '300px' }} />
+                editing ? (
+                  <textarea value={reportResult} onChange={(e) => setReportResult(e.target.value)} style={{ flex: 1, border: 'none', background: 'transparent', padding: '1.5rem', fontSize: '1rem', lineHeight: '1.7', resize: 'none', fontFamily: 'inherit', color: '#222', minHeight: '300px' }} />
+                ) : (
+                  <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', minHeight: '300px' }}>
+                    {renderMarkdown(reportResult, { cite: citeTitle })}
+                  </div>
+                )
               ) : (
                 <div className="flex justify-center items-center" style={{ height: '100%', color: 'var(--color-text-muted)', textAlign: 'center', padding: '2rem' }}>
                   <div style={{ opacity: 0.5 }}>
@@ -241,7 +280,9 @@ export function ReportGenerator() {
               </div>
             )}
           </div>
-
+          {reportResult && !isLoading && (
+            <EvidencePanel used={usedObservations} missingFields={fieldsWithoutEvidence.map(f => f.short)} hasMap={Object.keys(evidenceMap).length > 0} />
+          )}
           </div>
         </div>
       </div>

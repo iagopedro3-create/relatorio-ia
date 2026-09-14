@@ -7,6 +7,7 @@
  * reforça isso, mas a regra começa aqui.
  */
 import { callApi } from './supabase';
+import type { EvidenceIn, EvidenceMap } from './evidence';
 
 export type ItemStatus = 'none' | 'developing' | 'consolidated';
 type ItemMap = Record<string, ItemStatus>;
@@ -72,14 +73,14 @@ export function firstName(fullName: string): string {
   return fullName.trim().split(/\s+/)[0] || '';
 }
 
-export async function generateAIReport(data: ReportInput): Promise<string> {
-  const res = await callApi<AiResponse>('/api/ai/generate', { feature: 'report', data });
-  return res.content;
+export async function generateAIReport(data: ReportInput, evidence: EvidenceIn[] = []): Promise<{ content: string; evidence: EvidenceMap }> {
+  const res = await callApi<AiResponse & { evidence?: EvidenceMap }>('/api/ai/generate', { feature: 'report', data, evidence });
+  return { content: res.content, evidence: res.evidence ?? {} };
 }
 
-export async function generatePei(studentId: string, data: PeiInput): Promise<{ content: string; goals: DraftGoal[] }> {
-  const res = await callApi<AiResponse & { goals?: DraftGoal[] }>('/api/ai/generate', { feature: 'pei', studentId, data });
-  return { content: res.content, goals: res.goals ?? [] };
+export async function generatePei(studentId: string, data: PeiInput, evidence: EvidenceIn[] = []): Promise<{ content: string; goals: DraftGoal[]; evidence: EvidenceMap }> {
+  const res = await callApi<AiResponse & { goals?: DraftGoal[]; evidence?: EvidenceMap }>('/api/ai/generate', { feature: 'pei', studentId, data, evidence });
+  return { content: res.content, goals: res.goals ?? [], evidence: res.evidence ?? {} };
 }
 
 export async function generatePedagogicalIntelligence(data: PedagogicalInput): Promise<string> {

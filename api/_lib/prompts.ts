@@ -23,6 +23,29 @@ function formatMap(map: ItemMap): string {
 }
 
 // ---------------------------------------------------------------------------
+// Evidência: registros de observação numerados. O modelo cita [n] no texto;
+// o servidor devolve o mapa n → id para o front mostrar a origem.
+// ---------------------------------------------------------------------------
+
+export interface EvidenceItem {
+  n: number;
+  date: string;   // DD/MM/AAAA
+  field: string;  // campo de experiência / eixo
+  text: string;
+}
+
+function formatEvidence(items: EvidenceItem[] | undefined): string {
+  if (!items || items.length === 0) return 'Nenhum registro de observação no período.';
+  return items.map(e => `[${e.n}] ${e.date} · ${e.field}: ${e.text}`).join('\n');
+}
+
+const EVIDENCE_RULES = `REGRAS DE EVIDÊNCIA (obrigatórias):
+- Os REGISTROS DE OBSERVAÇÃO numerados são a fonte principal. Sempre que uma frase se apoiar em um registro, termine-a com o marcador do registro, no formato [n] (pode haver mais de um: [2][5]).
+- Não afirme nada sobre a criança que não esteja nos registros ou nos dados da ficha. Não invente exemplos, episódios ou progresso.
+- Um campo/eixo TEM evidência se houver pelo menos um registro numerado dele OU um item marcado/texto da professora na ficha. Só quando não houver nenhum dos dois, escreva uma frase curta dizendo que não há registros no período para ele — não preencha com generalidades e nunca diga "não há registros" de um campo que você acabou de citar.
+- Os itens da ficha (checklist e textos da professora) também são fonte válida; frases baseadas neles não levam marcador.`;
+
+// ---------------------------------------------------------------------------
 // Relatório descritivo
 // ---------------------------------------------------------------------------
 
@@ -44,13 +67,16 @@ export interface ReportInput {
   peMap?: ItemMap; fieldPe?: string;
   positivePoints?: string;
   attentionPoints?: string;
+  evidence?: EvidenceItem[];
 }
 
-export const REPORT_SYSTEM_PROMPT = `Você é um assistente especializado em redação pedagógica. Sua tarefa é transformar observações de professores em relatórios descritivos profissionais, acolhedores e focados no desenvolvimento do aluno.
+export const REPORT_SYSTEM_PROMPT = `Você é um assistente especializado em redação pedagógica que apoia professoras de Educação Infantil e Fundamental I. Sua tarefa é transformar os registros de observação e a ficha da professora em um relatório descritivo profissional, acolhedor e focado no desenvolvimento da criança. O texto é um RASCUNHO que a professora e a coordenação revisam.
 
-Se uma DISCIPLINA específica for fornecida (como Inglês ou Educação Física), foque o relatório no desenvolvimento das competências específicas daquela área para a faixa etária do aluno.
+Se uma DISCIPLINA específica for fornecida (como Inglês ou Educação Física), foque o relatório nas competências daquela área para a faixa etária.
 
-Use uma linguagem clara, evite termos excessivamente técnicos sem explicação e siga rigorosamente a BNCC. Refira-se à criança apenas pelo primeiro nome informado.`;
+Use linguagem clara, sem rótulos, descrevendo o que a criança faz (não o que ela "é"); evite termos técnicos sem explicação; siga a BNCC. Refira-se à criança apenas pelo primeiro nome informado. Você não diagnostica nem infere condições.
+
+${EVIDENCE_RULES}`;
 
 const TONE_LABEL: Record<ReportInput['reportTone'], string> = {
   affectionate: 'Afetivo e próximo (para as famílias)',
@@ -89,10 +115,14 @@ DADOS DA AVALIAÇÃO (BNCC):
 Potencialidades: ${d.positivePoints || 'Não informadas'}
 Pontos de Atenção: ${d.attentionPoints || 'Não informados'}
 
+REGISTROS DE OBSERVAÇÃO DO PERÍODO (evidência; cite pelo número):
+${formatEvidence(d.evidence)}
+
 INSTRUÇÕES DE REDAÇÃO:
 - Integre os itens de forma natural no texto.
 - Não use listas. O relatório deve ser um texto corrido fluido.
 - Não invente fatos que não estejam nos dados acima.
+- Cite os registros com [n] ao fim das frases que se apoiam neles.
 `;
 }
 
@@ -113,6 +143,7 @@ export interface PeiInput {
   selectedMotor?: string[]; motor?: string;
   selectedAutonomy?: string[]; autonomy?: string;
   selectedSensory?: string[]; sensory?: string;
+  evidence?: EvidenceItem[];
 }
 
 export const PEI_SYSTEM_PROMPT = `Você é um especialista em educação inclusiva e desenvolvimento infantil que apoia a equipe pedagógica de uma escola. Sua tarefa é rascunhar um Plano Educacional Individualizado (PEI) técnico, humanizado e estruturado, que a coordenação vai revisar, editar e assinar. O texto é um RASCUNHO; a decisão é sempre do profissional.
@@ -123,6 +154,8 @@ LIMITES (obrigatórios):
 - Baseie-se APENAS nos indicadores e observações informados. Não invente observações, comportamentos, histórico ou progresso.
 - Use linguagem respeitosa, sem rótulos; descreva comportamentos observáveis, não a criança.
 - Refira-se ao estudante apenas pelo primeiro nome informado.
+
+${EVIDENCE_RULES}
 
 DIRETRIZES DE REDAÇÃO:
 - Use os indicadores selecionados como base direta das metas. Se um indicador como "agressividade consigo mesmo" foi marcado, a meta deve endereçá-lo especificamente.
@@ -181,8 +214,12 @@ ${axis(7, 'Autonomia e Vida Diária', d.selectedAutonomy, d.autonomy)}
 
 ${axis(8, 'Perfil Sensorial', d.selectedSensory, d.sensory)}
 
+REGISTROS DE OBSERVAÇÃO DA SALA COMUM (evidência; cite pelo número):
+${formatEvidence(d.evidence)}
+
 INSTRUÇÃO ADICIONAL:
 As metas devem ser correlacionadas aos indicadores marcados. Exemplo: se "Agressividade consigo mesmo" foi marcado em Comportamento, a meta deve focar na substituição desse comportamento por uma alternativa, com critério mensurável.
+No PERFIL FUNCIONAL, nas ESTRATÉGIAS e no QUADRO DE METAS, cite com [n] cada registro de observação que fundamenta a afirmação, a estratégia ou a meta (ex.: "usa apontamento para pedir [2]"). Se houver registros, pelo menos o perfil e as metas devem citá-los.
 Lembre-se: termine com a linha <<<METAS>>> seguida do JSON das metas.
 `;
 }

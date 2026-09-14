@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { Eye, EyeOff, LogIn, AlertCircle, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
@@ -97,7 +97,7 @@ export function Login() {
 
           <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.6rem', fontWeight: 800 }}>{forgot ? 'Recuperar senha' : 'Entrar no sistema'}</h2>
           <p style={{ margin: '0 0 2rem', color: 'var(--color-text-muted)', fontSize: '0.95rem' }}>
-            {forgot ? 'Informe o e-mail cadastrado e enviaremos o link.' : 'Use o e-mail e a senha criados pela direção da sua escola.'}
+            {forgot ? 'Informe o e-mail cadastrado e enviaremos o link.' : 'Use o e-mail do convite ou o cadastrado pela sua escola.'}
           </p>
 
           <form onSubmit={forgot ? handleForgot : handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -165,6 +165,11 @@ export function Login() {
             >
               {forgot ? 'Voltar para o login' : 'Esqueci minha senha'}
             </button>
+            {!forgot && (
+              <p style={{ margin: '0.25rem 0 0', textAlign: 'center', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+                Sua escola ainda não usa? <Link to="/criar-conta" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Criar a conta da escola</Link>
+              </p>
+            )}
           </form>
         </div>
       </div>

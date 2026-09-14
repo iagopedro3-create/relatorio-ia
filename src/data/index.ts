@@ -185,10 +185,11 @@ export interface CreateUserInput {
   specialty?: 'english' | 'pe' | null;
   password?: string;
   student_ids?: string[];
+  invite?: boolean;
 }
 
 export async function createUser(input: CreateUserInput) {
-  return callApi<{ user_id: string; initial_password?: string }>('/api/admin/users', { action: 'create', ...input });
+  return callApi<{ user_id: string; invited?: boolean; initial_password?: string }>('/api/admin/users', { action: 'create', ...input });
 }
 
 export async function userAction(action: 'reset_password' | 'deactivate' | 'activate' | 'delete', userId: string) {

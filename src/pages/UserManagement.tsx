@@ -14,6 +14,7 @@ interface FormState {
   name: string;
   email: string;
   password: string;
+  invite: boolean;
   role: UserRole;
   managed_level: '' | 'infantil' | 'fundamental';
   specialty: '' | 'english' | 'pe';
@@ -21,7 +22,7 @@ interface FormState {
   class_ids: string[];
 }
 
-const EMPTY: FormState = { name: '', email: '', password: '', role: 'teacher', managed_level: '', specialty: '', student_ids: [], class_ids: [] };
+const EMPTY: FormState = { name: '', email: '', password: '', invite: true, role: 'teacher', managed_level: '', specialty: '', student_ids: [], class_ids: [] };
 
 const ROLE_BADGE: Record<UserRole, { label: string; color: string; bg: string }> = {
   admin: { label: 'DIREÇÃO', color: 'var(--color-secondary)', bg: 'var(--color-secondary-soft)' },
@@ -76,6 +77,7 @@ export function UserManagement() {
       name: u.name,
       email: u.email,
       password: '',
+      invite: false,
       role: u.role,
       managed_level: u.managed_level ?? '',
       specialty: u.specialty ?? '',
@@ -106,11 +108,12 @@ export function UserManagement() {
           managed_level,
           specialty,
           password: formData.password.trim() || undefined,
+          invite: formData.invite && !formData.password.trim(),
           student_ids: formData.role === 'guardian' ? formData.student_ids : undefined,
         });
         userId = res.user_id;
         if (res.initial_password) setRevealed({ email: formData.email.trim(), password: res.initial_password });
-        toast.success('Usuário criado.');
+        toast.success(res.invited ? `Convite enviado para ${formData.email.trim()}.` : 'Usuário criado.');
       }
 
       if (userId && formData.role === 'guardian') {
@@ -207,7 +210,12 @@ export function UserManagement() {
             </div>
             <div>
               <label>{editingId ? 'Nova senha (opcional)' : 'Senha inicial (opcional)'}</label>
-              <input type="password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} placeholder={editingId ? 'Deixe em branco para manter' : 'Em branco = gerar automaticamente'} />
+              <input type="password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} placeholder={editingId ? 'Deixe em branco para manter' : formData.invite ? 'Vazio = a pessoa define pelo convite' : 'Em branco = gerar automaticamente'} />
+              {!editingId && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.4rem', fontSize: '0.82rem', fontWeight: 500, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={formData.invite} onChange={e => setFormData({ ...formData, invite: e.target.checked })} /> Enviar convite por e-mail (a pessoa cria a própria senha)
+                </label>
+              )}
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">

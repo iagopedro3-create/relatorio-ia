@@ -23,6 +23,7 @@ import { ClassDiary } from './pages/ClassDiary';
 import { Agenda } from './pages/Agenda';
 import { PedagogicalIntelligence } from './pages/PedagogicalIntelligence';
 import { PlatformAdmin } from './pages/PlatformAdmin';
+import { Signup } from './pages/Signup';
 import { ResetPassword } from './pages/ResetPassword';
 import { Finance } from './pages/Finance';
 import { FamilyFinance } from './pages/FamilyFinance';
@@ -38,6 +39,7 @@ export function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/redefinir-senha" element={<ResetPassword />} />
+            <Route path="/criar-conta" element={<Signup />} />
             <Route element={<Layout />}>
               <Route path="/" element={<Home />} />
               <Route path="/reports" element={<ReportGenerator />} />

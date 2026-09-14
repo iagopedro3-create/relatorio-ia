@@ -4,7 +4,8 @@ import { adminClient, authenticate, body, handler, HttpError, requireSchoolAdmin
  * Gestão de usuários DA ESCOLA, pela direção. Precisa de service_role porque
  * cria/apaga o auth.user — por isso é função e não query do front.
  *
- *   POST   { action: 'create', name, email, role, managed_level?, specialty?, password?, student_ids? }
+ *   POST   { action: 'create', name, email, role, managed_level?, specialty?, password?, invite?, student_ids? }
+ *          invite=true: manda o convite por e-mail (a pessoa define a própria senha); sem senha repassada à mão.
  *   POST   { action: 'reset_password', user_id }      -> manda e-mail de redefinição
  *   POST   { action: 'set_password', user_id, password }
  *   POST   { action: 'deactivate', user_id }  /  { action: 'activate', user_id }
@@ -21,6 +22,7 @@ interface CreateBody {
   managed_level?: 'infantil' | 'fundamental' | null;
   specialty?: 'english' | 'pe' | null;
   password?: string;
+  invite?: boolean;
   /** Para responsáveis: alunos vinculados. */
   student_ids?: string[];
 }
@@ -64,13 +66,20 @@ export default handler(['POST'], async (req) => {
       }
     }
 
+    const invite = Boolean(payload.invite) && !payload.password?.trim();
     const password = payload.password?.trim() || randomPassword();
-    const { data: created, error } = await db.auth.admin.createUser({
-      email: email.trim().toLowerCase(),
-      password,
-      email_confirm: true,
-      user_metadata: { name: name.trim() },
-    });
+    const cleanEmail = email.trim().toLowerCase();
+    const { data: created, error } = invite
+      ? await db.auth.admin.inviteUserByEmail(cleanEmail, {
+          data: { name: name.trim() },
+          redirectTo: process.env.APP_URL ? `${process.env.APP_URL}/redefinir-senha` : undefined,
+        })
+      : await db.auth.admin.createUser({
+          email: cleanEmail,
+          password,
+          email_confirm: true,
+          user_metadata: { name: name.trim() },
+        });
     if (error || !created.user) {
       throw new HttpError(400, error?.message?.includes('already') ? 'Já existe um usuário com este e-mail.' : (error?.message ?? 'Falha ao criar usuário.'));
     }
@@ -95,8 +104,8 @@ export default handler(['POST'], async (req) => {
       );
     }
 
-    // A senha inicial volta UMA vez para a direção repassar. Não é guardada.
-    return { user_id: created.user.id, initial_password: payload.password ? undefined : password };
+    // Convite: a pessoa define a senha pelo link. Senão, a senha inicial volta UMA vez para a direção repassar; não é guardada.
+    return { user_id: created.user.id, invited: invite, initial_password: invite || payload.password ? undefined : password };
   }
 
   // Ações sobre usuário existente: só dentro da própria escola.
@@ -109,7 +118,7 @@ export default handler(['POST'], async (req) => {
   switch (payload.action) {
     case 'reset_password': {
       const { data: u } = await db.from('profiles').select('email').eq('id', target.id).single();
-      const redirectTo = process.env.APP_URL ? `${process.env.APP_URL}/login` : undefined;
+      const redirectTo = process.env.APP_URL ? `${process.env.APP_URL}/redefinir-senha` : undefined;
       const { error } = await db.auth.resetPasswordForEmail(u!.email, { redirectTo });
       if (error) throw new HttpError(500, error.message);
       return { ok: true };
